@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>MobileStation WebApp</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <button id="stopBtn" class="go">GO</button>
+  <h1>MobileStation WebApp</h1>
+
+  <div class="controls">
+    <button id="lightBtn">💡</button>
+    <button id="hornBtn">📯</button>
+    <button id="directionBtn">⬅️</button>
+  </div>
+
+  <div class="tachometer">
+    <label for="speed">Geschwindigkeit: <span id="speedValue">0</span> km/h</label><br/>
+    <input type="range" id="speed" min="0" max="200" value="0">
+  </div>
+
+  <script src="/static/script.js"></script>
+</body>
+</html>

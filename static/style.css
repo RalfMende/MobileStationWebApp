@@ -1,0 +1,53 @@
+body {
+  background-color: #111;
+  color: #fff;
+  font-family: sans-serif;
+  text-align: center;
+  margin: 0;
+  padding: 2rem;
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+button {
+  font-size: 2rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background: #333;
+  color: white;
+  border: 2px solid #555;
+  cursor: pointer;
+}
+
+.tachometer {
+  margin-top: 2rem;
+}
+
+#stopBtn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  font-size: 1.5rem;
+  padding: 0.5rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+#stopBtn.go {
+  background-color: green;
+  color: white;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.7);
+}
+
+#stopBtn.stop {
+  background-color: red;
+  color: white;
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.7);
+}
