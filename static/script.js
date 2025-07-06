@@ -112,7 +112,7 @@ function createFunctionButtons(col, offset) {
     const name = `F${idx}`;
     const btn = document.createElement('button');
     const img = document.createElement('img');
-    img.src = `/static/icons/${name}.png`;
+    img.src = `/static/fcticons/${name}.png`;
     btn.appendChild(img);
     btn.onclick = () => {
       const newState = !(locoState[currentLoco].functions[name] || false);
@@ -133,7 +133,7 @@ createFunctionButtons(rightCol, 7);
 ['BR 85', 'ICE'].forEach((name) => {
   const img = document.createElement('img');
   const fname = name.toLowerCase().replace(/ /g, '_') + '.png';
-  img.src = `/static/locos/${fname}`;
+  img.src = `/static/icons/${fname}`;
   img.onclick = () => {
     currentLoco = name;
     locoDesc.textContent = name;
