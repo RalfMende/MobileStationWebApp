@@ -1,24 +1,51 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <title>MobileStation WebApp</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Modellbahn Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-
-  <button id="stopBtn" class="go">GO</button>
-  <h1>MobileStation WebApp</h1>
-
-  <div class="controls">
-    <button id="lightBtn">💡</button>
-    <button id="hornBtn">📯</button>
-    <button id="directionBtn">⬅️</button>
+  <div class="top-bar">
+    <button id="infoBtn" class="tab">info</button>
+    <div class="tabs">
+      <button id="controlTab" class="tab active">control</button>
+      <button id="keyboardTab" class="tab">keyboard</button>
+    </div>
+    <button id="stopBtn" class="stop">STOP</button>
   </div>
 
-  <div class="tachometer">
-    <label for="speed">Geschwindigkeit: <span id="speedValue">0</span> km/h</label><br/>
-    <input type="range" id="speed" min="0" max="200" value="0">
+  <div id="controlPage" class="page">
+    <div class="main-content">
+      <div class="functions-side" id="leftFunctions"></div>
+
+      <div class="speed-block">
+        <div id="speedValue" class="speed-display">0 km/h</div>
+        <div class="speed-bar-wrapper">
+          <div class="speed-bar" id="speedBar">
+            <div id="speedFill" class="speed-fill"></div>
+            <input type="range" id="speedSlider" min="0" max="200" value="0" class="slider-vertical"/>
+          </div>
+        </div>
+        <div id="locoDesc" class="loco-desc">Lokomotive</div>
+        <img id="locoImg" class="loco-img" src="/static/locos/demo.png" alt="Lokbild">
+        <div class="direction-buttons">
+          <button id="reverseBtn" class="dir-btn">⬅️</button>
+          <button id="forwardBtn" class="dir-btn active">➡️</button>
+        </div>
+      </div>
+
+      <div class="functions-side" id="rightFunctions"></div>
+    </div>
+
+    <div class="loco-list-wrapper">
+      <div id="locoList" class="loco-list"></div>
+    </div>
+  </div>
+
+  <div id="keyboardPage" class="page hidden">
+    <p style="text-align:center; padding:2rem;">Keyboard-Seite (Platzhalter)</p>
   </div>
 
   <script src="/static/script.js"></script>
