@@ -1,0 +1,3163 @@
+Bau [magnetartikel]
+version
+ .minor=1
+artikel
+ .id=1
+ .name=BG W01
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_neu
+ .dectyp=dcc
+artikel
+ .id=2
+ .name=BG W02
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_neu
+ .dectyp=dcc
+artikel
+ .id=3
+ .name=BG W03
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_neu
+ .dectyp=dcc
+artikel
+ .id=4
+ .name=BG W04
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_neu
+ .dectyp=dcc
+artikel
+ .id=5
+ .name=BG W05
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_neu
+ .dectyp=mm2
+artikel
+ .id=6
+ .name=BG W06
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_neu
+ .dectyp=mm2
+artikel
+ .id=7
+ .name=BG W07
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_neu
+ .dectyp=mm2
+artikel
+ .id=8
+ .name=BG W08
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_neu
+ .dectyp=mm2
+artikel
+ .id=9
+ .name=BG W09
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_neu
+ .dectyp=dcc
+artikel
+ .id=10
+ .name=BG W10
+ .typ=y_weiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_neu
+ .dectyp=dcc
+artikel
+ .id=11
+ .name=BG W11
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_neu
+ .dectyp=dcc
+artikel
+ .id=12
+ .name=BG W12
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_neu
+ .dectyp=dcc
+artikel
+ .id=13
+ .name=BG W13
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=14
+ .name=BG W14
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=15
+ .name=BG W15
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=16
+ .name=BG W16
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=17
+ .name=BG W17
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=18
+ .name=BG W18
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=19
+ .name=BG W19
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=20
+ .name=BG W20
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=21
+ .name=BG W21
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=22
+ .name=BG W22
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=23
+ .name=BG W23
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=24
+ .name=BG W24
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=25
+ .name=BG W25
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=26
+ .name=BG W26
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=27
+ .name=BG W27
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=28
+ .name=BG W28
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=29
+ .name=BG W29
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=30
+ .name=BG W30
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=33
+ .name=EHN W01
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=34
+ .name=EHN W02 EKW
+ .typ=dkw_2antriebe
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=36
+ .name=EHN W03
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=37
+ .name=EHN W04
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=38
+ .name=EHN W05
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=39
+ .name=EHN W06
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=40
+ .name=EHN W07 DKW
+ .typ=dkw_2antriebe
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=42
+ .name=EHN W08
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=43
+ .name=EHN W09
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=44
+ .name=EHN W10 DKW
+ .typ=dkw_2antriebe
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=46
+ .name=EHN W11
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=47
+ .name=EHN W12
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=48
+ .name=EHN W13
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=49
+ .name=EHN W15 DKW
+ .typ=dkw_2antriebe
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=51
+ .name=EHN W16
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=52
+ .name=EHN W17
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=53
+ .name=EHN W18
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=54
+ .name=EHN W19
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=55
+ .name=EHN W20
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=56
+ .name=EHN W21 EKW
+ .typ=dkw_2antriebe
+ .stellung=2
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=58
+ .name=EHN W22
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=59
+ .name=EHN W23
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=60
+ .name=EHN W24
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=61
+ .name=EHN W25
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=62
+ .name=EHN W26
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=65
+ .name=GPP W01
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=66
+ .name=GPP W02
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=67
+ .name=GPP W03
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=68
+ .name=GPP W04
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=69
+ .name=GPP W05
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=70
+ .name=GPP W06
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=71
+ .name=GPP W07
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=72
+ .name=GPP W08
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=73
+ .name=GPP W09
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=74
+ .name=GPP W10
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=75
+ .name=GPP W11
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=76
+ .name=GPP W12
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=77
+ .name=GPP W13
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=78
+ .name=GPP W14
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=79
+ .name=GPP W15
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=80
+ .name=GPP W16
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=81
+ .name=GPP W17
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=82
+ .name=GPP W18
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=83
+ .name=GPP W19 EKW
+ .typ=dkw_2antriebe
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=85
+ .name=GPP W20 EKW
+ .typ=dkw_2antriebe
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=87
+ .name=GPP W21
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=88
+ .name=GPP W22
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=89
+ .name=GPP W23 DKW
+ .typ=dkw_2antriebe
+ .stellung=2
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=91
+ .name=GPP W24
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=92
+ .name=GPP W25
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=93
+ .name=GPP W26
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=94
+ .name=GPP W27
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=95
+ .name=GPP W28
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=96
+ .name=96
+ .typ=std_rot_gruen
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=97
+ .name=GPP W29 DWW
+ .typ=dreiwegweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=99
+ .name=GPP W31
+ .typ=y_weiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=100
+ .name=GPP W32
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=101
+ .name=GPP W33
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=102
+ .name=GPP W34 DKW
+ .typ=dkw_2antriebe
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=104
+ .name=GPP W35
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=105
+ .name=GPP W36
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=106
+ .name=GPP W37
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=107
+ .name=GPP W38
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=108
+ .name=GPP W39
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=109
+ .name=GPP W40
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=110
+ .name=GPP W41
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=111
+ .name=GPP W42
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=112
+ .name=GPP W43
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=113
+ .name=GPP W44
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=114
+ .name=GPP W45
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=115
+ .name=GPP W46
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=116
+ .name=GPP W47
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=117
+ .name=GPP W48
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=118
+ .name=GPP W49 DKW
+ .typ=dkw_2antriebe
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=120
+ .name=GPP W50
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=121
+ .name=GPP W51
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=122
+ .name=GPP W52
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=123
+ .name=GPP W53
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=124
+ .name=GPP W54
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=125
+ .name=GPP W55
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=126
+ .name=GPP W56
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=127
+ .name=GPP W57
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=128
+ .name=GPP W58
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=129
+ .name=GPP W59
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=130
+ .name=GPP W60
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=131
+ .name=GPP W61 DKW
+ .typ=dkw_2antriebe
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=133
+ .name=GPP W62
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=134
+ .name=GPP W63
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=135
+ .name=GPP W64
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=136
+ .name=GPP W65
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=137
+ .name=GPP W66
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=138
+ .name=GPP W67 DKW
+ .typ=dkw_2antriebe
+ .stellung=2
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=140
+ .name=GPP W68
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=141
+ .name=GPP W69 EKW
+ .typ=dkw_2antriebe
+ .stellung=2
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=143
+ .name=GPP W70
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=144
+ .name=GPP W71
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=145
+ .name=GPP W72
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=146
+ .name=GPP W73
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=147
+ .name=GPP W74
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=148
+ .name=GPP W75
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=149
+ .name=GPP W76
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=150
+ .name=GPP W77
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=151
+ .name=GPP W78
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=152
+ .name=GPP W79
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=153
+ .name=GPP W80
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=154
+ .name=GPP W81
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=161
+ .name=Bahnsteig 1
+ .typ=licht_str_neon
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=162
+ .name=Bahnsteig 2
+ .typ=licht_str_neon
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=163
+ .name=Bahnsteig 3
+ .typ=licht_str_neon
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=164
+ .name=Bahnhof
+ .typ=licht_str_neon
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=165
+ .name=BW
+ .typ=licht_str_lampe
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=166
+ .name=Abst.Gruppe 1
+ .typ=licht_str_lampe
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=167
+ .name=Abst.Gruppe 2
+ .typ=licht_str_lampe
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=168
+ .name=Güter
+ .typ=licht_str_lampe
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=169
+ .name=Paketversand
+ .typ=licht_str_lampe
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=177
+ .name=Gleis 1a
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=177
+ .name=177b
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .ungerade=1
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=178
+ .name=Gleis 1b
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=178
+ .name=177b
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .ungerade=1
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=179
+ .name=Gleis 2a
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=179
+ .name=177b
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .ungerade=1
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=180
+ .name=Gleis 2b
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=180
+ .name=177b
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .ungerade=1
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=181
+ .name=Gleis 3a
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=181
+ .name=181b
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .ungerade=1
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=182
+ .name=Gleis 3b
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=182
+ .name=177b
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .ungerade=1
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=183
+ .name=Gleis 4a
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=183
+ .name=177b
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .ungerade=1
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=184
+ .name=Gleis 4b
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=184
+ .name=177b
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .ungerade=1
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=185
+ .name=Gleis 5
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=185
+ .name=177b
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .ungerade=1
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=186
+ .name=Gleis 6
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=186
+ .name=177b
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .ungerade=1
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=187
+ .name=Gleis 7
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=187
+ .name=187b
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .ungerade=1
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=188
+ .name=G-Gleis 1
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=188
+ .name=177b
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .ungerade=1
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=189
+ .name=G-Gleis 2
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=189
+ .name=177b
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .ungerade=1
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=190
+ .name=G-Gleis 3
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=190
+ .name=190b
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .ungerade=1
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=191
+ .name=G-Gleis 4
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=191
+ .name=177b
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .ungerade=1
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=192
+ .name=G-Gleis 5
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=192
+ .name=192b
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .ungerade=1
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=193
+ .name=GPP AS01a
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=195
+ .name=GPP AS02a
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=197
+ .name=GPP AS03a
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=199
+ .name=GPP AS03b
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=201
+ .name=GPP AS04a
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=203
+ .name=GPP AS04b
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=205
+ .name=GPP AS05a
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=207
+ .name=GPP AS05b
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=209
+ .name=GPP AS06a
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=211
+ .name=GPP AS06b
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=213
+ .name=GPP AS07a
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=215
+ .name=GPP AS07b
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=217
+ .name=GPP AS08a
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=219
+ .name=GPP AS08b
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=221
+ .name=GPP AS09a
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=223
+ .name=GPP AS09b
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=225
+ .name=GPP AS10a
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=227
+ .name=GPP AS10b
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=229
+ .name=GPP AS11a
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=231
+ .name=GPP AS11b
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=233
+ .name=GPP AS12a
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=235
+ .name=GPP AS12b
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=237
+ .name=GPP AS13a
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=239
+ .name=GPP AS13b
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=241
+ .name=GPP S100
+ .typ=urc_lichtsignal_SH01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=242
+ .name=GPP S101
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=243
+ .name=GPP S102
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=244
+ .name=GPP S103
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=245
+ .name=GPP S104
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=246
+ .name=GPP S105
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=247
+ .name=GPP S106
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=248
+ .name=GPP S107
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=249
+ .name=GPP S108
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=250
+ .name=GPP S109
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=251
+ .name=GPP S110
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=252
+ .name=GPP S111
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=253
+ .name=GPP S112
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=254
+ .name=GPP S113
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=256
+ .name=GPP S115
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=257
+ .name=S1 W01
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=258
+ .name=S1 W02
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=259
+ .name=S1 W03
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=260
+ .name=S1 W04
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=261
+ .name=S1 W05
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=262
+ .name=S1 W06
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=263
+ .name=S1 W07
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=264
+ .name=S1 W08
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=265
+ .name=S1 W09
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=266
+ .name=S1 W10
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=267
+ .name=S1 W11
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=268
+ .name=S1 W12
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=269
+ .name=S1 W13
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=270
+ .name=S1 W14
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=271
+ .name=S1 W15
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=272
+ .name=S1 W16
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=273
+ .name=S1 W17
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=274
+ .name=S1 W18
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=275
+ .name=S1 W19
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=276
+ .name=S1 W20
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=277
+ .name=S1 W21
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=278
+ .name=S1 W22
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=279
+ .name=S1 W23
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=280
+ .name=S1 W24
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=281
+ .name=S1 W25
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=282
+ .name=S1 W26
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=283
+ .name=S1 W27
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=284
+ .name=S1 W28
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=285
+ .name=S1 W29
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=286
+ .name=S1 W30
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=287
+ .name=S1 W31
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=288
+ .name=S1 W32
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=289
+ .name=S2 W01
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=290
+ .name=S2 W02
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=291
+ .name=S2 W03
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=292
+ .name=S2 W04
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=293
+ .name=S2 W05
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=294
+ .name=S2 W06
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=295
+ .name=S2 W07
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=296
+ .name=S2 W08
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=297
+ .name=S2 W09
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=298
+ .name=S2 W10
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=299
+ .name=S2 W11
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=300
+ .name=S2 W12
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=301
+ .name=S2 W13
+ .typ=linksweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=302
+ .name=S2 W14
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=303
+ .name=S2 W15
+ .typ=rechtsweiche
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=305
+ .name=305
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=306
+ .name=306
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=307
+ .name=307
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=308
+ .name=308
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=309
+ .name=309
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=310
+ .name=310
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=mm2
+artikel
+ .id=321
+ .name=S1 GL1
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=322
+ .name=S1 GL2
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=323
+ .name=S1 GL3
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=324
+ .name=S1 GL4
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=325
+ .name=S1 GL5
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=326
+ .name=S1 GL6
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=327
+ .name=S1 GL7
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=328
+ .name=S1 GL8
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=329
+ .name=S1 GL9
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=330
+ .name=S1 GL10
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=331
+ .name=S1 GL11
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=332
+ .name=S1 GL12
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=333
+ .name=S1 GL13
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=334
+ .name=S1 GL14
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=335
+ .name=S1 GL15
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=336
+ .name=S1 GL16
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=337
+ .name=S1 GL17
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=338
+ .name=S1 GL18
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=339
+ .name=S1 GL19
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=340
+ .name=S1 GL20
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=341
+ .name=S1 GL21
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=342
+ .name=S1 GL22
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=343
+ .name=S1 GL23
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=344
+ .name=S1 GL24
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=345
+ .name=S1 GL25
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=346
+ .name=S1 GL26
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=347
+ .name=S1 GL27
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=348
+ .name=S1 GL28
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=349
+ .name=S1 GL29
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=350
+ .name=S1 GL30
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=351
+ .name=S1 GL31
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=352
+ .name=S1 GL32
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=353
+ .name=S1 GL33
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=369
+ .name=S2 GL1
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=370
+ .name=S2 GL2
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=371
+ .name=S2 GL3
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=372
+ .name=S2 GL4
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=373
+ .name=S2 GL5
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=374
+ .name=S2 GL6
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=375
+ .name=S2 GL7
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=376
+ .name=S2 GL8
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=377
+ .name=S2 GL9
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=378
+ .name=S2 GL10
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=379
+ .name=S2 GL11
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=380
+ .name=S2 GL12
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=381
+ .name=S2 GL13
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=382
+ .name=S2 GL14
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=383
+ .name=S2 GL15
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=384
+ .name=S2 GL16
+ .typ=formsignal_HP01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=385
+ .name=Bg Bahnsteig
+ .typ=licht_str_neon
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=386
+ .name=Bg Bahnhof
+ .typ=licht_str_lampe
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=387
+ .name=BG Häuser
+ .typ=licht_lampe
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=388
+ .name=Bg Strassen
+ .typ=licht_mast
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=393
+ .name=EHN Bahnsteig
+ .typ=licht_str_neon
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=394
+ .name=EHN Bahnhof
+ .typ=licht_str_lampe
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=395
+ .name=EHN Häuser
+ .typ=licht_lampe
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=396
+ .name=EHN Strassen
+ .typ=licht_mast
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=397
+ .name=EHN Industrie
+ .typ=licht_lampe
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=398
+ .name=EHN Ind.Str.
+ .typ=licht_mast
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=401
+ .name=EHN 1
+ .typ=andreas
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=402
+ .name=EHN 2
+ .typ=andreas
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=403
+ .name=Kieswerk
+ .typ=schranke
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=417
+ .name=BG AS01a
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=419
+ .name=BG AS01b
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=421
+ .name=BG AS02a
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=423
+ .name=BG AS02b
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=425
+ .name=BG AS03a
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=427
+ .name=BG AS03b
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=429
+ .name=BG AS04a
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=431
+ .name=BG AS05a
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=433
+ .name=BD AS05b
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=435
+ .name=BG AS06a
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=437
+ .name=BG AS06b
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=439
+ .name=BG AS07a
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=441
+ .name=BG AS07b
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=443
+ .name=BG AS08a
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=445
+ .name=BG AS08b
+ .typ=urc_lichtsignal_HP012_SH01
+ .stellung=3
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=447
+ .name=BG SS01
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=448
+ .name=BG SS02
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=449
+ .name=BG SS03
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=450
+ .name=BG SS04
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=451
+ .name=BG SS05
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=452
+ .name=BG SS06
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=453
+ .name=BG SS07
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=454
+ .name=BG SS08
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=455
+ .name=BG SS09
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=456
+ .name=BG SS10
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=465
+ .name=EHN RS01
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=466
+ .name=EHN RS02
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=467
+ .name=EHN RS03
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=468
+ .name=EHN RS04
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=469
+ .name=EHN RS05
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=481
+ .name=EHN AS1a
+ .typ=urc_lichtsignal_HP012_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=483
+ .name=EHN AS1b
+ .typ=urc_lichtsignal_HP012_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=485
+ .name=EHN AS2a
+ .typ=urc_lichtsignal_HP012_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=487
+ .name=EHN AS2b
+ .typ=urc_lichtsignal_HP012_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=489
+ .name=EHN AS3a
+ .typ=urc_lichtsignal_HP012_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=491
+ .name=EHN AS3b
+ .typ=urc_lichtsignal_HP012_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=493
+ .name=EHN AS4a
+ .typ=urc_lichtsignal_HP012_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=495
+ .name=EHN AS4b
+ .typ=urc_lichtsignal_HP012_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=497
+ .name=EHN AS5a
+ .typ=urc_lichtsignal_HP012_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=499
+ .name=EHN AS5b
+ .typ=urc_lichtsignal_HP012_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=501
+ .name=EHN AS6a
+ .typ=urc_lichtsignal_HP012_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=503
+ .name=EHN AS6b
+ .typ=urc_lichtsignal_HP012_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=505
+ .name=EHN AS11
+ .typ=urc_lichtsignal_HP012_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=507
+ .name=EHN AS12
+ .typ=urc_lichtsignal_HP012_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=509
+ .name=EHN RS1
+ .typ=std_rot_gruen
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=510
+ .name=EHN RS2
+ .typ=std_rot_gruen
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=511
+ .name=EHN RS3
+ .typ=std_rot_gruen
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=512
+ .name=EHN RS4
+ .typ=std_rot_gruen
+ .stellung=1
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=513
+ .name=Ab Kiesw
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=529
+ .name=Drehscheibe Gpp
+ .typ=digitaldrehscheibe
+ .schaltzeit=250
+ .decoder=mehr_neu
+ .dectyp=dcc
+artikel
+ .id=753
+ .name=753
+ .typ=std_rot_gruen
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=1969
+ .name=1969
+ .typ=digitaldrehscheibe
+ .schaltzeit=250
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=1985
+ .name=1985
+ .typ=licht_str_lampe
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=1986
+ .name=1986
+ .typ=licht_str_neon
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=1987
+ .name=1987
+ .typ=licht_mast
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=1988
+ .name=1988
+ .typ=licht_lampe
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=1989
+ .name=1989
+ .typ=licht_neon
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=1990
+ .name=1990
+ .typ=andreas
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=1991
+ .name=1991
+ .typ=schranke
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2001
+ .name=2001
+ .typ=urc_lichtsignal_HP01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2002
+ .name=2002
+ .typ=urc_lichtsignal_HP012
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2003
+ .typ=std_rot
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2004
+ .name=2004
+ .typ=urc_lichtsignal_HP012_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2006
+ .name=2006
+ .typ=urc_lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2007
+ .name=2007
+ .typ=std_rot_gruen
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2009
+ .name=Schiebebühne
+ .typ=schiebebuehne
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2011
+ .name=Drehscheibe
+ .typ=drehscheibe_alt
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2017
+ .name=Kuppel
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2017
+ .name=2017b
+ .typ=entkupplungsgleis
+ .schaltzeit=200
+ .ungerade=1
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2018
+ .name=Kuppel SP1
+ .typ=entkupplungsgleis_1
+ .schaltzeit=500
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2019
+ .name=Rechtsw.
+ .typ=rechtsweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2020
+ .name=LinksW.
+ .typ=linksweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2021
+ .name=Y-Weiche
+ .typ=y_weiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2022
+ .name=K84
+ .typ=k84_ausgang
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2023
+ .name=K84 Doppel
+ .typ=k84_doppelausgang
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2025
+ .name=Dreiweg
+ .typ=dreiwegweiche
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2027
+ .name=DKW 2Ant.
+ .typ=dkw_2antriebe
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2029
+ .name=DKW
+ .typ=dkw_1antrieb
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2030
+ .name=2030
+ .typ=std_rot_gruen
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2033
+ .name=HP0/1
+ .typ=lichtsignal_HP01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2034
+ .name=HP0/2
+ .typ=lichtsignal_HP02
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2035
+ .name=HP0/1/2
+ .typ=lichtsignal_HP012
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2036
+ .typ=std_rot
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2037
+ .name=HP0/1/2,SH0/1
+ .typ=lichtsignal_HP012_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2039
+ .name=2039
+ .typ=lichtsignal_SH01
+ .schaltzeit=200
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2041
+ .name=2041
+ .typ=formsignal_HP01
+ .schaltzeit=350
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2042
+ .name=2042
+ .typ=formsignal_HP02
+ .schaltzeit=350
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2043
+ .name=2043
+ .typ=formsignal_HP012
+ .schaltzeit=350
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2044
+ .typ=std_rot
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2045
+ .name=2045
+ .typ=formsignal_HP012_SH01
+ .schaltzeit=350
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2046
+ .typ=std_rot
+ .decoder=mehr_alt
+ .dectyp=dcc
+artikel
+ .id=2048
+ .name=2048
+ .typ=formsignal_SH01
+ .schaltzeit=350
+ .decoder=mehr_alt
+ .dectyp=dcc
