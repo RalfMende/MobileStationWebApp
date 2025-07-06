@@ -107,7 +107,7 @@ reverseBtn.addEventListener('click', () => setDirection('reverse'));
 forwardBtn.addEventListener('click', () => setDirection('forward'));
 
 function createFunctionButtons(col, offset) {
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 8; i++) {
     const idx = offset + i;
     const name = `F${idx}`;
     const btn = document.createElement('button');
@@ -142,6 +142,15 @@ createFunctionButtons(rightCol, 7);
     speedSlider.value = state.speed;
     updateSlider(state.speed);
     setDirection(state.direction);
+    updateFunctionButtons(state.functions);
   };
   locoList.appendChild(img);
 });
+
+function updateFunctionButtons(functions) {
+  document.querySelectorAll('#leftFunctions button, #rightFunctions button').forEach((btn, index) => {
+    const name = `F${index}`;
+    const active = functions[name];
+    btn.style.background = active ? 'lime' : 'transparent';
+  });
+}
