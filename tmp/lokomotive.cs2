@@ -1191,7 +1191,7 @@ lokomotive
  .funktionen
  ..nr=15
 lokomotive
- .name=V200
+ .name=V 100
  .richtung=1
  .uid=0xc003
  .adresse=0x3

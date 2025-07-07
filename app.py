@@ -10,6 +10,18 @@ UDP_PORT = 15731
 def index():
     return render_template("index.html")
 
+def generate_hash(uid: int) -> int:
+    # Ensure uid is treated as a 32-bit unsigned integer
+    uid = uid & 0xFFFFFFFF
+    
+    highword = uid >> 16
+    lowword = uid & 0xFFFF
+    hash_val = highword ^ lowword
+    hash_val = (((hash_val << 3) & 0xFF00) | 0x0300) | (hash_val & 0x7F)
+    
+    # Return result as 16-bit unsigned integer
+    return hash_val & 0xFFFF
+
 @app.route('/api/toggle', methods=['POST'])
 def toggle():
     running = request.json.get('state', False)
@@ -22,6 +34,10 @@ def toggle():
     except Exception as e:
         return jsonify(status='error', message=str(e)), 500
 
+@app.route('/api/locs')
+def get_locs():
+    return jsonify(loc_list)
+
 @app.route('/api/speed', methods=['POST'])
 def speed():
     data = request.json
@@ -30,6 +46,18 @@ def speed():
 
 @app.route('/api/direction', methods=['POST'])
 def direction():
+    #sendBytes = bytearray(10)  # Byte-Array mit 10 Elementen
+    #sendBytes[0] = 0x00
+    #sendBytes[1] = 0x0A  # CAN-ID
+    #sendBytes[2] = 47
+    #sendBytes[3] = 11
+    #sendBytes[4] = 5     # DLC
+    #sendBytes[5] = 0x00
+    #sendBytes[6] = 0x00
+    #sendBytes[7] = Loc.Protocol
+    #sendBytes[8] = Loc.Address
+    #sendBytes[9] = direction & 0xFF  # sicherstellen, dass es ein Byte ist
+
     data = request.json
     print(f"{data['loco']} direction = {data['direction']}")
     return jsonify(ok=True)
@@ -88,7 +116,7 @@ def parse_lokomotive_cs2(file_path="tmp/lokomotive.cs2"):
     return locomotives
 
 def parse_magnetartikel_cs2(file_path="tmp/magnetartikel.cs2"):
-    switches = {}
+    articles = {}
     current_section = None
     current_entry = {}
 
@@ -103,9 +131,9 @@ def parse_magnetartikel_cs2(file_path="tmp/magnetartikel.cs2"):
                 if line == "artikel":
                     current_section = "artikel"
                     current_entry = {}
-                    if "artikel" not in switches:
-                        switches["artikel"] = []
-                    switches["artikel"].append(current_entry)
+                    if "artikel" not in articles:
+                        articles["artikel"] = []
+                    articles["artikel"].append(current_entry)
             else:
                 # Zeile mit Schlüssel-Wert-Paar
                 key_value = line.lstrip('.').split('=', 1)
@@ -118,7 +146,7 @@ def parse_magnetartikel_cs2(file_path="tmp/magnetartikel.cs2"):
                     if current_section == "artikel":
                         current_entry[key] = value
 
-    return switches
+    return articles
 
 if __name__ == '__main__':
     loc_list = parse_lokomotive_cs2()

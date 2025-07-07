@@ -1,9 +1,17 @@
 
 let isRunning = false;
-let currentLoco = 'BR 85';
+let currentLoco = 'loc_1';
 let locoState = {
-  'BR 85': { speed: 0, direction: 'forward', functions: {} },
-  'ICE': { speed: 0, direction: 'forward', functions: {} }
+  'loc_1': { speed: 0, direction: 'forward', functions: {} },
+  'loc_2': { speed: 0, direction: 'forward', functions: {} },
+  'loc_3': { speed: 0, direction: 'forward', functions: {} },
+  'loc_4': { speed: 0, direction: 'forward', functions: {} },
+  'loc_5': { speed: 0, direction: 'forward', functions: {} },
+  'loc_6': { speed: 0, direction: 'forward', functions: {} },
+  'loc_7': { speed: 0, direction: 'forward', functions: {} },
+  'loc_8': { speed: 0, direction: 'forward', functions: {} },
+  'loc_9': { speed: 0, direction: 'forward', functions: {} },
+  'loc_10': { speed: 0, direction: 'forward', functions: {} }
 };
 
 const stopBtn = document.getElementById('stopBtn');
@@ -112,7 +120,8 @@ function createFunctionButtons(col, offset) {
     const name = `F${idx}`;
     const btn = document.createElement('button');
     const img = document.createElement('img');
-    img.src = `/static/fcticons/${name}.png`;
+    const imgid = 50 + offset + i;
+    img.src = `/static/fcticons/FktIcon_i_we_${imgid}.png`;
     btn.appendChild(img);
     btn.onclick = () => {
       const newState = !(locoState[currentLoco].functions[name] || false);
@@ -130,23 +139,37 @@ function createFunctionButtons(col, offset) {
 createFunctionButtons(leftCol, 0);
 createFunctionButtons(rightCol, 7);
 
-['BR 85', 'ICE'].forEach((name) => {
-  const img = document.createElement('img');
-  const fname = name.toLowerCase().replace(/ /g, '_') + '.png';
-  img.src = `/static/icons/${fname}`;
-  img.onclick = () => {
-    currentLoco = name;
-    locoDesc.textContent = name;
-    locoImg.src = img.src;
-    const state = locoState[name];
-    speedSlider.value = state.speed;
-    updateSlider(state.speed);
-    setDirection(state.direction);
-    updateFunctionButtons(state.functions);
-  };
-  locoList.appendChild(img);
-});
-
+fetch('/api/locs')
+  .then(response => response.json())
+  .then(locList => {
+    const container = document.getElementById('locoList');
+    Object.keys(locList).forEach(name => {
+      console.log("Initialisiere Lok:", name, locList[name]);
+      const img = new Image();
+      img.alt = locList[name].name;
+      img.title = locList[name].name;
+/*      img.src = "/static/icons/" + (locList[name].icon + ".png" || "leeres Gleis.png");*/
+      img.onerror = function() {
+        img.onerror = null;
+        img.src = '/static/icons/leeres Gleis.png';
+      };
+      const iconName = locList[name].icon || locList[name].bild || 'leeres Gleis';
+      img.src = `/static/icons/${iconName}.png`;
+      container.appendChild(img);
+      img.onclick = () => {
+        currentLoco = locList[name].id;
+        locoDesc.textContent = locList[name].name;
+        locoImg.src = img.src;
+        const state = locoState[locList[name].name];
+        speedSlider.value = state.speed;
+        updateSlider(state.speed);
+        setDirection(state.direction);
+        updateFunctionButtons(state.functions);
+      };
+      document.getElementById("locoList").appendChild(img);
+    });
+  });
+  
 function updateFunctionButtons(functions) {
   document.querySelectorAll('#leftFunctions button, #rightFunctions button').forEach((btn, index) => {
     const name = `F${index}`;
