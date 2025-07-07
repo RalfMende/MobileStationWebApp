@@ -99,10 +99,17 @@ speedBar.addEventListener('pointerdown', (e) => {
 });
 
 function setDirection(dir) {
-  reverseBtn.classList.remove('active');
+  /*reverseBtn.classList.remove('active');
   forwardBtn.classList.remove('active');
   if (dir === 'forward') forwardBtn.classList.add('active');
-  else reverseBtn.classList.add('active');
+  else reverseBtn.classList.add('active');*/
+  if (dir === 'forward') {
+    forwardBtn.src = '/static/grafics/dir_right_active.png';
+    reverseBtn.src = '/static/grafics/dir_left_inactive.png';
+  } else {
+    forwardBtn.src = '/static/grafics/dir_right_inactive.png';
+    reverseBtn.src = '/static/grafics/dir_left_active.png';
+  }
   locoState[currentLoco].direction = dir;
   fetch('/api/direction', {
     method: 'POST',
