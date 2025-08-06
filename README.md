@@ -25,3 +25,6 @@ http://<CS3-IP-address>/ config/fahrstrassen.cs2
 http://<CS3-IP-address>/ config/gleisbild.cs2
 http://<CS3-IP-address>/ config/magnetartikel.cs2
 Take a Look at this Software which is "free" and can be used with Märklin CS 3 (60226) / 3+ (60216) and CS 2 ( 60215 / 60214 / 60213)
+
+
+TODO: Icons fcticins usw muss unter Pfad verfügbar sein. Nicht mit meinem Code mitkommen…

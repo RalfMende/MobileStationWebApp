@@ -38,18 +38,43 @@ stopBtn.addEventListener('click', () => {
   fetch('/api/toggle', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ state: isRunning })
+    body: JSON.stringify({
+      state: isRunning
+    })
   });
 });
+
+function setDirection(dir) {
+  if (dir === 'forward') {
+    forwardBtn.src = '/static/grafics/dir_right_active.png';
+    reverseBtn.src = '/static/grafics/dir_left_inactive.png';
+  } else {
+    forwardBtn.src = '/static/grafics/dir_right_inactive.png';
+    reverseBtn.src = '/static/grafics/dir_left_active.png';
+  }
+  /*locoState[currentLoco].direction = dir;*/
+  fetch('/api/direction', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      direction: dir === 'forward' ? 1 : 0
+    })
+  });
+}
+
+reverseBtn.addEventListener('click', () => setDirection('reverse'));
+forwardBtn.addEventListener('click', () => setDirection('forward'));
 
 function updateSlider(val) {
   speedValue.textContent = `${val} km/h`;
   speedFill.style.height = `${val / 2}%`;
-  locoState[currentLoco].speed = val;
+  /*locoState[currentLoco].speed = val;*/
   fetch('/api/speed', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ loco: currentLoco, speed: val })
+    body: JSON.stringify({
+      speed: val 
+    })
   });
 }
 
@@ -98,29 +123,6 @@ speedBar.addEventListener('pointerdown', (e) => {
   speedBar.addEventListener('pointercancel', onUp);
 });
 
-function setDirection(dir) {
-  /*reverseBtn.classList.remove('active');
-  forwardBtn.classList.remove('active');
-  if (dir === 'forward') forwardBtn.classList.add('active');
-  else reverseBtn.classList.add('active');*/
-  if (dir === 'forward') {
-    forwardBtn.src = '/static/grafics/dir_right_active.png';
-    reverseBtn.src = '/static/grafics/dir_left_inactive.png';
-  } else {
-    forwardBtn.src = '/static/grafics/dir_right_inactive.png';
-    reverseBtn.src = '/static/grafics/dir_left_active.png';
-  }
-  locoState[currentLoco].direction = dir;
-  fetch('/api/direction', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ loco: currentLoco, direction: dir })
-  });
-}
-
-reverseBtn.addEventListener('click', () => setDirection('reverse'));
-forwardBtn.addEventListener('click', () => setDirection('forward'));
-
 function createFunctionButtons(col, offset) {
   for (let i = 0; i < 8; i++) {
     const idx = offset + i;
@@ -131,8 +133,8 @@ function createFunctionButtons(col, offset) {
     img.src = `/static/fcticons/FktIcon_i_we_${imgid}.png`;
     btn.appendChild(img);
     btn.onclick = () => {
-      const newState = !(locoState[currentLoco].functions[name] || false);
-      locoState[currentLoco].functions[name] = newState;
+      /*const newState = !(locoState[currentLoco].functions[name] || false);
+      locoState[currentLoco].functions[name] = newState;*/
       btn.style.background = newState ? 'lime' : 'transparent';
       fetch('/api/function', {
         method: 'POST',
@@ -155,7 +157,6 @@ fetch('/api/locs')
       const img = new Image();
       img.alt = locList[name].name;
       img.title = locList[name].name;
-/*      img.src = "/static/icons/" + (locList[name].icon + ".png" || "leeres Gleis.png");*/
       img.onerror = function() {
         img.onerror = null;
         img.src = '/static/icons/leeres Gleis.png';
