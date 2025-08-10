@@ -47,7 +47,7 @@ function setDirection(dir) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       loco_id: currentLocoUid,
-      direction: dir === 'forward' ? 1 : 0
+      direction: dir /*=== 'forward' ? 1 : 0*/
     })
   });
 }
