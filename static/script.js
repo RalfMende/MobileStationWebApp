@@ -1,18 +1,6 @@
 
 let isRunning = false;
-let currentLoco = 'loc_1';
-let locoState = {
-  'loc_1': { speed: 0, direction: 'forward', functions: {} },
-  'loc_2': { speed: 0, direction: 'forward', functions: {} },
-  'loc_3': { speed: 0, direction: 'forward', functions: {} },
-  'loc_4': { speed: 0, direction: 'forward', functions: {} },
-  'loc_5': { speed: 0, direction: 'forward', functions: {} },
-  'loc_6': { speed: 0, direction: 'forward', functions: {} },
-  'loc_7': { speed: 0, direction: 'forward', functions: {} },
-  'loc_8': { speed: 0, direction: 'forward', functions: {} },
-  'loc_9': { speed: 0, direction: 'forward', functions: {} },
-  'loc_10': { speed: 0, direction: 'forward', functions: {} }
-};
+let currentLocoUid = 1; // Default loco ID
 
 const stopBtn = document.getElementById('stopBtn');
 const speedSlider = document.getElementById('speedSlider');
@@ -45,6 +33,7 @@ stopBtn.addEventListener('click', () => {
 });
 
 function setDirection(dir) {
+  console.log("Sending direction for loco_id:", currentLocoUid, "direction:", dir);
   if (dir === 'forward') {
     forwardBtn.src = '/static/grafics/dir_right_active.png';
     reverseBtn.src = '/static/grafics/dir_left_inactive.png';
@@ -52,11 +41,12 @@ function setDirection(dir) {
     forwardBtn.src = '/static/grafics/dir_right_inactive.png';
     reverseBtn.src = '/static/grafics/dir_left_active.png';
   }
-  /*locoState[currentLoco].direction = dir;*/
+  locoState[currentLocoUid].direction = dir;
   fetch('/api/direction', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      loco_id: currentLocoUid,
       direction: dir === 'forward' ? 1 : 0
     })
   });
@@ -68,12 +58,13 @@ forwardBtn.addEventListener('click', () => setDirection('forward'));
 function updateSlider(val) {
   speedValue.textContent = `${val} km/h`;
   speedFill.style.height = `${val / 2}%`;
-  /*locoState[currentLoco].speed = val;*/
+  locoState[currentLocoUid].speed = val;
   fetch('/api/speed', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      speed: val 
+      loco_id: currentLocoUid,
+      speed: val
     })
   });
 }
@@ -133,13 +124,13 @@ function createFunctionButtons(col, offset) {
     img.src = `/static/fcticons/FktIcon_i_we_${imgid}.png`;
     btn.appendChild(img);
     btn.onclick = () => {
-      /*const newState = !(locoState[currentLoco].functions[name] || false);
-      locoState[currentLoco].functions[name] = newState;*/
+      const newState = !(locoState[currentLocoUid].functions[name] || false);
+      locoState[currentLocoUid].functions[name] = newState;
       btn.style.background = newState ? 'lime' : 'transparent';
       fetch('/api/function', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ loco: currentLoco, function: name, state: newState })
+        body: JSON.stringify({ loco: currentLocoUid, function: name, state: newState })
       });
     };
     col.appendChild(btn);
@@ -151,30 +142,37 @@ createFunctionButtons(rightCol, 7);
 fetch('/api/locs')
   .then(response => response.json())
   .then(locList => {
-    const container = document.getElementById('locoList');
-    Object.keys(locList).forEach(name => {
-      console.log("Initialisiere Lok:", name, locList[name]);
+    locoState = {};
+    Object.keys(locList).forEach(uid => {
+      // 1. locoState initialisieren
+      locoState[locList[uid].uid] = {
+        speed: 0,
+        direction: 'forward',
+        functions: {}
+      };
+      // 2. Lok-Icon erzeugen
+      console.log("Initialisiere Lok:", uid, locList[uid]);
       const img = new Image();
-      img.alt = locList[name].name;
-      img.title = locList[name].name;
+      img.alt = locList[uid].name;
+      img.title = locList[uid].name;
       img.onerror = function() {
         img.onerror = null;
         img.src = '/static/icons/leeres Gleis.png';
       };
-      const iconName = locList[name].icon || locList[name].bild || 'leeres Gleis';
+      const iconName = locList[uid].icon || locList[uid].bild || 'leeres Gleis';
       img.src = `/static/icons/${iconName}.png`;
-      container.appendChild(img);
+      document.getElementById("locoList").appendChild(img);
+      // 3. Lok-Icon Eventhandler setzen
       img.onclick = () => {
-        currentLoco = locList[name].id;
-        locoDesc.textContent = locList[name].name;
+        currentLocoUid = locList[uid].uid;
+        locoDesc.textContent = locList[uid].name;
         locoImg.src = img.src;
-        const state = locoState[locList[name].name];
+        const state = locoState[currentLocoUid];
         speedSlider.value = state.speed;
         updateSlider(state.speed);
         setDirection(state.direction);
         updateFunctionButtons(state.functions);
       };
-      document.getElementById("locoList").appendChild(img);
     });
   });
   

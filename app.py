@@ -41,16 +41,17 @@ def generate_hash(uid: int) -> int:
 @app.route('/api/speed', methods=['POST'])
 def speed():
     data = request.get_json()
-    #loco_id = data.get("loco_id")
+    locoUid = data.get("loco_id")
     speed = data.get("speed")
 
     # Lok anhand ID finden
-    #loco = next((l for l in loc_list.values() if l["id"] == loco_id), None)
-
-    #if not loco:
-    #    return jsonify({"status": "error", "message": "Unknown loco_id"}), 404
+    loco = next((l for l in loc_list if str(l.get('uid')) == str(locoUid)), None)
+    
+    if not loco:
+        return jsonify({"status": "error", "message": "Unknown loco_id"}), 404
 
     #adresse = loco.get("adresse")
+    #protocol = loco.get("protocol")
 
     if speed is not None:
         sendBytes = bytearray(10)  # Byte-Array mit 10 Elementen
@@ -61,8 +62,8 @@ def speed():
         sendBytes[4] = 5     # DLC
         sendBytes[5] = 0x00
         sendBytes[6] = 0x00
-        sendBytes[7] = 0x00#Loc.Protocol
-        sendBytes[8] = 0x00#Loc.Address
+        sendBytes[7] = (locoUid >> 8) & 0xFF  # High byte
+        sendBytes[8] = locoUid & 0xFF
         sendBytes[9] = speed & 0xFF  # sicherstellen, dass es ein Byte ist
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -76,7 +77,17 @@ def speed():
 @app.route('/api/direction', methods=['POST'])
 def direction():
     data = request.get_json()
+    locoUid = data.get("loco_id")
     direction = data.get("direction")
+
+    # Lok anhand ID finden
+    loco = next((l for l in loc_list if str(l.get('uid')) == str(locoUid)), None)
+    
+    if not loco:
+        return jsonify({"status": "error", "message": "Unknown loco_id"}), 404
+
+    #adresse = adresse = loco.get("adresse") & 0xFF
+    #protocol = 1
 
     if direction is not None:
         sendBytes = bytearray(10)  # Byte-Array mit 10 Elementen
@@ -87,8 +98,8 @@ def direction():
         sendBytes[4] = 5     # DLC
         sendBytes[5] = 0x00
         sendBytes[6] = 0x00
-        sendBytes[7] = 0x00#Loc.Protocol
-        sendBytes[8] = 0x00#Loc.Address
+        sendBytes[7] = (locoUid >> 8) & 0xFF
+        sendBytes[8] = locoUid & 0xFF
         sendBytes[9] = direction & 0xFF  # sicherstellen, dass es ein Byte ist
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
