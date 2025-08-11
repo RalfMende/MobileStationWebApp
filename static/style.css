@@ -34,7 +34,6 @@ html, body {
 .page {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 2.4rem);
   overflow: hidden;
 }
 
@@ -153,4 +152,32 @@ html, body {
 #stopBtn.go {
   background: green;
   color: white;
+}
+
+/* --- Mobile viewport height fix --- */
+:root {
+  /* Will be set via JS to visual viewport height in px; falls back to modern svh/dvh */
+  --app-height: 100svh;
+  --topbar-h: 0px;
+}
+
+/* Ensure flex children can shrink and not overflow vertically */
+.main-content { 
+  min-height: 0; 
+}
+
+/* Use dynamic viewport height instead of 100vh to avoid address bar issues */
+.page {
+  height: calc(var(--app-height, 100svh) - var(--topbar-h));
+  /* In case 100svh isn't supported, browsers can still use 100dvh */
+  height: calc(100dvh - var(--topbar-h));
+  box-sizing: border-box;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+
+
+/* Safe-area top padding for iOS status bar */
+.top-bar {
+  padding-top: env(safe-area-inset-top);
 }

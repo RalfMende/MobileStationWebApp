@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
+  <link rel="apple-touch-icon" href="/static/grafics/apple-touch-icon-180.png">
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <meta name="apple-mobile-web-app-title" content="MobileStation WebApp">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>MobileStation WebApp</title>
@@ -49,5 +54,32 @@
   </div>
 
   <script src="/static/script.js"></script>
+
+<script>
+(function() {
+  function setAppHeight() {
+    var vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+    document.documentElement.style.setProperty('--app-height', vh + 'px');
+    var topbar = document.querySelector('.top-bar');
+    var th = topbar ? topbar.offsetHeight : 0;
+    document.documentElement.style.setProperty('--topbar-h', th + 'px');
+  }
+  window.addEventListener('resize', setAppHeight);
+  window.addEventListener('orientationchange', setAppHeight);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', setAppHeight);
+  }
+  document.addEventListener('DOMContentLoaded', setAppHeight);
+  setAppHeight();
+})();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js').catch(function(err){ console.warn('SW register failed', err); });
+  });
+}
+</script>
 </body>
 </html>
