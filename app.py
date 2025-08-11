@@ -1,22 +1,26 @@
 
 from flask import Flask, request, jsonify, render_template
 import socket
+import os
 
 app = Flask(__name__)
+
+path_config_files = "tmp"  # TODO: Get this dynamically or set as config
+
 UDP_IP = "192.168.20.42" #TODO: Get this dynamically
 UDP_PORT = 15731
 DEVICE_UID = 0x0 #TODO: Get this dynamically
 
-COMMAND_SYSTEM = 0
-COMMAND_DISCOVERY = 0x01
-COMMAND_BIND = 0x02
-COMMAND_VERIFY = 0x03
-COMMAND_SPEED = 0x04
-COMMAND_DIRECTION = 0x05
-COMMAND_FUNCTION = 0x06
+COMMAND_SYSTEM      = 0x00
+COMMAND_DISCOVERY   = 0x01
+COMMAND_BIND        = 0x02
+COMMAND_VERIFY      = 0x03
+COMMAND_SPEED       = 0x04
+COMMAND_DIRECTION   = 0x05
+COMMAND_FUNCTION    = 0x06
 COMMAND_READ_CONFIG = 0x07
 COMMAND_WRITE_CONFIG = 0x08
-COMMAND_SWITCH = 0x0B
+COMMAND_SWITCH      = 0x0B
 
 @app.route('/')
 def index():
@@ -108,7 +112,8 @@ def direction():
     # Datenfeld: D0..D3 = Loc-ID (BE), D4 = Richtung (1 Byte), Padding auf 8 Bytes
     data_bytes = bytearray()
     data_bytes.extend(loco_uid.to_bytes(4, "big"))
-    data_bytes.append((1 if direction == "forward" else 2) & 0xFF)
+    #data_bytes.append((1 if direction == "forward" else 2) & 0xFF)
+    data_bytes.append(direction & 0xFF)
     # Padding auf 8 Datenbytes
     while len(data_bytes) < 8:
         data_bytes.append(0x00)
@@ -130,9 +135,37 @@ def direction():
 
 @app.route('/api/function', methods=['POST'])
 def function():
-    data = request.json
-    print(f"{data['loco']} {data['function']} = {data['state']}")
-    return jsonify(ok=True)
+    data = request.get_json()
+    loco_uid = data.get("loco_id")
+    function = data.get("function")
+    value = data.get("value")
+
+    can_id = build_can_id(DEVICE_UID, COMMAND_FUNCTION, prio=0, resp=0)
+
+    # Datenfeld: D0..D3 = Loc-ID (BE), D4..D5 = Geschwindigkeit (BE), DLC=6
+    data_bytes = bytearray()
+    data_bytes.extend(loco_uid.to_bytes(4, "big"))
+    data_bytes.append(function & 0xFF)
+    data_bytes.append(value & 0xFF)
+    #data_bytes.extend(value.to_bytes(2, "big"))
+    # Padding auf 8 Datenbytes
+    while len(data_bytes) < 8:
+        data_bytes.append(0x00)
+
+    # UDP-Frame (immer 13 Bytes): [CAN-ID(4B)][DLC(1B)][DATA(8B)]
+    sendBytes = bytearray()
+    sendBytes.extend(can_id.to_bytes(4, "big"))
+    sendBytes.append(6)  # DLC
+    sendBytes.extend(data_bytes)  # genau 8 Bytes
+
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.sendto(sendBytes, (UDP_IP, UDP_PORT))
+        return jsonify(
+            status='ok'
+        )
+    except Exception as e:
+        return jsonify(status='error', message=str(e)), 500
 
 def parse_value(val):
     val = val.strip()
@@ -147,7 +180,7 @@ def parse_value(val):
         return int(val)
     return val
     
-def parse_lokomotive_cs2(file_path="tmp/lokomotive.cs2"):
+def parse_lokomotive_cs2(file_path):
     locomotives = []
     current_locomotive = None
     current_functions = {}
@@ -190,7 +223,7 @@ def parse_lokomotive_cs2(file_path="tmp/lokomotive.cs2"):
 
     return locomotives
 
-def parse_magnetartikel_cs2(file_path="tmp/magnetartikel.cs2"):
+def parse_magnetartikel_cs2(file_path):
     articles = {}
     current_section = None
     current_entry = {}
@@ -221,6 +254,6 @@ def parse_magnetartikel_cs2(file_path="tmp/magnetartikel.cs2"):
     return articles
 
 if __name__ == '__main__':
-    loc_list = parse_lokomotive_cs2()
-    switch_list = parse_magnetartikel_cs2()
+    loc_list = parse_lokomotive_cs2(os.path.join(path_config_files, "lokomotive.cs2"))
+    switch_list = parse_magnetartikel_cs2(os.path.join(path_config_files, "magnetartikel.cs2"))
     app.run(host='0.0.0.0', port=5005)

@@ -47,7 +47,7 @@ function setDirection(dir) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       loco_id: currentLocoUid,
-      direction: dir /*=== 'forward' ? 1 : 0*/
+      direction: dir === 'forward' ? 1 : 2
     })
   });
 }
@@ -117,20 +117,23 @@ speedBar.addEventListener('pointerdown', (e) => {
 function createFunctionButtons(col, offset) {
   for (let i = 0; i < 8; i++) {
     const idx = offset + i;
-    const name = `F${idx}`;
+    /*const name = `F${idx}`;*/
     const btn = document.createElement('button');
     const img = document.createElement('img');
     const imgid = 50 + offset + i;
     img.src = `/static/fcticons/FktIcon_i_we_${imgid}.png`;
     btn.appendChild(img);
     btn.onclick = () => {
-      const newState = !(locoState[currentLocoUid].functions[name] || false);
-      locoState[currentLocoUid].functions[name] = newState;
+      const newState = !(locoState[currentLocoUid].functions[idx] || false);
+      locoState[currentLocoUid].functions[idx] = newState;
       btn.style.background = newState ? 'lime' : 'transparent';
       fetch('/api/function', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ loco: currentLocoUid, function: name, state: newState })
+        body: JSON.stringify({
+          loco_id: currentLocoUid, 
+          function: idx, 
+          value: newState ? 1 : 0 })
       });
     };
     col.appendChild(btn);
@@ -178,8 +181,7 @@ fetch('/api/locs')
   
 function updateFunctionButtons(functions) {
   document.querySelectorAll('#leftFunctions button, #rightFunctions button').forEach((btn, index) => {
-    const name = `F${index}`;
-    const active = functions[name];
+    const active = functions[index];
     btn.style.background = active ? 'lime' : 'transparent';
   });
 }
