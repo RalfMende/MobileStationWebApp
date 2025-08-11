@@ -1,4 +1,4 @@
-
+let locList = {};
 let isRunning = false;
 let currentLocoUid = 1; // Default loco ID
 
@@ -56,8 +56,12 @@ reverseBtn.addEventListener('click', () => setDirection('reverse'));
 forwardBtn.addEventListener('click', () => setDirection('forward'));
 
 function updateSlider(val) {
-  speedValue.textContent = `${val} km/h`;
-  speedFill.style.height = `${val / 2}%`;
+  const tachomax = locList[currentLocoUid].tachomax || 200;
+  // Umrechnung: 0–1000 (Protokoll) auf 0–tachomax (Anzeige)
+  //const kmh = Math.round((val / 1000) * tachomax);
+  const kmh = Math.round(val * tachomax / 1000);
+  speedValue.textContent = `${kmh} km/h`;
+  speedFill.style.height = `${(val / 1000) * 100}%`;
   locoState[currentLocoUid].speed = val;
   fetch('/api/speed', {
     method: 'POST',
@@ -87,7 +91,7 @@ speedBar.addEventListener('pointerdown', (e) => {
     const rect = speedBar.getBoundingClientRect();
     const y = e.clientY - rect.top;
     const percent = 1 - (y / rect.height);
-    const value = Math.min(200, Math.max(0, Math.round(percent * 200)));
+    const value = Math.min(1000, Math.max(0, Math.round(percent * 1000)));
     speedSlider.value = value;
     updateSlider(value);
   };
@@ -103,7 +107,7 @@ speedBar.addEventListener('pointerdown', (e) => {
       const rect = speedBar.getBoundingClientRect();
       const y = e.clientY - rect.top;
       const percent = 1 - (y / rect.height);
-      const value = Math.min(200, Math.max(0, Math.round(percent * 200)));
+      const value = Math.min(1000, Math.max(0, Math.round(percent * 1000)));
       speedSlider.value = value;
       updateSlider(value);
     }
@@ -144,7 +148,8 @@ createFunctionButtons(rightCol, 7);
 
 fetch('/api/locs')
   .then(response => response.json())
-  .then(locList => {
+  .then(data => {
+    locList = data;
     locoState = {};
     Object.keys(locList).forEach(uid => {
       // 1. locoState initialisieren

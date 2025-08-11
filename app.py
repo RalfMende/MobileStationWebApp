@@ -68,7 +68,8 @@ def toggle():
 
 @app.route('/api/locs')
 def get_locs():
-    return jsonify(loc_list)
+    loc_dict = {str(loco['uid']): loco for loco in loc_list}
+    return jsonify(loc_dict)
 
 @app.route('/api/speed', methods=['POST'])
 def speed():
