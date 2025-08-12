@@ -110,6 +110,7 @@ html, body {
 
 .loco-desc {
   margin: 0.3rem;
+  font-weight: 700;
 }
 
 .loco-img {
@@ -306,3 +307,45 @@ html, body {
   object-fit: contain;
   pointer-events: none;   /* icon doesn't trap clicks; button does */
 }
+
+
+/* === Slider sizing + unified GO green (added 2025-08-12) === */
+
+/* 1) Define a shared GO green and slider dimensions */
+:root {
+  --go-green: green;          /* same green as GO button */
+  --slider-w: 40vw;           /* 40% of screen width */
+  --slider-h: calc(var(--vh) * 0.45); /* 45% of screen height */
+}
+
+/* 2) Ensure the GO button uses the same token */
+#stopBtn.go {
+  background: var(--go-green) !important;
+  color: white;
+}
+
+/* 3) Slider container: requested size */
+.speed-bar-wrapper {
+  width: var(--slider-w);
+  height: var(--slider-h);
+  max-width: 100%;
+}
+
+/* 4) Speed bar / fill and readout use the same green */
+.speed-fill {
+  background: var(--go-green) !important;
+}
+.speed-display {
+  color: var(--go-green) !important;
+  font-weight: 700;
+}
+
+/* 5) Native input range coloring (modern browsers) */
+.slider-vertical {
+  accent-color: var(--go-green);
+}
+
+/* 6) Broader coverage for older engines */
+.slider-vertical::-webkit-slider-thumb { background: var(--go-green); }
+.slider-vertical::-moz-range-thumb { background: var(--go-green); }
+.slider-vertical::-moz-range-progress { background: var(--go-green); }
