@@ -181,3 +181,74 @@ html, body {
 .top-bar {
   padding-top: env(safe-area-inset-top);
 }
+
+
+/* === Added by ChatGPT on 2025-08-12 ===
+   Oben & unten je ein Balken über volle Breite,
+   Höhe: 1/10 der sichtbaren Bildschirmhöhe,
+   Hintergrund: Verlauf von rgb(165,165,165) (oben) nach rgb(69,69,69) (unten).
+   Die Buttons oben und die Lokliste unten werden vertikal mittig ausgerichtet.
+   Nutzt --app-height falls vorhanden; sonst 100svh als Fallback.
+*/
+:root {
+  --vh: var(--app-height, 100svh);
+  --bar-gradient: linear-gradient(to bottom, rgb(165, 165, 165), rgb(69, 69, 69));
+}
+
+/* OBERER BALKEN (Hintergrund der 4 Buttons) */
+.top-bar {
+  height: calc(var(--vh) * 0.1);
+  background: var(--bar-gradient);
+  padding: env(safe-area-inset-top) 0.8rem 0 0.8rem;
+  display: flex;
+  align-items: center;            /* vertikal mittig */
+  justify-content: space-between; /* vorhandenes Layout beibehalten */
+}
+
+/* UNTERER BALKEN (Hintergrund der Lokliste) */
+.loco-list-wrapper {
+  height: calc(var(--vh) * 0.1);
+  background: var(--bar-gradient);
+  display: flex;
+  align-items: center;            /* Elemente in der Liste vertikal mittig */
+  overflow-x: auto;               /* horizontales Scrollen beibehalten */
+  padding: 0 0.4rem;
+}
+
+/* Mittelteil flexibel (nur falls vorhanden) */
+.main-content {
+  flex: 1;
+  min-height: 0;
+}
+/* === End of ChatGPT block === */
+
+
+/* === Dynamic sizing (added 2025-08-12) ===
+   - Loco list items: 1/2 of bottom bar height => 1/20 of screen height
+   - Top 4 buttons: 2/3 of top bar height (bar = 1/10 of screen height)
+*/
+:root {
+  --bar-h: calc(var(--vh) * 0.1);
+  --top-btn-h: calc(var(--bar-h) * 0.6666666667);
+  --loco-item-h: calc(var(--bar-h) * 0.5);
+}
+
+/* Top buttons scale to 2/3 of the bar height, preserving proportions via relative paddings/font-size */
+.top-bar .tab,
+.top-bar #stopBtn {
+  height: var(--top-btn-h);
+  min-height: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-block: calc(var(--top-btn-h) * 0.15);
+  padding-inline: clamp(0.5rem, calc(var(--top-btn-h) * 0.40), 2rem);
+  font-size: clamp(0.9rem, calc(var(--top-btn-h) * 0.40), 1.6rem);
+  line-height: 1;
+  border-radius: calc(var(--top-btn-h) * 0.20);
+}
+
+/* Loco thumbnails occupy half the bottom bar height (centered by wrapper's align-items) */
+.loco-list img {
+  height: var(--loco-item-h);
+}
