@@ -270,3 +270,39 @@ html, body {
     + 2 * clamp(0.5rem, calc(var(--top-btn-h) * 0.40), 2rem)  /* = padding-inline * 2 */
   );
 }
+
+/* === Side function buttons sizing (added 2025-08-12) ===
+   - Each side button is a square with size = 1/10 of the visible screen height.
+   - There are 8 buttons per side; with top & bottom bars at 10vh each, the main area is 80vh.
+   - We remove gaps/padding so 8 * 10vh fits exactly without overflow.
+*/
+:root {
+  --func-btn-size: calc(var(--vh) * 0.1);
+}
+
+.functions-side {
+  width: var(--func-btn-size);
+  gap: 0;                 /* ensure total height = 8 * 10vh */
+  padding-top: 0;         /* remove extra spacing at the top */
+  padding-bottom: 0;      /* just in case there's padding set elsewhere */
+  align-items: stretch;   /* buttons take full width */
+}
+
+.functions-side button {
+  width: var(--func-btn-size);
+  height: var(--func-btn-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 0;             /* keep square box exact */
+  box-sizing: border-box;
+}
+
+.functions-side img {
+  width: 70%;
+  height: 70%;
+  object-fit: contain;
+  pointer-events: none;   /* icon doesn't trap clicks; button does */
+}
