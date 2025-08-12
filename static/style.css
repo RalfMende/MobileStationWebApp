@@ -252,3 +252,21 @@ html, body {
 .loco-list img {
   height: var(--loco-item-h);
 }
+
+/* Feste Breite für Start/Stop basierend auf "STOP" (4 Zeichen) */
+:root {
+  /* Falls du später "START" o.ä. nutzt, einfach auf 5 erhöhen */
+  --stop-label-chars: 4; /* "STOP" = 4 */
+}
+
+/* Falls dein Button eine Klasse statt ID hat, ersetze #stopBtn durch .stop */
+.top-bar #stopBtn,
+.top-bar .stop {
+  /* gleiche Paddings/Font-Scaling wie zuvor, Breite bleibt konstant */
+  box-sizing: border-box;
+  white-space: nowrap;
+  width: calc(
+    var(--stop-label-chars) * 1ch
+    + 2 * clamp(0.5rem, calc(var(--top-btn-h) * 0.40), 2rem)  /* = padding-inline * 2 */
+  );
+}
