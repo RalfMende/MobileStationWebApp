@@ -349,3 +349,15 @@ html, body {
 .slider-vertical::-webkit-slider-thumb { background: var(--go-green); }
 .slider-vertical::-moz-range-thumb { background: var(--go-green); }
 .slider-vertical::-moz-range-progress { background: var(--go-green); }
+
+#locoImg.loco-img {
+  width: var(--slider-w);
+  height: var(--bar-h);
+  max-width: 100%;
+  display: block;
+  background: var(--bar-gradient);
+  object-fit: contain;
+  object-position: center;
+  border-radius: 5px;
+  overflow: hidden;
+}
