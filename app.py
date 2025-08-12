@@ -140,7 +140,7 @@ def function():
     loco_uid = data.get("loco_id")
     function = data.get("function")
     value = data.get("value")
-
+    
     can_id = build_can_id(DEVICE_UID, COMMAND_FUNCTION, prio=0, resp=0)
 
     # Datenfeld: D0..D3 = Loc-ID (BE), D4..D5 = Geschwindigkeit (BE), DLC=6

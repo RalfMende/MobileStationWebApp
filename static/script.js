@@ -121,16 +121,24 @@ speedBar.addEventListener('pointerdown', (e) => {
 function createFunctionButtons(col, offset) {
   for (let i = 0; i < 8; i++) {
     const idx = offset + i;
-    /*const name = `F${idx}`;*/
     const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.style.border = 'none';
+    btn.style.outline = 'none';
+    btn.style.boxShadow = 'none';
+    btn.style.background = 'transparent';
+    btn.style.padding = '0';
+    btn.addEventListener('mousedown', (e) => { e.preventDefault(); });
     const img = document.createElement('img');
     const imgid = 50 + offset + i;
-    img.src = `/static/fcticons/FktIcon_i_we_${imgid}.png`;
+    img.src = `/static/fcticons/FktIcon_a_we_${imgid}.png`;
+    btn.dataset.imgid = imgid;
     btn.appendChild(img);
     btn.onclick = () => {
       const newState = !(locoState[currentLocoUid].functions[idx] || false);
       locoState[currentLocoUid].functions[idx] = newState;
-      btn.style.background = newState ? 'lime' : 'transparent';
+      const iconPrefix = newState ? 'ge' : 'we';
+      img.src = `/static/fcticons/FktIcon_a_${iconPrefix}_${imgid}.png`;
       fetch('/api/function', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -186,7 +194,11 @@ fetch('/api/locs')
   
 function updateFunctionButtons(functions) {
   document.querySelectorAll('#leftFunctions button, #rightFunctions button').forEach((btn, index) => {
-    const active = functions[index];
-    btn.style.background = active ? 'lime' : 'transparent';
+    const img = btn.querySelector('img');
+    const imgid = btn.dataset.imgid;
+    if (!img || !imgid) return;
+    const active = !!functions[index];
+    const iconPrefix = active ? 'ge' : 'we';
+    img.src = `/static/fcticons/FktIcon_a_${iconPrefix}_${imgid}.png`;
   });
 }
