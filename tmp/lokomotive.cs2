@@ -2,20 +2,24 @@
 version
  .minor=3
 session
- .id=8
+ .id=32
 lokomotive
- .name=Lok-1
- .uid=0x4001
- .vorname=
- .adresse=0x0
- .typ=mfx
- .sid=0x1
- .mfxuid=0x73e5e93b
- .symbol=2
- .av=64
- .bv=48
- .volume=100
- .vmin=12
+ .name=Lokliste
+ .richtung=4294967295
+ .uid=0x1
+ .adresse=0x1
+ .typ=mm2_prg
+ .mfxuid=0xffffffff
+ .icon=Lokliste
+ .symbol=5
+ .av=6
+ .bv=3
+ .volume=25
+ .tachomax=0
+ .vmax=60
+ .vmin=3
+ .stand=0
+ .fahrt=0
  .funktionen
  ..nr=0
  ..typ=1
@@ -33,13 +37,10 @@ lokomotive
  ..typ=54
  .funktionen
  ..nr=5
- ..typ=55
  .funktionen
  ..nr=6
- ..typ=56
  .funktionen
  ..nr=7
- ..typ=57
  .funktionen
  ..nr=8
  .funktionen
@@ -58,43 +59,43 @@ lokomotive
  ..nr=15
 lokomotive
  .name=260 417-1 DB
+ .richtung=4294967295
  .uid=0x4005
  .adresse=0x5
  .typ=mfx
  .sid=0x5
  .mfxuid=0x73f4865b
- .icon=diesellok
+ .icon=V 60
  .symbol=1
  .av=25
  .bv=25
  .volume=128
- .tachomax=90
+ .tachomax=0
  .vmax=90
  .vmin=1
- .mfxtyp=255
- .blocks=0 0 12 20 64 176 196 312 300 336 0
+ .stand=0
+ .fahrt=0
  .funktionen
  ..nr=0
  ..typ=1
  .funktionen
  ..nr=1
- ..typ=43
+ ..typ=5
  .funktionen
  ..nr=2
- ..typ=23
+ ..typ=5
  .funktionen
  ..nr=3
  ..typ=10
  .funktionen
  ..nr=4
- ..typ=18
- ..wert=1
+ ..typ=8
  .funktionen
  ..nr=5
  ..typ=8
  .funktionen
  ..nr=6
- ..typ=112
+ ..typ=5
  .funktionen
  ..nr=7
  ..typ=138
@@ -102,1201 +103,122 @@ lokomotive
  ..nr=8
  .funktionen
  ..nr=9
- ..typ=20
+ ..typ=5
  .funktionen
  ..nr=10
  .funktionen
  ..nr=11
- ..typ=19
+ ..typ=5
  .funktionen
  ..nr=12
- ..typ=220
+ ..typ=133
  .funktionen
  ..nr=13
- ..typ=222
+ ..typ=143
  .funktionen
  ..nr=14
  .funktionen
  ..nr=15
 lokomotive
- .name=E 44 082 DB
- .richtung=1
+ .name=120 120-1 DB
+ .richtung=4294967295
  .uid=0x4006
  .adresse=0x6
  .typ=mfx
  .sid=0x6
- .mfxuid=0x5445e485
- .icon=E 44
- .av=15
- .bv=15
+ .mfxuid=0x73e5e93b
+ .icon=BR 120
+ .av=18
+ .bv=18
  .volume=255
- .tachomax=90
+ .tachomax=0
+ .vmax=228
  .vmin=4
- .spm=2
- .ft=0xd
+ .stand=0
+ .fahrt=0
  .funktionen
  ..nr=0
  ..typ=1
  .funktionen
  ..nr=1
- ..typ=153
+ ..typ=6
  .funktionen
  ..nr=2
- ..typ=23
+ ..typ=5
  .funktionen
  ..nr=3
- ..typ=12
+ ..typ=10
  .funktionen
  ..nr=4
- ..typ=18
+ ..typ=6
  .funktionen
  ..nr=5
- ..typ=20
- .funktionen
- ..nr=6
- ..typ=42
- .funktionen
- ..nr=7
- ..typ=140
- .funktionen
- ..nr=8
- ..typ=41
- .funktionen
- ..nr=9
- ..typ=19
- .funktionen
- ..nr=10
- ..typ=220
- .funktionen
- ..nr=11
- ..typ=11
- .funktionen
- ..nr=12
- .funktionen
- ..nr=13
- .funktionen
- ..nr=14
- ..typ=112
- .funktionen
- ..nr=15
-lokomotive
- .name=117 107-3 DB
- .uid=0x4007
- .adresse=0x7
- .typ=mfx
- .sid=0x7
- .mfxuid=0x5445e47d
- .icon=BR 111
- .av=15
- .bv=15
- .volume=255
- .tachomax=0
- .vmin=2
- .spm=2
- .ft=0xd
- .funktionen
- ..nr=0
- ..typ=1
- .funktionen
- ..nr=1
- .funktionen
- ..nr=2
- ..typ=23
- .funktionen
- ..nr=3
- ..typ=12
- .funktionen
- ..nr=4
  ..typ=18
  .funktionen
- ..nr=5
- ..typ=20
- .funktionen
  ..nr=6
- ..typ=41
+ ..typ=5
  .funktionen
  ..nr=7
- ..typ=140
+ ..typ=2
  .funktionen
  ..nr=8
- ..typ=42
- .funktionen
- ..nr=9
- ..typ=153
- .funktionen
- ..nr=10
- ..typ=11
- .funktionen
- ..nr=11
- ..typ=29
- .funktionen
- ..nr=12
- ..typ=29
- .funktionen
- ..nr=13
- ..typ=101
- .funktionen
- ..nr=14
- ..typ=112
- .funktionen
- ..nr=15
- ..typ=8
-lokomotive
- .name=EMD GP38 2060
- .uid=0x4008
- .adresse=0x8
- .typ=mfx
- .sid=0x8
- .mfxuid=0xf9ee894f
- .symbol=1
- .av=0
- .bv=0
- .volume=1
- .tachomax=0
- .vmax=244
- .vmin=47
- .mfxtyp=255
- .blocks=0 0 12 16 24 88 100 112 0 132 0
- .funktionen
- ..nr=0
  ..typ=1
  .funktionen
- ..nr=1
- ..typ=13
- .funktionen
- ..nr=2
+ ..nr=9
  ..typ=138
  .funktionen
- ..nr=3
- ..typ=43
- .funktionen
- ..nr=4
- ..typ=29
- .funktionen
- ..nr=5
- ..typ=29
- .funktionen
- ..nr=6
- ..typ=3
- .funktionen
- ..nr=7
+ ..nr=10
  ..typ=8
  .funktionen
- ..nr=8
+ ..nr=11
+ ..typ=1
+ .funktionen
+ ..nr=12
  ..typ=5
  .funktionen
- ..nr=9
- ..typ=59
- .funktionen
- ..nr=10
+ ..nr=13
  ..typ=5
  .funktionen
- ..nr=11
- ..typ=3
- .funktionen
- ..nr=12
- ..typ=4
- .funktionen
- ..nr=13
- ..typ=3
- .funktionen
  ..nr=14
- ..typ=20
+ ..typ=133
  .funktionen
  ..nr=15
- ..typ=65
-lokomotive
- .name=EMD GP38 2051
- .uid=0x4009
- .adresse=0x9
- .typ=mfx
- .sid=0x9
- .mfxuid=0xdff85b51
- .symbol=1
- .av=0
- .bv=0
- .volume=1
- .tachomax=0
- .vmax=244
- .vmin=47
- .mfxtyp=255
- .blocks=0 0 12 16 24 88 100 112 0 132 0
- .funktionen
- ..nr=0
- ..typ=1
- .funktionen
- ..nr=1
- ..typ=13
- .funktionen
- ..nr=2
- ..typ=138
- .funktionen
- ..nr=3
- ..typ=43
- .funktionen
- ..nr=4
- ..typ=29
- .funktionen
- ..nr=5
- ..typ=29
- .funktionen
- ..nr=6
- ..typ=3
- .funktionen
- ..nr=7
- ..typ=8
- .funktionen
- ..nr=8
+ ..typ=133
+ .funktionen_2
+ ..nr=16
+ ..typ=133
+ .funktionen_2
+ ..nr=17
+ ..typ=15
+ .funktionen_2
+ ..nr=18
  ..typ=5
- .funktionen
- ..nr=9
- ..typ=59
- .funktionen
- ..nr=10
+ .funktionen_2
+ ..nr=19
+ ..typ=133
+ .funktionen_2
+ ..nr=20
  ..typ=5
- .funktionen
- ..nr=11
- ..typ=3
- .funktionen
- ..nr=12
- ..typ=4
- .funktionen
- ..nr=13
- ..typ=3
- .funktionen
- ..nr=14
- ..typ=20
- .funktionen
- ..nr=15
- ..typ=65
-lokomotive
- .name=EMD GP38 2025
- .uid=0x400a
- .adresse=0xa
- .typ=mfx
- .sid=0xa
- .mfxuid=0xf9ec5583
- .symbol=1
- .av=0
- .bv=0
- .volume=128
- .tachomax=0
- .vmax=250
- .vmin=50
- .mfxtyp=255
- .blocks=0 0 12 16 24 88 100 152 144 172 0
- .funktionen
- ..nr=0
- ..typ=1
- .funktionen
- ..nr=1
- ..typ=13
- .funktionen
- ..nr=2
- ..typ=138
- .funktionen
- ..nr=3
- ..typ=43
- .funktionen
- ..nr=4
- ..typ=29
- .funktionen
- ..nr=5
- ..typ=29
- .funktionen
- ..nr=6
- ..typ=3
- .funktionen
- ..nr=7
- ..typ=8
- .funktionen
- ..nr=8
+ .funktionen_2
+ ..nr=21
  ..typ=5
- .funktionen
- ..nr=9
- ..typ=59
- .funktionen
- ..nr=10
- ..typ=5
- .funktionen
- ..nr=11
- ..typ=3
- .funktionen
- ..nr=12
- ..typ=4
- .funktionen
- ..nr=13
- ..typ=3
- .funktionen
- ..nr=14
- ..typ=20
- .funktionen
- ..nr=15
- ..typ=65
-lokomotive
- .name=41 178 DB
- .uid=0x400b
- .adresse=0xb
- .typ=mfx
- .sid=0xb
- .mfxuid=0x5445e481
- .icon=BR 41
- .symbol=2
- .av=15
- .bv=15
- .volume=255
- .tachomax=90
- .vmax=245
- .vmin=19
- .spm=2
- .ft=0x3
- .funktionen
- ..nr=0
- ..typ=1
- ..wert=1
- .funktionen
- ..nr=1
- ..typ=7
- .funktionen
- ..nr=2
- ..typ=23
- .funktionen
- ..nr=3
- ..typ=12
- .funktionen
- ..nr=4
- ..typ=18
- .funktionen
- ..nr=5
- ..typ=20
- .funktionen
- ..nr=6
- ..typ=13
- .funktionen
- ..nr=7
- ..typ=140
- .funktionen
- ..nr=8
- ..typ=219
- .funktionen
- ..nr=9
- ..typ=19
- .funktionen
- ..nr=10
- ..typ=26
- .funktionen
- ..nr=11
- ..typ=36
- .funktionen
- ..nr=12
- ..typ=49
- .funktionen
- ..nr=13
- .funktionen
- ..nr=14
- ..typ=112
- .funktionen
- ..nr=15
-lokomotive
- .name=01 1054 DB
- .uid=0x400d
- .adresse=0xd
- .typ=mfx
- .sid=0xd
- .mfxuid=0x5445e480
- .icon=BR 01-10
- .symbol=2
- .av=15
- .bv=15
- .volume=255
- .tachomax=150
- .vmin=10
- .spm=2
- .ft=0x7
- .funktionen
- ..nr=0
- ..typ=1
- .funktionen
- ..nr=1
- ..typ=7
- .funktionen
- ..nr=2
- ..typ=23
- .funktionen
- ..nr=3
- ..typ=12
- .funktionen
- ..nr=4
- ..typ=18
- .funktionen
- ..nr=5
- ..typ=20
- .funktionen
- ..nr=6
- ..typ=90
- .funktionen
- ..nr=7
- ..typ=140
- .funktionen
- ..nr=8
- ..typ=19
- .funktionen
- ..nr=9
- ..typ=219
- .funktionen
- ..nr=10
- ..typ=112
- .funktionen
- ..nr=11
- .funktionen
- ..nr=12
- .funktionen
- ..nr=13
- .funktionen
- ..nr=14
- .funktionen
- ..nr=15
-lokomotive
- .name=101 113-9 DB AG
- .uid=0x400e
- .adresse=0xe
- .typ=mfx
- .sid=0xe
- .mfxuid=0x7fff28f2
- .icon=BR 101
- .av=15
- .bv=15
- .volume=255
- .tachomax=320
- .vmin=10
- .xprot=1
- .spm=2
- .funktionen
- ..nr=0
- ..typ=1
- ..wert=1
- .funktionen
- ..nr=1
- ..typ=4
- .funktionen
- ..nr=2
- ..typ=23
- .funktionen
- ..nr=3
- ..typ=10
- .funktionen
- ..nr=4
- ..typ=18
- .funktionen
- ..nr=5
- ..typ=20
- .funktionen
- ..nr=6
- ..typ=41
- .funktionen
- ..nr=7
- ..typ=10
- .funktionen
- ..nr=8
- ..typ=42
- .funktionen
- ..nr=9
- ..typ=153
- .funktionen
- ..nr=10
- ..typ=60
- .funktionen
- ..nr=11
- ..typ=11
- .funktionen
- ..nr=12
- ..typ=19
- .funktionen
- ..nr=13
- ..typ=220
- .funktionen
- ..nr=14
- ..typ=112
- .funktionen
- ..nr=15
- ..typ=65
-lokomotive
- .name=218 245-9 DB
- .uid=0x400f
- .adresse=0xf
- .typ=mfx
- .sid=0xf
- .mfxuid=0x7fff297a
- .icon=BR 218
- .symbol=1
- .av=15
- .bv=15
- .volume=255
- .tachomax=140
- .vmax=225
- .vmin=3
- .spm=1
- .funktionen
- ..nr=0
- ..typ=1
- .funktionen
- ..nr=1
- .funktionen
- ..nr=2
- ..typ=23
- .funktionen
- ..nr=3
- ..typ=10
- .funktionen
- ..nr=4
- ..typ=18
- .funktionen
- ..nr=5
- ..typ=20
- .funktionen
- ..nr=6
- ..typ=41
- .funktionen
- ..nr=7
- ..typ=153
- .funktionen
- ..nr=8
- ..typ=42
- .funktionen
- ..nr=9
- ..typ=11
- .funktionen
- ..nr=10
- ..typ=37
- .funktionen
- ..nr=11
- .funktionen
- ..nr=12
- .funktionen
- ..nr=13
- .funktionen
- ..nr=14
- ..typ=112
- .funktionen
- ..nr=15
-lokomotive
- .name=8118 MAGDEB KPEV
- .uid=0x4010
- .adresse=0x10
- .typ=mfx
- .sid=0x10
- .mfxuid=0x5445e4f5
- .icon=BR 81
- .symbol=2
- .av=15
- .bv=15
- .volume=255
- .tachomax=50
- .vmin=18
- .spm=2
- .ft=0x3
- .funktionen
- ..nr=0
- ..typ=1
- .funktionen
- ..nr=1
- ..typ=7
- .funktionen
- ..nr=2
- ..typ=23
- .funktionen
- ..nr=3
- ..typ=12
- .funktionen
- ..nr=4
- ..typ=9
- .funktionen
- ..nr=5
- ..typ=20
- .funktionen
- ..nr=6
- ..typ=13
- .funktionen
- ..nr=7
- ..typ=140
- .funktionen
- ..nr=8
- ..typ=18
- .funktionen
- ..nr=9
- ..typ=19
- .funktionen
- ..nr=10
- ..typ=26
- .funktionen
- ..nr=11
- ..typ=164
- .funktionen
- ..nr=12
- ..typ=49
- .funktionen
- ..nr=13
- ..typ=219
- .funktionen
- ..nr=14
- ..typ=112
- ..wert=1
- .funktionen
- ..nr=15
- ..typ=8
-lokomotive
- .name=054 007-0 MHI
- .uid=0x4011
- .adresse=0x11
- .typ=mfx
- .sid=0x11
- .mfxuid=0x7fff2269
- .icon=BR 05
- .symbol=2
- .av=15
- .bv=15
- .volume=255
- .tachomax=80
- .vmin=20
- .spm=2
- .ft=0x3
- .funktionen
- ..nr=0
- ..typ=1
- .funktionen
- ..nr=1
- ..typ=7
- .funktionen
- ..nr=2
- ..typ=23
- .funktionen
- ..nr=3
- ..typ=12
- .funktionen
- ..nr=4
- ..typ=18
- ..wert=1
- .funktionen
- ..nr=5
- ..typ=20
- ..wert=1
- .funktionen
- ..nr=6
- ..typ=19
- .funktionen
- ..nr=7
- ..typ=140
- .funktionen
- ..nr=8
- ..typ=219
- .funktionen
- ..nr=9
- ..typ=26
- .funktionen
- ..nr=10
- ..typ=36
- .funktionen
- ..nr=11
- ..typ=111
- .funktionen
- ..nr=12
- ..typ=49
- .funktionen
- ..nr=13
- ..typ=37
- .funktionen
- ..nr=14
- ..typ=112
- ..wert=1
- .funktionen
- ..nr=15
- ..typ=8
-lokomotive
- .name=DB 11 142
- .uid=0x4012
- .adresse=0x12
- .typ=mfx
- .sid=0x12
- .mfxuid=0x73efcc5d
- .icon=Koef
- .symbol=1
- .av=64
- .bv=48
- .volume=220
- .tachomax=45
- .vmax=155
- .vmin=6
- .spm=0
- .spa=344
- .ft=0x2
- .mfxtyp=255
- .blocks=0 0 12 20 64 176 196 312 300 336 344
- .funktionen
- ..nr=0
- ..typ=1
- .funktionen
- ..nr=1
- ..typ=82
- .funktionen
- ..nr=2
- ..typ=23
- .funktionen
- ..nr=3
- ..typ=10
- .funktionen
- ..nr=4
- ..typ=83
- .funktionen
- ..nr=5
- ..typ=18
- .funktionen
- ..nr=6
- ..typ=41
- .funktionen
- ..nr=7
- ..typ=138
- .funktionen
- ..nr=8
- ..typ=42
- .funktionen
- ..nr=9
- ..typ=10
- .funktionen
- ..nr=10
- ..typ=29
- .funktionen
- ..nr=11
- ..typ=171
- .funktionen
- ..nr=12
- ..typ=19
- .funktionen
- ..nr=13
- ..typ=220
- .funktionen
- ..nr=14
- ..typ=171
- .funktionen
- ..nr=15
- ..typ=112
-lokomotive
- .name=01 138 DB
- .uid=0x4013
- .adresse=0x13
- .typ=mfx
- .sid=0x13
- .mfxuid=0x5445e4f7
- .icon=BR 01
- .symbol=2
- .av=28
- .bv=15
- .volume=255
- .tachomax=130
- .vmin=9
- .spm=2
- .ft=0x3
- .funktionen
- ..nr=0
- ..typ=1
- .funktionen
- ..nr=1
- ..typ=7
- .funktionen
- ..nr=2
- ..typ=23
- .funktionen
- ..nr=3
- ..typ=12
- .funktionen
- ..nr=4
- ..typ=18
- .funktionen
- ..nr=5
- ..typ=20
- .funktionen
- ..nr=6
- ..typ=26
- .funktionen
- ..nr=7
- ..typ=140
- .funktionen
- ..nr=8
- ..typ=95
- .funktionen
- ..nr=9
- ..typ=219
- .funktionen
- ..nr=10
- ..typ=36
- .funktionen
- ..nr=11
- ..typ=19
- .funktionen
- ..nr=12
- ..typ=173
- .funktionen
- ..nr=13
- ..typ=11
- .funktionen
- ..nr=14
- ..typ=112
- .funktionen
- ..nr=15
- ..typ=8
-lokomotive
- .name=191 101-5 DB
- .richtung=1
- .uid=0x4015
- .adresse=0x15
- .typ=mfx
- .sid=0x15
- .mfxuid=0x5445e47e
- .icon=E 91
- .av=15
- .bv=15
- .volume=255
- .tachomax=55
- .vmax=155
- .vmin=8
- .spm=2
- .ft=0xd
- .funktionen
- ..nr=0
- ..typ=1
- .funktionen
- ..nr=1
- .funktionen
- ..nr=2
- ..typ=23
- .funktionen
- ..nr=3
- ..typ=12
- .funktionen
- ..nr=4
- ..typ=18
- .funktionen
- ..nr=5
- ..typ=20
- .funktionen
- ..nr=6
- ..typ=41
- .funktionen
- ..nr=7
- ..typ=140
- .funktionen
- ..nr=8
- ..typ=42
- .funktionen
- ..nr=9
- ..typ=153
- .funktionen
- ..nr=10
- ..typ=43
- .funktionen
- ..nr=11
- ..typ=236
- .funktionen
- ..nr=12
- ..typ=101
- .funktionen
- ..nr=13
- ..typ=29
- .funktionen
- ..nr=14
- ..typ=112
- ..wert=1
- .funktionen
- ..nr=15
- ..typ=8
-lokomotive
- .name=BR 211 293-6 DB
- .uid=0x4016
- .adresse=0x16
- .typ=mfx
- .sid=0x16
- .mfxuid=0x5445e47f
- .icon=BR 218
- .symbol=1
- .av=15
- .bv=15
- .volume=255
- .progmask=0x80
- .tachomax=100
- .vmin=6
- .spm=2
- .ft=0x2
- .funktionen
- ..nr=0
- ..typ=1
- .funktionen
- ..nr=1
- .funktionen
- ..nr=2
- ..typ=23
- .funktionen
- ..nr=3
- ..typ=10
- .funktionen
- ..nr=4
- .funktionen
- ..nr=5
- ..typ=18
- .funktionen
- ..nr=6
- ..typ=41
- .funktionen
- ..nr=7
- ..typ=10
- .funktionen
- ..nr=8
- ..typ=42
- .funktionen
- ..nr=9
- ..typ=20
- .funktionen
- ..nr=10
- .funktionen
- ..nr=11
- .funktionen
- ..nr=12
- .funktionen
- ..nr=13
- .funktionen
- ..nr=14
- ..typ=112
- .funktionen
- ..nr=15
-lokomotive
- .name=110 263-1 DB
- .richtung=1
- .uid=0x4018
- .adresse=0x18
- .typ=mfx
- .sid=0x18
- .mfxuid=0x73ecf9a3
- .icon=BR 111
- .av=26
- .bv=26
- .volume=150
- .tachomax=160
- .vmax=160
- .vmin=4
- .spm=1
- .spa=344
- .ft=0x25
- .mfxtyp=255
- .blocks=0 0 12 20 64 176 196 312 300 336 344
- .funktionen
- ..nr=0
- ..typ=1
- .funktionen
- ..nr=1
- ..typ=153
- .funktionen
- ..nr=2
- ..typ=23
- .funktionen
- ..nr=3
- ..typ=12
- .funktionen
- ..nr=4
- ..typ=18
- .funktionen
- ..nr=5
- ..typ=20
- .funktionen
- ..nr=6
- ..typ=41
- .funktionen
- ..nr=7
- ..typ=140
- .funktionen
- ..nr=8
- ..typ=42
- .funktionen
- ..nr=9
- ..typ=12
- .funktionen
- ..nr=10
- ..typ=11
- .funktionen
- ..nr=11
- ..typ=28
- .funktionen
- ..nr=12
- ..typ=43
- .funktionen
- ..nr=13
- ..typ=101
- .funktionen
- ..nr=14
- ..typ=29
- .funktionen
- ..nr=15
- ..typ=112
-lokomotive
- .name=BR 151 059-3
- .richtung=1
- .uid=0x401a
- .adresse=0x1a
- .typ=mfx
- .sid=0x1a
- .mfxuid=0x73ed4cd5
- .icon=BR 151
- .symbol=2
- .av=20
- .volume=1
- .tachomax=120
- .vmax=180
- .vmin=5
- .mfxtyp=255
- .blocks=0 0 12 20 64 176 196 312 0 336 0
- .funktionen
- ..nr=0
- ..typ=1
- .funktionen
- ..nr=1
- ..typ=51
- .funktionen
- ..nr=2
- ..typ=52
- .funktionen
- ..nr=3
- ..typ=8
- .funktionen
- ..nr=4
- ..typ=18
- .funktionen
- ..nr=5
- ..typ=55
- .funktionen
- ..nr=6
- ..typ=56
- .funktionen
- ..nr=7
- .funktionen
- ..nr=8
- .funktionen
- ..nr=9
- .funktionen
- ..nr=10
- .funktionen
- ..nr=11
- .funktionen
- ..nr=12
- .funktionen
- ..nr=13
- .funktionen
- ..nr=14
- .funktionen
- ..nr=15
-lokomotive
- .name=V 100
- .richtung=1
- .uid=0xc003
- .adresse=0x3
- .typ=dcc
- .sid=0x500f
- .icon=BR 220
- .av=60
- .bv=40
- .volume=100
- .progmask=0xb
- .tachomax=0
- .vmin=9
- .xprot=2
- .mfxtyp=212
- .funktionen
- ..nr=0
- ..typ=1
- ..wert=1
- .funktionen
- ..nr=1
- ..typ=51
- .funktionen
- ..nr=2
- ..typ=52
- .funktionen
- ..nr=3
- ..typ=53
- .funktionen
- ..nr=4
- ..typ=54
- .funktionen
- ..nr=5
- ..typ=55
- .funktionen
- ..nr=6
- ..typ=56
- .funktionen
- ..nr=7
- ..typ=57
- .funktionen
- ..nr=8
- ..typ=58
- .funktionen
- ..nr=9
- ..typ=59
- .funktionen
- ..nr=10
- ..typ=60
- .funktionen
- ..nr=11
- ..typ=61
- .funktionen
- ..nr=12
- ..typ=62
- .funktionen
- ..nr=13
- .funktionen
- ..nr=14
- .funktionen
- ..nr=15
- .prg
- ..adresse=1
- ..name=Cv Name
- ..wert=1
- .prg
- ..adresse=2
- ..name=Cv Name
- ..wert=2
- .prg
- ..adresse=3
- ..name=Cv Name
- ..wert=3
- .prg
- ..adresse=4
- ..name=Cv Name
- ..wert=4
- .prg
- ..adresse=5
- ..name=Cv Name
- ..wert=5
- .prg
- ..adresse=6
- ..name=Cv Name
- ..wert=6
- .reg
- ..adresse=1
- ..name=Cv Name
- ..wert=1
- .reg
- ..adresse=2
- ..name=Cv Name
- ..wert=2
- .reg
- ..adresse=3
- ..name=Cv Name
- ..wert=3
- .reg
- ..adresse=4
- ..name=Cv Name
- ..wert=4
- .reg
- ..adresse=5
- ..name=Cv Name
- ..wert=5
- .reg
- ..adresse=6
- ..name=Cv Name
- ..wert=6
+ .funktionen_2
+ ..nr=22
+ .funktionen_2
+ ..nr=23
+ .funktionen_2
+ ..nr=24
+ .funktionen_2
+ ..nr=25
+ .funktionen_2
+ ..nr=26
+ .funktionen_2
+ ..nr=27
+ .funktionen_2
+ ..nr=28
+ .funktionen_2
+ ..nr=29
+ .funktionen_2
+ ..nr=30
+ .funktionen_2
+ ..nr=31

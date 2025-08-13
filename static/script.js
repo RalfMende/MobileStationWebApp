@@ -23,30 +23,22 @@ function pad2(v) {
   return s.length >= 2 ? s : s.padStart(2, '0');
 }
 
-/** Set function icon with fallbacks if a PNG isn't found. */
-function setFunctionIcon(img, iconPrefix, id) {
-  const idStr = String(id ?? '');
-  const p = pad2(idStr);
-  const alt = iconPrefix === 'ge' ? 'we' : 'ge';
-  const tries = [
-    `/static/fcticons/FktIcon_a_${iconPrefix}_${p}.png`,
-    `/static/fcticons/FktIcon_a_${iconPrefix}_${idStr}.png`,
-    `/static/fcticons/FktIcon_a_${alt}_${p}.png`,
-    `/static/fcticons/FktIcon_a_${alt}_${idStr}.png`,
-    `/static/icons/leeres Gleis.png`
-  ];
-  let i = 0;
-  img.onerror = function() {
-    i++;
-    if (i < tries.length) {
-      img.src = tries[i];
-    } else {
-      img.onerror = null;
-      // last-resort transparent pixel
-      img.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5NJTcAAAAASUVORK5CYII=';
-    }
-  };
-  img.src = tries[0];
+/** Set function icon with fallbacks (browser-safe, no fs).
+ *  Tries the specific icon first; on 404 loads the fallback.
+ *  @param {HTMLImageElement} img
+ *  @param {string} iconPrefix
+ *  @param {number} id
+ *  @param {number} index
+ */
+function setFunctionIcon(img, iconPrefix, id, index) {
+  const primary  = `/static/fcticons/FktIcon_a_${iconPrefix}_${pad2(id)}.png`;
+  const fallback = `/static/fcticons/FktIcon_a_${iconPrefix}_${pad2(50 + index)}.png`;
+
+  const probe = new Image();
+  probe.onload  = () => { img.src = primary; };
+  probe.onerror = () => { img.src = fallback; };
+  probe.src = primary;
+  return primary;
 }
 
 function getTypFromLocList(idx) {
@@ -167,40 +159,80 @@ speedBar.addEventListener('pointerdown', (e) => {
 });
 
 function createFunctionButtons(col, offset) {
+  // Create 8 function buttons starting from "offset"
+  const frag = document.createDocumentFragment();
   for (let i = 0; i < 8; i++) {
     const idx = offset + i;
     const btn = document.createElement('button');
     btn.type = 'button';
+    btn.className = 'fn-btn';
+    // minimal inline fallback styles in case CSS is missing
     btn.style.border = 'none';
     btn.style.outline = 'none';
     btn.style.boxShadow = 'none';
     btn.style.background = 'transparent';
     btn.style.padding = '0';
     btn.addEventListener('mousedown', (e) => { e.preventDefault(); });
-    const img = document.createElement('img');
+
+    // figure out icon id with fallback
     let imgid = getTypFromLocList(idx);
-    if (imgid == null) imgid = 50 + offset + i;
-    img.src = `/static/fcticons/FktIcon_a_we_${imgid}.png`;
-    btn.dataset.imgid = imgid;
+    if (imgid == null) imgid = 50 + idx;
+
+    // mark indices on the button to make updates deterministic
+    btn.dataset.index = String(idx);
+    btn.dataset.imgid = String(imgid);
+    btn.setAttribute('aria-pressed', 'false');
+
+    const img = document.createElement('img');
+    img.alt = `Function ${idx}`;
+    // default to "we" (inactive) until updateFunctionButtons provides state
+    setFunctionIcon(img, 'we', imgid, idx);
+
     btn.appendChild(img);
-    btn.onclick = () => {
-      const newState = !(locoState[currentLocoUid].functions[idx] || false);
-      locoState[currentLocoUid].functions[idx] = newState;
-      const iconPrefix = newState ? 'ge' : 'we';
-      const currentImgId = btn.dataset.imgid || getTypFromLocList(idx) || (50 + offset + i);
-      setFunctionIcon(img, iconPrefix, currentImgId);
-      fetch('/api/function', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          loco_id: currentLocoUid, 
-          function: idx, 
-          value: newState ? 1 : 0 })
-      });
-    };
-    col.appendChild(btn);
+    frag.appendChild(btn);
+  }
+  col.appendChild(frag);
+
+  // Event delegation (avoid adding 8 listeners)
+  if (!col.dataset.fnDelegated) {
+    col.addEventListener('click', (ev) => {
+      const btn = ev.target instanceof Element ? ev.target.closest('button.fn-btn') : null;
+      if (!btn || !col.contains(btn)) return;
+      const idx = Number(btn.dataset.index);
+      let imgid = getTypFromLocList(idx);
+      if (imgid == null) imgid = Number(btn.dataset.imgid) || (50 + idx);
+      btn.dataset.imgid = String(imgid);
+
+      // toggle state (fallback to dataset if no global state available)
+      const wasActive = btn.dataset.active === '1' || btn.getAttribute('aria-pressed') === 'true';
+      const nowActive = !wasActive;
+      btn.dataset.active = nowActive ? '1' : '0';
+      btn.setAttribute('aria-pressed', nowActive ? 'true' : 'false');
+
+      const iconPrefix = nowActive ? 'ge' : 'we';
+      const img = btn.querySelector('img');
+      if (img) setFunctionIcon(img, iconPrefix, imgid, idx);
+
+      // Inform backend
+      try {
+        fetch('/api/function', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            loco_id: currentLocoUid,
+            function: idx,
+            value: nowActive ? 1 : 0
+          })
+        });
+      } catch (e) {
+        // network errors are ignored here; UI already toggled
+        console.error(e);
+      }
+    });
+    col.dataset.fnDelegated = '1';
   }
 }
+
 createFunctionButtons(leftCol, 0);
 createFunctionButtons(rightCol, 7);
 
@@ -243,14 +275,24 @@ fetch('/api/locs')
   });
   
 function updateFunctionButtons(functions) {
-  document.querySelectorAll('#leftFunctions button, #rightFunctions button').forEach((btn, index) => {
+  const buttons = document.querySelectorAll('#leftFunctions button.fn-btn, #rightFunctions button.fn-btn');
+  buttons.forEach((btn) => {
+    const idx = Number(btn.dataset.index);
     const img = btn.querySelector('img');
-    let imgid = getTypFromLocList(index);
-    if (imgid == null) imgid = btn.dataset.imgid;
-    if (!img || !imgid) return;
-    btn.dataset.imgid = imgid;
-    const active = !!functions[index];
-    const iconPrefix = active ? 'ge' : 'we';
-    setFunctionIcon(img, iconPrefix, imgid);
-    });
+    // Resolve icon id (prefer runtime mapping)
+    let imgid = getTypFromLocList(idx);
+    if (imgid == null) imgid = Number(btn.dataset.imgid) || (50 + idx);
+    btn.dataset.imgid = String(imgid);
+
+    const active = !!(functions && functions[idx]);
+    if (btn.dataset.active !== (active ? '1' : '0')) {
+      btn.dataset.active = active ? '1' : '0';
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    }
+    if (img) {
+      const iconPrefix = active ? 'ge' : 'we';
+      setFunctionIcon(img, iconPrefix, imgid, idx);
+    }
+  });
 }
+
