@@ -81,7 +81,6 @@ function setDirection(dir) {
     forwardBtn.src = '/static/grafics/dir_right_inactive.png';
     reverseBtn.src = '/static/grafics/dir_left_active.png';
   }
-  locoState[currentLocoUid].direction = dir;
   fetch('/api/direction', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -95,6 +94,41 @@ function setDirection(dir) {
 reverseBtn.addEventListener('click', () => setDirection('reverse'));
 forwardBtn.addEventListener('click', () => setDirection('forward'));
 
+// --- Client-side helpers to apply server-side state without sending commands ---
+function applyDirectionUI(dir) {
+  if (dir === 'forward') {
+    forwardBtn.src = '/static/grafics/dir_right_active.png';
+    reverseBtn.src = '/static/grafics/dir_left_inactive.png';
+  } else {
+    forwardBtn.src = '/static/grafics/dir_right_inactive.png';
+    reverseBtn.src = '/static/grafics/dir_left_active.png';
+  }
+}
+
+function applySpeedUI(val) {
+  const tachomax = locList[currentLocoUid].tachomax || 200;
+  const kmh = Math.round(val * tachomax / 1000);
+  speedValue.textContent = `${kmh} km/h`;
+  speedFill.style.height = `${(val / 1000) * 100}%`;
+}
+
+// Fetch state for a given loco from the server and update the UI (no commands sent)
+function fetchAndApplyState(locoUid) {
+  fetch(`/api/state?loco_id=${locoUid}`)
+    .then(r => r.json())
+    .then(state => {
+      const s = state || {};
+      const spd = Number(s.speed || 0);
+      speedSlider.value = spd;
+      applySpeedUI(spd);
+      const dir = (s.direction === 'reverse') ? 'reverse' : 'forward';
+      applyDirectionUI(dir);
+      updateFunctionButtons(s.functions || {});
+    })
+    .catch(err => console.warn('Failed to fetch state:', err));
+}
+
+
 function updateSlider(val) {
   const tachomax = locList[currentLocoUid].tachomax || 200;
   // Umrechnung: 0–1000 (Protokoll) auf 0–tachomax (Anzeige)
@@ -102,7 +136,6 @@ function updateSlider(val) {
   const kmh = Math.round(val * tachomax / 1000);
   speedValue.textContent = `${kmh} km/h`;
   speedFill.style.height = `${(val / 1000) * 100}%`;
-  locoState[currentLocoUid].speed = val;
   fetch('/api/speed', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -240,14 +273,9 @@ fetch('/api/locs')
   .then(response => response.json())
   .then(data => {
     locList = data;
-    locoState = {};
+    // Mirror state from server (authoritative)
+    fetch('/api/state').then(r=>r.json()).then(s => { locoState = s; }).catch(()=>{ locoState = {}; });
     Object.keys(locList).forEach(uid => {
-      // 1. locoState initialisieren
-      locoState[locList[uid].uid] = {
-        speed: 0,
-        direction: 'forward',
-        functions: {}
-      };
       // 2. Lok-Icon erzeugen
       console.log("Initialisiere Lok:", uid, locList[uid]);
       const img = new Image();
@@ -265,11 +293,7 @@ fetch('/api/locs')
         currentLocoUid = locList[uid].uid;
         locoDesc.textContent = locList[uid].name;
         locoImg.src = img.src;
-        const state = locoState[currentLocoUid];
-        speedSlider.value = state.speed;
-        updateSlider(state.speed);
-        setDirection(state.direction);
-        updateFunctionButtons(state.functions);
+        fetchAndApplyState(currentLocoUid);
       };
     });
   });

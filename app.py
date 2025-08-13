@@ -5,6 +5,28 @@ import os
 
 app = Flask(__name__)
 
+# ---- Server-side loco state (uid -> dict) ----
+# We keep the state in-memory. It can optionally be persisted later.
+loco_state = {}  # type: dict[int, dict]
+
+def _ensure_state(uid: int):
+    """Return mutable state dict for a loco, creating defaults if missing."""
+    st = loco_state.get(uid)
+    if st is None:
+        st = {"speed": 0, "direction": 1, "functions": {}}
+        loco_state[uid] = st
+    return st
+
+@app.route('/api/state')
+def get_state():
+    """Return full state or state for a specific loco_id (query param)."""
+    uid = request.args.get('loco_id', type=int)
+    if uid is None:
+        # Return a mapping with string keys for JSON friendliness
+        return jsonify({str(k): v for k, v in loco_state.items()})
+    return jsonify(loco_state.get(uid, {}))
+
+
 path_config_files = "tmp"  # TODO: Get this dynamically or set as config
 
 UDP_IP = "192.168.20.42" #TODO: Get this dynamically
@@ -77,6 +99,17 @@ def speed():
     loco_uid = data.get("loco_id")
     speed = data.get("speed")
 
+
+    # --- update server-side state ---
+    try:
+        uid_int = int(loco_uid)
+    except (TypeError, ValueError):
+        return jsonify(status='error', message='invalid loco_id'), 400
+    st = _ensure_state(uid_int)
+    try:
+        st['speed'] = int(speed)
+    except (TypeError, ValueError):
+        return jsonify(status='error', message='invalid speed'), 400
     can_id = build_can_id(DEVICE_UID, COMMAND_SPEED, prio=0, resp=0)
 
     # Datenfeld: D0..D3 = Loc-ID (BE), D4..D5 = Geschwindigkeit (BE), DLC=6
@@ -108,6 +141,17 @@ def direction():
     loco_uid = data.get("loco_id")
     direction = data.get("direction")
 
+
+    # --- update server-side state ---
+    try:
+        uid_int = int(loco_uid)
+    except (TypeError, ValueError):
+        return jsonify(status='error', message='invalid loco_id'), 400
+    st = _ensure_state(uid_int)
+    try:
+        st['direction'] = int(direction)
+    except (TypeError, ValueError):
+        return jsonify(status='error', message='invalid direction'), 400
     can_id = build_can_id(DEVICE_UID, COMMAND_DIRECTION, prio=0, resp=0)
 
     # Datenfeld: D0..D3 = Loc-ID (BE), D4 = Richtung (1 Byte), Padding auf 8 Bytes
@@ -141,6 +185,19 @@ def function():
     function = data.get("function")
     value = data.get("value")
     
+
+    # --- update server-side state ---
+    try:
+        uid_int = int(loco_uid)
+    except (TypeError, ValueError):
+        return jsonify(status='error', message='invalid loco_id'), 400
+    st = _ensure_state(uid_int)
+    try:
+        fn = int(function)
+        val = bool(value)
+    except (TypeError, ValueError):
+        return jsonify(status='error', message='invalid function/value'), 400
+    st['functions'][fn] = val
     can_id = build_can_id(DEVICE_UID, COMMAND_FUNCTION, prio=0, resp=0)
 
     # Datenfeld: D0..D3 = Loc-ID (BE), D4..D5 = Geschwindigkeit (BE), DLC=6
@@ -257,4 +314,10 @@ def parse_magnetartikel_cs2(file_path):
 if __name__ == '__main__':
     loc_list = parse_lokomotive_cs2(os.path.join(path_config_files, "lokomotive.cs2"))
     switch_list = parse_magnetartikel_cs2(os.path.join(path_config_files, "magnetartikel.cs2"))
+    # initialize server-side state for all known locs
+    try:
+        for loco in loc_list:
+            _ensure_state(int(loco.get('uid') if isinstance(loco, dict) else loco['uid']))
+    except Exception:
+        pass
     app.run(host='0.0.0.0', port=5005)
