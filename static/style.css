@@ -361,3 +361,9 @@ html, body {
   border-radius: 5px;
   overflow: hidden;
 }
+
+/* 1) Aktive Tabs schwarz statt blau */
+.tab.active {
+  background: #000;      /* statt #0a84ff */
+  color: #fff;
+}
