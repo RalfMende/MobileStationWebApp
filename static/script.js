@@ -14,6 +14,54 @@ const locoList = document.getElementById('locoList');
 const leftCol = document.getElementById('leftFunctions');
 const rightCol = document.getElementById('rightFunctions');
 
+/** Read function 'typ' from current loco's locList entry */
+
+
+/** Format an icon id as two digits (e.g., 1 -> "01") */
+function pad2(v) {
+  const s = String(v ?? '');
+  return s.length >= 2 ? s : s.padStart(2, '0');
+}
+
+/** Set function icon with fallbacks if a PNG isn't found. */
+function setFunctionIcon(img, iconPrefix, id) {
+  const idStr = String(id ?? '');
+  const p = pad2(idStr);
+  const alt = iconPrefix === 'ge' ? 'we' : 'ge';
+  const tries = [
+    `/static/fcticons/FktIcon_a_${iconPrefix}_${p}.png`,
+    `/static/fcticons/FktIcon_a_${iconPrefix}_${idStr}.png`,
+    `/static/fcticons/FktIcon_a_${alt}_${p}.png`,
+    `/static/fcticons/FktIcon_a_${alt}_${idStr}.png`,
+    `/static/icons/leeres Gleis.png`
+  ];
+  let i = 0;
+  img.onerror = function() {
+    i++;
+    if (i < tries.length) {
+      img.src = tries[i];
+    } else {
+      img.onerror = null;
+      // last-resort transparent pixel
+      img.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5NJTcAAAAASUVORK5CYII=';
+    }
+  };
+  img.src = tries[0];
+}
+
+function getTypFromLocList(idx) {
+  try {
+    const loco = locList[currentLocoUid];
+    if (!loco || !loco.funktionen) return null;
+    const entry = loco.funktionen[idx] ?? loco.funktionen[String(idx)];
+    if (!entry) return null;
+    return entry.typ ?? entry.type ?? null;
+  } catch (e) {
+    return null;
+  }
+}
+
+
 function updateStopBtn() {
   stopBtn.className = isRunning ? 'stop tab' : 'go tab';
   stopBtn.textContent = isRunning ? 'STOP' : 'GO';
@@ -130,7 +178,8 @@ function createFunctionButtons(col, offset) {
     btn.style.padding = '0';
     btn.addEventListener('mousedown', (e) => { e.preventDefault(); });
     const img = document.createElement('img');
-    const imgid = 50 + offset + i;
+    let imgid = getTypFromLocList(idx);
+    if (imgid == null) imgid = 50 + offset + i;
     img.src = `/static/fcticons/FktIcon_a_we_${imgid}.png`;
     btn.dataset.imgid = imgid;
     btn.appendChild(img);
@@ -138,7 +187,8 @@ function createFunctionButtons(col, offset) {
       const newState = !(locoState[currentLocoUid].functions[idx] || false);
       locoState[currentLocoUid].functions[idx] = newState;
       const iconPrefix = newState ? 'ge' : 'we';
-      img.src = `/static/fcticons/FktIcon_a_${iconPrefix}_${imgid}.png`;
+      const currentImgId = btn.dataset.imgid || getTypFromLocList(idx) || (50 + offset + i);
+      setFunctionIcon(img, iconPrefix, currentImgId);
       fetch('/api/function', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -195,10 +245,12 @@ fetch('/api/locs')
 function updateFunctionButtons(functions) {
   document.querySelectorAll('#leftFunctions button, #rightFunctions button').forEach((btn, index) => {
     const img = btn.querySelector('img');
-    const imgid = btn.dataset.imgid;
+    let imgid = getTypFromLocList(index);
+    if (imgid == null) imgid = btn.dataset.imgid;
     if (!img || !imgid) return;
+    btn.dataset.imgid = imgid;
     const active = !!functions[index];
     const iconPrefix = active ? 'ge' : 'we';
-    img.src = `/static/fcticons/FktIcon_a_${iconPrefix}_${imgid}.png`;
-  });
+    setFunctionIcon(img, iconPrefix, imgid);
+    });
 }
