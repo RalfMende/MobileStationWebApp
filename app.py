@@ -1,9 +1,48 @@
 
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, Response
 import socket
 import os
+import threading
+import queue
+import json
 
 app = Flask(__name__)
+
+# === SSE PubSub for browser clients ===
+subscribers = set()
+subs_lock = threading.Lock()
+
+def publish_event(ev: dict):
+    try:
+        data = json.dumps(ev, separators=(',', ':'))
+    except Exception:
+        return
+    with subs_lock:
+        dead = []
+        for q in list(subscribers):
+            try:
+                q.put_nowait(data)
+            except Exception:
+                dead.append(q)
+        for q in dead:
+            subscribers.discard(q)
+
+@app.get("/api/events")
+def sse_events():
+    q = queue.Queue(maxsize=1000)
+    with subs_lock:
+        subscribers.add(q)
+
+    def stream():
+        try:
+            while True:
+                data = q.get()
+                yield f"data: {data}\n\n"
+        except GeneratorExit:
+            pass
+        finally:
+            with subs_lock:
+                subscribers.discard(q)
 
 # ---- Server-side loco state (uid -> dict) ----
 # We keep the state in-memory. It can optionally be persisted later.
@@ -26,11 +65,13 @@ def get_state():
         return jsonify({str(k): v for k, v in loco_state.items()})
     return jsonify(loco_state.get(uid, {}))
 
+system_state = "stopped"  # "stopped", "running", "halted"
 
 path_config_files = "tmp"  # TODO: Get this dynamically or set as config
 
 UDP_IP = "192.168.20.42" #TODO: Get this dynamically
-UDP_PORT = 15731
+UDP_PORT_TX = 15731
+UDP_PORT_RX = 15730
 DEVICE_UID = 0x0 #TODO: Get this dynamically
 
 COMMAND_SYSTEM      = 0x00
@@ -81,7 +122,7 @@ def toggle():
 
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.sendto(sendBytes, (UDP_IP, UDP_PORT))
+        sock.sendto(sendBytes, (UDP_IP, UDP_PORT_TX))
         return jsonify(
             status='ok'
         )
@@ -128,7 +169,7 @@ def speed():
 
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.sendto(sendBytes, (UDP_IP, UDP_PORT))
+        sock.sendto(sendBytes, (UDP_IP, UDP_PORT_TX))
         return jsonify(
             status='ok'
         )
@@ -171,7 +212,7 @@ def direction():
 
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.sendto(sendBytes, (UDP_IP, UDP_PORT))
+        sock.sendto(sendBytes, (UDP_IP, UDP_PORT_TX))
         return jsonify(
             status='ok'
         )
@@ -218,7 +259,7 @@ def function():
 
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.sendto(sendBytes, (UDP_IP, UDP_PORT))
+        sock.sendto(sendBytes, (UDP_IP, UDP_PORT_TX))
         return jsonify(
             status='ok'
         )
@@ -311,13 +352,104 @@ def parse_magnetartikel_cs2(file_path):
 
     return articles
 
+# === CS2/CS3 UDP listener: parses frames and publishes events via SSE ===
+def listen_cs2_udp(host: str = "", port: int = UDP_PORT_RX, stop_event: threading.Event | None = None):
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        s.bind((host, port))
+    except OSError as e:
+        publish_event({"type":"error","message":f"UDP bind failed: {e}"})
+        return
+    s.settimeout(1.0)
+    try:
+        while not (stop_event and stop_event.is_set()):
+            try:
+                pkt, _ = s.recvfrom(2048)
+            except socket.timeout:
+                continue
+            except Exception as e:
+                publish_event({"type":"error","message":f"UDP recv error: {e}"})
+                continue
+
+            if len(pkt) != 13:
+                continue
+
+            can_id = int.from_bytes(pkt[0:4], "big")
+            dlc    = pkt[4]
+            data   = pkt[5:13]
+
+            cmd_resp = (can_id >> 16) & 0x1FF
+            command  = (cmd_resp >> 1) & 0xFF
+            resp_bit = cmd_resp & 0x01
+
+            # System: Stop/Go/Halt (0x00), D4=0x00/0x01/0x02
+            if command == COMMAND_SYSTEM and dlc >= 5:
+                sub = data[4]
+                if sub in (0x00, 0x01, 0x02):
+                    state = {0x00:"stopped", 0x01:"running", 0x02:"halted"}[sub]
+
+                    system_state = state
+
+                    publish_event({"type":"system","status":state,"resp":resp_bit})
+
+            # Speed (0x04): D0..D3 Loc-ID, D4..D5 speed
+            elif command == COMMAND_SPEED and dlc >= 6:
+                loc_id = int.from_bytes(data[0:4], "big")
+                speed  = int.from_bytes(data[4:6], "big")
+
+                st = _ensure_state(int(loc_id))
+                st['speed'] = int(speed)
+
+                publish_event({"type":"speed","loc_id":loc_id,"value":speed,"resp":resp_bit})
+
+            # Direction (0x05): D0..D3 Loc-ID, D4 dir
+            elif command == COMMAND_DIRECTION and dlc >= 5:
+                loc_id = int.from_bytes(data[0:4], "big")
+                direction = data[4]
+
+                st = _ensure_state(int(loc_id))
+                st['direction'] = int(direction)
+
+                publish_event({"type":"direction","loc_id":loc_id,"value":direction,"resp":resp_bit})
+
+            # Function (0x06): D0..D3 Loc-ID, D4 fn, D5 val (optional)
+            elif command == COMMAND_FUNCTION and dlc >= 5:
+                loc_id = int.from_bytes(data[0:4], "big")
+                fn_no  = data[4]
+                fn_val = data[5] if dlc >= 6 else 1
+
+                st = _ensure_state(int(loc_id))
+                st['functions'][int(fn_no)] = bool(fn_val)
+
+                publish_event({"type":"function","loc_id":loc_id,"fn":fn_no,"value":fn_val,"resp":resp_bit})
+    except Exception as e:
+        publish_event({"type":"error","message":f"UDP listener crashed: {e}"})
+    finally:
+        try:
+            s.close()
+        except Exception:
+            pass
+
+
+# === Start UDP listener on first request ===
+_listener_started = False
+_stop_evt = threading.Event()
+
 if __name__ == '__main__':
     loc_list = parse_lokomotive_cs2(os.path.join(path_config_files, "lokomotive.cs2"))
     switch_list = parse_magnetartikel_cs2(os.path.join(path_config_files, "magnetartikel.cs2"))
+    
+
     # initialize server-side state for all known locs
     try:
         for loco in loc_list:
             _ensure_state(int(loco.get('uid') if isinstance(loco, dict) else loco['uid']))
     except Exception:
         pass
+
+    # UDP-Listener gleich starten
+    t = threading.Thread(target=listen_cs2_udp, args=("", UDP_PORT_RX, _stop_evt), daemon=True)
+    t.start()
+
     app.run(host='0.0.0.0', port=5005)
