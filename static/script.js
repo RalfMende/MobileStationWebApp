@@ -53,24 +53,35 @@ function getTypFromLocList(idx) {
   }
 }
 
-
 function updateStopBtn() {
   stopBtn.className = isRunning ? 'stop tab' : 'go tab';
   stopBtn.textContent = isRunning ? 'STOP' : 'GO';
 }
-updateStopBtn();
+
+fetch('/api/system_state')
+  .then(response => response.json())
+  .then(data => {
+    isRunning = data.status;
+    updateStopBtn();
+  });
 
 stopBtn.addEventListener('click', () => {
-  isRunning = !isRunning;
-  updateStopBtn();
-  fetch('/api/toggle', {
+  fetch('/api/stop_button', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      state: isRunning
-    })
+    body: JSON.stringify({ state: !isRunning })
   });
+  // isRunning und updateStopBtn() werden erst durch SSE gesetzt!
 });
+
+const evtSource = new EventSource('/api/events');
+evtSource.onmessage = function(event) {
+    const data = JSON.parse(event.data);
+    if (data.type === 'system') {
+        isRunning = data.status;
+        updateStopBtn();
+    }
+};
 
 function setDirection(dir) {
   console.log("Sending direction for loco_id:", currentLocoUid, "direction:", dir);

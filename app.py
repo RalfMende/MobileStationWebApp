@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template, Response
+from flask import Flask, request, jsonify, render_template, Response, stream_with_context
 import socket
 import os
 import threading
@@ -167,7 +167,7 @@ def _clamp_speed10(x: int) -> int:
     return max(0, min(1023, int(x)))
 
 
-def _payload_system_toggle(device_uid: int, running: bool) -> bytes:
+def _payload_system_state(device_uid: int, running: bool) -> bytes:
     """Build payload for starting/stopping the system."""
     b = bytearray()
     b.extend(device_uid.to_bytes(4, 'big'))
@@ -248,6 +248,14 @@ Returns:
         finally:
             with subs_lock:
                 subscribers.discard(q)
+
+    headers = {
+        "Cache-Control": "no-cache",
+        "X-Accel-Buffering": "no"  # wichtig, falls hinter nginx
+    }
+    return Response(stream_with_context(stream()),
+                    mimetype='text/event-stream',
+                    headers=headers)
 
 def _ensure_state(uid: int):
     """Return mutable state dict for a loco, creating defaults if missing."""
@@ -334,6 +342,32 @@ Returns:
                         current_entry[key] = value
     return articles
 
+@app.route('/api/system_state')
+def get_system_state():
+    state_wif = 1 if system_state == SystemState.RUNNING else 0
+    return jsonify({'status': state_wif})
+
+@app.route('/api/stop_button', methods=['POST'])
+def toggle():
+    """Function `stop_button`.
+
+Args:
+    None
+
+Returns:
+    See implementation."""
+    data = _require_json()
+    running = bool(data.get(K_STATE, False))
+    can_id = build_can_id(DEVICE_UID, Command.SYSTEM, prio=0, resp=0)
+    data_bytes = _payload_system_state(DEVICE_UID, running)
+    data_bytes = _pad_to_8(data_bytes)
+    try:
+        _udp_send_frame(can_id, data_bytes, dlc=5)
+        set_system_state(SystemState.RUNNING if running else SystemState.STOPPED)
+        return jsonify(status='ok')
+    except Exception as e:
+        return (jsonify(status='error', message=str(e)), 500)
+    
 @app.route('/')
 def index():
     """Function `index`.
@@ -365,25 +399,12 @@ Returns:
     loc_dict = {str(loco['uid']): loco for loco in loc_list}
     return jsonify(loc_dict)
 
-@app.route('/api/toggle', methods=['POST'])
-def toggle():
-    """Function `toggle`.
-
-Args:
-    None
-
-Returns:
-    See implementation."""
-    data = _require_json()
-    running = bool(data.get(K_STATE, False))
-    can_id = build_can_id(DEVICE_UID, Command.SYSTEM, prio=0, resp=0)
-    data_bytes = _payload_system_toggle(DEVICE_UID, running)
-    data_bytes = _pad_to_8(data_bytes)
-    try:
-        _udp_send_frame(can_id, data_bytes, dlc=5)
-        return jsonify(status='ok')
-    except Exception as e:
-        return (jsonify(status='error', message=str(e)), 500)
+def set_system_state(new_state):
+    global system_state
+    if system_state != new_state:
+        system_state = new_state
+        state_wif = 1 if system_state == SystemState.RUNNING else 0
+        publish_event({'type': 'system', 'status': state_wif})
 
 @app.route('/api/speed', methods=['POST'])
 def speed():
@@ -516,8 +537,9 @@ Returns:
                 sub = data[4]
                 if sub in (0, 1, 2):
                     state = {0: SystemState.STOPPED, 1: SystemState.RUNNING, 2: SystemState.HALTED}[sub]
-                    system_state = state
-                    publish_event({'type': 'system', 'status': state, 'resp': resp_bit})
+                    set_system_state(state)
+                    #state_wif = 1 if system_state == SystemState.RUNNING else 0
+                    #publish_event({'type': 'system', 'status': state_wif, 'resp': resp_bit})
             elif command == Command.SPEED and dlc >= 6:
                 loc_id = int.from_bytes(data[0:4], 'big')
                 speed = int.from_bytes(data[4:6], 'big')
