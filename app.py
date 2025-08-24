@@ -227,12 +227,11 @@ def speed():
     except ValueError as e:
         return (jsonify(status='error', message=str(e)), 400)
     speed = data.get(K_SPEED)
-    st = _ensure_state(uid_int)
     try:
         speed10 = _clamp_speed10(int(speed))
-        st['speed'] = speed10
     except (TypeError, ValueError):
         return (jsonify(status='error', message='invalid speed'), 400)
+    set_loco_state_speed(uid_int, speed10)
     can_id = build_can_id(DEVICE_UID, Command.SPEED, prio=0, resp=0)
     data_bytes = bytearray()
     data_bytes.extend(uid_int.to_bytes(4, 'big'))
@@ -257,12 +256,11 @@ def direction():
     except ValueError as e:
         return (jsonify(status='error', message=str(e)), 400)
     direction = _get_first(data, K_DIRECTION, 'dir')
-    st = _ensure_state(uid_int)
     try:
         dir_int = _coerce_direction(direction)
-        st['direction'] = dir_int
     except (TypeError, ValueError):
         return (jsonify(status='error', message='invalid direction'), 400)
+    set_loco_state_direction(uid_int, dir_int)
     can_id = build_can_id(DEVICE_UID, Command.DIRECTION, prio=0, resp=0)
     data_bytes = _payload_direction(uid_int, dir_int)
     data_bytes = _pad_to_8(data_bytes)
@@ -286,13 +284,12 @@ def function():
         return (jsonify(status='error', message=str(e)), 400)
     function = _get_first(data, K_FUNCTION, 'fn')
     value = _get_first(data, K_VALUE, 'val', 'on')
-    st = _ensure_state(uid_int)
     try:
         fn = int(function)
         val = bool(value)
     except (TypeError, ValueError):
         return (jsonify(status='error', message='invalid function/value'), 400)
-    st['functions'][fn] = val
+    set_loco_state_function(uid_int, fn, val)
     can_id = build_can_id(DEVICE_UID, Command.FUNCTION, prio=0, resp=0)
     data_bytes = _payload_function(uid_int, fn, _coerce_bool(value))
     data_bytes = _pad_to_8(data_bytes)
