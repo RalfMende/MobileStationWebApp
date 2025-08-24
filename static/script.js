@@ -85,12 +85,15 @@ evtSource.onmessage = function(event) {
     if (data.type === 'direction') {
       applyDirectionUI(data.value === 1 ? 'forward' : data.value === 2 ? 'reverse' : undefined);
     }
+        if (data.type === 'speed') {
+      speedSlider.value = data.value;
+      applySpeedUI(data.value);
+    }
     if (data.type === 'function') {
       updateFunctionButton(data.fn, data.value);
     }
   }
 };
-
 
 fetch('/api/locs')
   .then(response => response.json())
@@ -120,7 +123,7 @@ fetch('/api/locs')
       };
     });
   });
-  
+
 function setDirection(dir) {
   console.log("Sending direction for loco_id:", currentLocoUid, "direction:", dir);
   fetch('/api/direction', {
@@ -136,7 +139,6 @@ function setDirection(dir) {
 reverseBtn.addEventListener('click', () => setDirection('reverse'));
 forwardBtn.addEventListener('click', () => setDirection('forward'));
 
-// --- Client-side helpers to apply server-side state without sending commands ---
 function applyDirectionUI(dir) {
   if (dir === 'forward') {
     forwardBtn.src = '/static/grafics/dir_right_active.png';
@@ -148,10 +150,12 @@ function applyDirectionUI(dir) {
 }
 
 function applySpeedUI(val) {
+  speedFill.style.height = `${(val / 1000) * 100}%`;
+  // Calculation: 0–1000 (Protocol) to 0–tachomax (Display)
+  // const kmh = Math.round((val / 1000) * tachomax);
   const tachomax = locList[currentLocoUid].tachomax || 200;
   const kmh = Math.round(val * tachomax / 1000);
   speedValue.textContent = `${kmh} km/h`;
-  speedFill.style.height = `${(val / 1000) * 100}%`;
 }
 
 // Fetch state for a given loco from the server and update the UI (no commands sent)
@@ -170,14 +174,8 @@ function fetchAndApplyState(locoUid) {
     .catch(err => console.warn('Failed to fetch state:', err));
 }
 
-
 function updateSlider(val) {
-  const tachomax = locList[currentLocoUid].tachomax || 200;
-  // Umrechnung: 0–1000 (Protokoll) auf 0–tachomax (Anzeige)
-  //const kmh = Math.round((val / 1000) * tachomax);
-  const kmh = Math.round(val * tachomax / 1000);
-  speedValue.textContent = `${kmh} km/h`;
-  speedFill.style.height = `${(val / 1000) * 100}%`;
+  applySpeedUI(val);
   fetch('/api/speed', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
