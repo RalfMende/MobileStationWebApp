@@ -195,7 +195,7 @@ def set_loco_state_function(loc_id, fn_no, fn_val):
     st = _ensure_state(int(loc_id))
     st['functions'][int(fn_no)] = bool(fn_val)
     publish_event({'type': 'function', 'loc_id': loc_id, 'fn': fn_no, 'value': fn_val})
-
+    
 @app.route('/api/locs')
 def get_locs():
     """Function `get_locs`.
@@ -216,88 +216,47 @@ def get_state():
 
 @app.route('/api/speed', methods=['POST'])
 def speed():
-    """Function `speed`.
-    Args:
-        None
-    Returns:
-        See implementation."""
+    """Unified handler for speed."""
     data = _require_json()
-    try:
-        uid_int = _require_int(data, K_LOCO_ID, 'invalid loco_id')
-    except ValueError as e:
-        return (jsonify(status='error', message=str(e)), 400)
-    speed = data.get(K_SPEED)
-    try:
-        speed10 = _clamp_speed10(int(speed))
-    except (TypeError, ValueError):
-        return (jsonify(status='error', message='invalid speed'), 400)
-    set_loco_state_speed(uid_int, speed10)
-    can_id = build_can_id(DEVICE_UID, Command.SPEED, prio=0, resp=0)
-    data_bytes = bytearray()
-    data_bytes.extend(uid_int.to_bytes(4, 'big'))
-    data_bytes.extend(speed10.to_bytes(2, 'big'))
-    data_bytes = _pad_to_8(data_bytes)
-    try:
-        _udp_send_frame(can_id, data_bytes, dlc=6)
-        return jsonify(status='ok')
-    except Exception as e:
-        return (jsonify(status='error', message=str(e)), 500)
+    return send_cs2_udp(
+        data,
+        [K_SPEED],
+        set_loco_state_speed,
+        Command.SPEED,
+        _payload_speed,
+        6
+    )
 
 @app.route('/api/direction', methods=['POST'])
 def direction():
-    """Function `direction`.
-    Args:
-        None
-    Returns:
-        See implementation."""
+    """Unified handler for direction."""
     data = _require_json()
-    try:
-        uid_int = _require_int(data, K_LOCO_ID, 'invalid loco_id')
-    except ValueError as e:
-        return (jsonify(status='error', message=str(e)), 400)
-    direction = _get_first(data, K_DIRECTION, 'dir')
-    try:
-        dir_int = _coerce_direction(direction)
-    except (TypeError, ValueError):
-        return (jsonify(status='error', message='invalid direction'), 400)
-    #set_loco_state_direction(uid_int, dir_int)
-    can_id = build_can_id(DEVICE_UID, Command.DIRECTION, prio=0, resp=0)
-    data_bytes = _payload_direction(uid_int, dir_int)
-    data_bytes = _pad_to_8(data_bytes)
-    try:
-        _udp_send_frame(can_id, data_bytes, dlc=5)
-        return jsonify(status='ok')
-    except Exception as e:
-        return (jsonify(status='error', message=str(e)), 500)
+    return send_cs2_udp(
+        data,
+        [K_DIRECTION],
+        set_loco_state_direction,
+        Command.DIRECTION,
+        _payload_direction,
+        5
+    )
 
 @app.route('/api/function', methods=['POST'])
 def function():
-    """Function `function`.
-    Args:
-        None
-    Returns:
-        See implementation."""
+    """Unified handler for function."""
     data = _require_json()
-    try:
-        uid_int = _require_int(data, K_LOCO_ID, 'invalid loco_id')
-    except ValueError as e:
-        return (jsonify(status='error', message=str(e)), 400)
-    function = _get_first(data, K_FUNCTION, 'fn')
-    value = _get_first(data, K_VALUE, 'val', 'on')
-    try:
-        fn = int(function)
-        val = bool(value)
-    except (TypeError, ValueError):
-        return (jsonify(status='error', message='invalid function/value'), 400)
-    set_loco_state_function(uid_int, fn, val)
-    can_id = build_can_id(DEVICE_UID, Command.FUNCTION, prio=0, resp=0)
-    data_bytes = _payload_function(uid_int, fn, _coerce_bool(value))
-    data_bytes = _pad_to_8(data_bytes)
-    try:
-        _udp_send_frame(can_id, data_bytes, dlc=6)
-        return jsonify(status='ok')
-    except Exception as e:
-        return (jsonify(status='error', message=str(e)), 500)
+    fn = _get_first(data, K_FUNCTION, 'fn')
+    val = _get_first(data, K_VALUE, 'val', 'on')
+    # Pass both fn and val to the handler
+    data[K_FUNCTION] = fn
+    data[K_VALUE] = val
+    return send_cs2_udp(
+        data,
+        [K_FUNCTION, K_VALUE],
+        set_loco_state_function,
+        Command.FUNCTION,
+        _payload_function,
+        6
+    )
 
 #************************************************************************************
 # CS2 interaction
@@ -401,7 +360,7 @@ def _payload_speed(loco_uid: int, speed: int) -> bytes:
     """Build payload for setting a locomotive's speed."""
     b = bytearray()
     b.extend(loco_uid.to_bytes(4, 'big'))
-    b.append(speed & 255)
+    b.extend(int(speed).to_bytes(2, 'big'))
     return b
 
 def _payload_direction(loco_uid: int, direction: int) -> bytes:
@@ -419,6 +378,36 @@ def _payload_function(loco_uid: int, function: int, value: int) -> bytes:
     b.append(value & 255)
     return b
 
+def send_cs2_udp(data, key_map, state_func, can_command, payload_func, dlc):
+    """Shared handler for loco commands (speed, direction, function)."""
+    try:
+        uid_int = _require_int(data, K_LOCO_ID, 'invalid loco_id')
+    except ValueError as e:
+        return (jsonify(status='error', message=str(e)), 400)
+    # Extract and validate command-specific values
+    try:
+        values = [data.get(k) for k in key_map]
+        # Custom conversion for direction and function
+        if can_command == Command.SPEED:
+            values[0] = _clamp_speed10(int(values[0]))
+        elif can_command == Command.DIRECTION:
+            values[0] = _coerce_direction(values[0])
+        elif can_command == Command.FUNCTION:
+            values[0] = int(values[0])
+            values[1] = _coerce_bool(values[1])
+    except (TypeError, ValueError):
+        return (jsonify(status='error', message=f'invalid {key_map}'), 400)
+    # State update
+    state_func(uid_int, *values)
+    can_id = build_can_id(DEVICE_UID, can_command, prio=0, resp=0)
+    data_bytes = payload_func(uid_int, *values)
+    data_bytes = _pad_to_8(data_bytes)
+    try:
+        _udp_send_frame(can_id, data_bytes, dlc=dlc)
+        return jsonify(status='ok')
+    except Exception as e:
+        return (jsonify(status='error', message=str(e)), 500)
+    
 def listen_cs2_udp(host: str='', port: int=UDP_PORT_RX, stop_event: threading.Event | None=None):
     """Function `listen_cs2_udp`.
     Args:
