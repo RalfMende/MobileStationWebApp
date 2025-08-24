@@ -176,18 +176,14 @@ function fetchAndApplyState(locoUid) {
 
 function updateSlider(val) {
   applySpeedUI(val);
-  // Debounce UDP message
-  //if (window._sliderDebounce) clearTimeout(window._sliderDebounce);
-  //window._sliderDebounce = setTimeout(() => {
-    fetch('/api/speed', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        loco_id: currentLocoUid,
-        speed: val
-      })
-    });
-  //}, 50);
+  fetch('/api/speed', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      loco_id: currentLocoUid,
+      speed: val
+    })
+  });
 }
 
 let isDragging = false;
