@@ -181,6 +181,21 @@ def _ensure_state(uid: int):
         loco_state[uid] = st
     return st
 
+def set_loco_state_speed(loc_id, speed):
+    st = _ensure_state(int(loc_id))
+    st['speed'] = int(speed)
+    #publish_event({'type': 'speed', 'loc_id': loc_id, 'value': speed})
+
+def set_loco_state_direction(loc_id, direction):
+    st = _ensure_state(int(loc_id))
+    st['direction'] = int(direction)
+    #publish_event({'type': 'direction', 'loc_id': loc_id, 'value': direction})
+
+def set_loco_state_function(loc_id, fn_no, fn_val):
+    st = _ensure_state(int(loc_id))
+    st['functions'][int(fn_no)] = bool(fn_val)
+    #publish_event({'type': 'function', 'loc_id': loc_id, 'fn': fn_no, 'value': fn_val})
+
 @app.route('/api/locs')
 def get_locs():
     """Function `get_locs`.
@@ -446,22 +461,16 @@ def listen_cs2_udp(host: str='', port: int=UDP_PORT_RX, stop_event: threading.Ev
             elif command == Command.SPEED and dlc >= 6:
                 loc_id = int.from_bytes(data[0:4], 'big')
                 speed = int.from_bytes(data[4:6], 'big')
-                st = _ensure_state(int(loc_id))
-                st['speed'] = int(speed)
-                publish_event({'type': 'speed', 'loc_id': loc_id, 'value': speed, 'resp': resp_bit})
+                set_loco_state_speed(loc_id, speed)
             elif command == Command.DIRECTION and dlc >= 5:
                 loc_id = int.from_bytes(data[0:4], 'big')
                 direction = data[4]
-                st = _ensure_state(int(loc_id))
-                st['direction'] = int(direction)
-                publish_event({'type': 'direction', 'loc_id': loc_id, 'value': direction, 'resp': resp_bit})
+                set_loco_state_direction(loc_id, direction)
             elif command == Command.FUNCTION and dlc >= 5:
                 loc_id = int.from_bytes(data[0:4], 'big')
                 fn_no = data[4]
                 fn_val = data[5] if dlc >= 6 else 1
-                st = _ensure_state(int(loc_id))
-                st['functions'][int(fn_no)] = bool(fn_val)
-                publish_event({'type': 'function', 'loc_id': loc_id, 'fn': fn_no, 'value': fn_val, 'resp': resp_bit})
+                set_loco_state_function(loc_id, fn_no, fn_val)
     except Exception as e:
         publish_event({'type': 'error', 'message': f'UDP listener crashed: {e}'})
     finally:
