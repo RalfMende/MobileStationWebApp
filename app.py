@@ -75,122 +75,9 @@ class Direction(IntEnum):
 FUNCTION_MIN = 0
 FUNCTION_MAX = 31
 
-def _pad_to_8(data: bytearray | bytes) -> bytes:
-    """Utility: Pad payload to 8 bytes for CAN frames."""
-    b = bytearray(data)
-    while len(b) < 8:
-        b.append(0)
-    return bytes(b)
-
-def _udp_send_frame(can_id: int, payload: bytes | bytearray, dlc: int) -> None:
-    """Utility: Assemble and send one UDP-encapsulated CAN frame to the CS2 bridge."""
-    data_bytes = _pad_to_8(payload)
-    send_bytes = bytearray()
-    send_bytes.extend(can_id.to_bytes(4, 'big'))
-    send_bytes.append(dlc & 255)
-    send_bytes.extend(data_bytes)
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.sendto(send_bytes, (UDP_IP, UDP_PORT_TX))
-
-def generate_hash(uid: int) -> int:
-    """Function `generate_hash`.
-    Args:
-        uid
-    Returns:
-        See implementation."""
-    hi = uid >> 16 & 65535
-    lo = uid & 65535
-    h = hi ^ lo
-    h = h << 3 & 65280 | 768 | h & 127
-    return h & 65535
-
-def build_can_id(uid: int, command: int, prio: int=0, resp: int=0) -> int:
-    """Function `build_can_id`.
-    Args:
-        uid, command, prio, resp
-    Returns:
-        See implementation."""
-    hash16 = generate_hash(uid)
-    return prio << 25 | (command << 1 | resp & 1) << 16 | hash16
-
-def _require_json() -> dict:
-    """Return JSON body or an empty dict if none was provided."""
-    return request.get_json(silent=True) or {}
-
-def _require_int(data: dict, key: str, err_msg: str) -> int:
-    """Fetch and cast a JSON field to int; raise ValueError with friendly message on failure."""
-    try:
-        return int(data.get(key))
-    except (TypeError, ValueError):
-        raise ValueError(err_msg)
-
-
-def _get_first(data: dict, *keys):
-    """Return the first present key from *keys in data (or None)."""
-    for k in keys:
-        if k in data:
-            return data.get(k)
-    return None
-
-def _coerce_bool(val) -> int:
-    """Coerce truthy/falsy representations to 0/1 int for payloads."""
-    if isinstance(val, bool):
-        return 1 if val else 0
-    try:
-        if isinstance(val, (int, float)) and not isinstance(val, bool):
-            return 1 if int(val) != 0 else 0
-        s = str(val).strip().lower()
-        return 1 if s in ('1', 'true', 'on', 'yes') else 0
-    except Exception:
-        return 0
-
-def _coerce_direction(val) -> int:
-    """Coerce direction input to enum int (KEEP/FORWARD/REVERSE/TOGGLE)."""
-    try:
-        if isinstance(val, (int, float)):
-            i = int(val)
-            return i
-        s = str(val).strip().lower()
-        mapping = {'keep': 0, 'forward': 1, 'fwd': 1, 'reverse': 2, 'rev': 2, 'toggle': 3}
-        if s in mapping:
-            return mapping[s]
-        return int(s)
-    except Exception:
-        return 0
-
-def _clamp_speed10(x: int) -> int:
-    """Clamp speed to 10-bit range (0..1023)."""
-    return max(0, min(1023, int(x)))
-
-
-def _payload_system_state(device_uid: int, running: bool) -> bytes:
-    """Build payload for starting/stopping the system."""
-    b = bytearray()
-    b.extend(device_uid.to_bytes(4, 'big'))
-    b.append(1 if running else 0)
-    return b
-
-def _payload_speed(loco_uid: int, speed: int) -> bytes:
-    """Build payload for setting a locomotive's speed."""
-    b = bytearray()
-    b.extend(loco_uid.to_bytes(4, 'big'))
-    b.append(speed & 255)
-    return b
-
-def _payload_direction(loco_uid: int, direction: int) -> bytes:
-    """Build payload for setting a locomotive's direction."""
-    b = bytearray()
-    b.extend(loco_uid.to_bytes(4, 'big'))
-    b.append(direction & 255)
-    return b
-
-def _payload_function(loco_uid: int, function: int, value: int) -> bytes:
-    """Build payload for toggling a locomotive function (e.g., lights)."""
-    b = bytearray()
-    b.extend(loco_uid.to_bytes(4, 'big'))
-    b.append(function & 255)
-    b.append(value & 255)
-    return b
+#************************************************************************************
+# General event handling
+#************************************************************************************
 
 def publish_event(ev: dict):
     """Function `publish_event`.
@@ -247,91 +134,21 @@ def sse_events():
                     mimetype='text/event-stream',
                     headers=headers)
 
-def _ensure_state(uid: int):
-    """Return mutable state dict for a loco, creating defaults if missing."""
-    st = loco_state.get(uid)
-    if st is None:
-        st = {'speed': 0, 'direction': 1, 'functions': {}}
-        loco_state[uid] = st
-    return st
-
-def parse_lokomotive_cs2(file_path):
-    """Function `parse_lokomotive_cs2`.
-    Args:
-        file_path
-    Returns:
-        See implementation."""
-    locomotives = []
-    current_locomotive = None
-    current_functions = {}
-    current_function_key = None
-    parsing_function = False
-    with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
-        for line in file:
-            line = line.strip()
-            if line == 'lokomotive':
-                if current_locomotive:
-                    if current_functions:
-                        current_locomotive['funktionen'] = current_functions
-                    locomotives.append(current_locomotive)
-                current_locomotive = {}
-                current_functions = {}
-                current_function_key = None
-                parsing_function = False
-            elif current_locomotive is not None:
-                if '.funktionen' in line:
-                    parsing_function = True
-                    current_function_key = None
-                elif parsing_function and line.startswith('..nr='):
-                    current_function_key = line.split('=', 1)[1].strip()
-                    current_functions[current_function_key] = {}
-                elif parsing_function and line.startswith('..') and ('=' in line) and current_function_key:
-                    key, value = line[2:].split('=', 1)
-                    current_functions[current_function_key][key.strip()] = parse_value(value)
-                elif line.startswith('.') and '=' in line and (not line.startswith('..')):
-                    key, value = line[1:].split('=', 1)
-                    current_locomotive[key.strip()] = parse_value(value)
-                    parsing_function = False
-        if current_locomotive:
-            if current_functions:
-                current_locomotive['funktionen'] = current_functions
-            locomotives.append(current_locomotive)
-    return locomotives
-
-def parse_magnetartikel_cs2(file_path):
-    """Function `parse_magnetartikel_cs2`.
-    Args:
-        file_path
-    Returns:
-        See implementation."""
-    articles = {}
-    current_section = None
-    current_entry = {}
-    with open(file_path, 'r', encoding='utf-8') as file:
-        for line in file:
-            line = line.strip()
-            if not line:
-                continue
-            if not line.startswith('.'):
-                if line == 'artikel':
-                    current_section = 'artikel'
-                    current_entry = {}
-                    if 'artikel' not in articles:
-                        articles['artikel'] = []
-                    articles['artikel'].append(current_entry)
-            else:
-                key_value = line.lstrip('.').split('=', 1)
-                if len(key_value) == 2:
-                    key, value = key_value
-                    value = parse_value(value)
-                    if current_section == 'artikel':
-                        current_entry[key] = value
-    return articles
-
+#************************************************************************************
+# System state handling
+#************************************************************************************
+        
 @app.route('/api/system_state')
 def get_system_state():
     state_wif = 1 if system_state == SystemState.RUNNING else 0
     return jsonify({'status': state_wif})
+
+def set_system_state(new_state):
+    global system_state
+    if system_state != new_state:
+        system_state = new_state
+        state_wif = 1 if system_state == SystemState.RUNNING else 0
+        publish_event({'type': 'system', 'status': state_wif})
 
 @app.route('/api/stop_button', methods=['POST'])
 def toggle():
@@ -351,23 +168,18 @@ def toggle():
         return jsonify(status='ok')
     except Exception as e:
         return (jsonify(status='error', message=str(e)), 500)
-    
-@app.route('/')
-def index():
-    """Function `index`.
-    Args:
-        None
-    Returns:
-        See implementation."""
-    return render_template('index.html')
 
-@app.route('/api/state')
-def get_state():
-    """Return full state or state for a specific loco_id (query param)."""
-    uid = request.args.get('loco_id', type=int)
-    if uid is None:
-        return jsonify({str(k): v for k, v in loco_state.items()})
-    return jsonify(loco_state.get(uid, {}))
+#************************************************************************************
+# Loco state handling
+#************************************************************************************
+
+def _ensure_state(uid: int):
+    """Return mutable state dict for a loco, creating defaults if missing."""
+    st = loco_state.get(uid)
+    if st is None:
+        st = {'speed': 0, 'direction': 1, 'functions': {}}
+        loco_state[uid] = st
+    return st
 
 @app.route('/api/locs')
 def get_locs():
@@ -379,12 +191,13 @@ def get_locs():
     loc_dict = {str(loco['uid']): loco for loco in loc_list}
     return jsonify(loc_dict)
 
-def set_system_state(new_state):
-    global system_state
-    if system_state != new_state:
-        system_state = new_state
-        state_wif = 1 if system_state == SystemState.RUNNING else 0
-        publish_event({'type': 'system', 'status': state_wif})
+@app.route('/api/state')
+def get_state():
+    """Return full state or state for a specific loco_id (query param)."""
+    uid = request.args.get('loco_id', type=int)
+    if uid is None:
+        return jsonify({str(k): v for k, v in loco_state.items()})
+    return jsonify(loco_state.get(uid, {}))
 
 @app.route('/api/speed', methods=['POST'])
 def speed():
@@ -474,6 +287,126 @@ def function():
     except Exception as e:
         return (jsonify(status='error', message=str(e)), 500)
 
+#************************************************************************************
+# CS2 interaction
+#************************************************************************************
+
+def _pad_to_8(data: bytearray | bytes) -> bytes:
+    """Utility: Pad payload to 8 bytes for CAN frames."""
+    b = bytearray(data)
+    while len(b) < 8:
+        b.append(0)
+    return bytes(b)
+
+def _udp_send_frame(can_id: int, payload: bytes | bytearray, dlc: int) -> None:
+    """Utility: Assemble and send one UDP-encapsulated CAN frame to the CS2 bridge."""
+    data_bytes = _pad_to_8(payload)
+    send_bytes = bytearray()
+    send_bytes.extend(can_id.to_bytes(4, 'big'))
+    send_bytes.append(dlc & 255)
+    send_bytes.extend(data_bytes)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.sendto(send_bytes, (UDP_IP, UDP_PORT_TX))
+
+def generate_hash(uid: int) -> int:
+    """Function `generate_hash`.
+    Args:
+        uid
+    Returns:
+        See implementation."""
+    hi = uid >> 16 & 65535
+    lo = uid & 65535
+    h = hi ^ lo
+    h = h << 3 & 65280 | 768 | h & 127
+    return h & 65535
+
+def build_can_id(uid: int, command: int, prio: int=0, resp: int=0) -> int:
+    """Function `build_can_id`.
+    Args:
+        uid, command, prio, resp
+    Returns:
+        See implementation."""
+    hash16 = generate_hash(uid)
+    return prio << 25 | (command << 1 | resp & 1) << 16 | hash16
+
+def _require_json() -> dict:
+    """Return JSON body or an empty dict if none was provided."""
+    return request.get_json(silent=True) or {}
+
+def _require_int(data: dict, key: str, err_msg: str) -> int:
+    """Fetch and cast a JSON field to int; raise ValueError with friendly message on failure."""
+    try:
+        return int(data.get(key))
+    except (TypeError, ValueError):
+        raise ValueError(err_msg)
+
+
+def _get_first(data: dict, *keys):
+    """Return the first present key from *keys in data (or None)."""
+    for k in keys:
+        if k in data:
+            return data.get(k)
+    return None
+
+def _coerce_bool(val) -> int:
+    """Coerce truthy/falsy representations to 0/1 int for payloads."""
+    if isinstance(val, bool):
+        return 1 if val else 0
+    try:
+        if isinstance(val, (int, float)) and not isinstance(val, bool):
+            return 1 if int(val) != 0 else 0
+        s = str(val).strip().lower()
+        return 1 if s in ('1', 'true', 'on', 'yes') else 0
+    except Exception:
+        return 0
+
+def _coerce_direction(val) -> int:
+    """Coerce direction input to enum int (KEEP/FORWARD/REVERSE/TOGGLE)."""
+    try:
+        if isinstance(val, (int, float)):
+            i = int(val)
+            return i
+        s = str(val).strip().lower()
+        mapping = {'keep': 0, 'forward': 1, 'fwd': 1, 'reverse': 2, 'rev': 2, 'toggle': 3}
+        if s in mapping:
+            return mapping[s]
+        return int(s)
+    except Exception:
+        return 0
+
+def _clamp_speed10(x: int) -> int:
+    """Clamp speed to 10-bit range (0..1023)."""
+    return max(0, min(1023, int(x)))
+
+def _payload_system_state(device_uid: int, running: bool) -> bytes:
+    """Build payload for starting/stopping the system."""
+    b = bytearray()
+    b.extend(device_uid.to_bytes(4, 'big'))
+    b.append(1 if running else 0)
+    return b
+
+def _payload_speed(loco_uid: int, speed: int) -> bytes:
+    """Build payload for setting a locomotive's speed."""
+    b = bytearray()
+    b.extend(loco_uid.to_bytes(4, 'big'))
+    b.append(speed & 255)
+    return b
+
+def _payload_direction(loco_uid: int, direction: int) -> bytes:
+    """Build payload for setting a locomotive's direction."""
+    b = bytearray()
+    b.extend(loco_uid.to_bytes(4, 'big'))
+    b.append(direction & 255)
+    return b
+
+def _payload_function(loco_uid: int, function: int, value: int) -> bytes:
+    """Build payload for toggling a locomotive function (e.g., lights)."""
+    b = bytearray()
+    b.extend(loco_uid.to_bytes(4, 'big'))
+    b.append(function & 255)
+    b.append(value & 255)
+    return b
+
 def listen_cs2_udp(host: str='', port: int=UDP_PORT_RX, stop_event: threading.Event | None=None):
     """Function `listen_cs2_udp`.
     Args:
@@ -537,6 +470,10 @@ def listen_cs2_udp(host: str='', port: int=UDP_PORT_RX, stop_event: threading.Ev
         except Exception:
             pass
 
+#************************************************************************************
+# Config file handling
+#************************************************************************************
+
 def parse_value(val):
     """Function `parse_value`.
     Args:
@@ -553,14 +490,112 @@ def parse_value(val):
         return int(val)
     return val
 
+def parse_lokomotive_cs2(file_path):
+    """Function `parse_lokomotive_cs2`.
+    Args:
+        file_path
+    Returns:
+        See implementation."""
+    locomotives = []
+    current_locomotive = None
+    current_functions = {}
+    current_function_key = None
+    parsing_function = False
+    with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
+        for line in file:
+            line = line.strip()
+            if line == 'lokomotive':
+                if current_locomotive:
+                    if current_functions:
+                        current_locomotive['funktionen'] = current_functions
+                    locomotives.append(current_locomotive)
+                current_locomotive = {}
+                current_functions = {}
+                current_function_key = None
+                parsing_function = False
+            elif current_locomotive is not None:
+                if '.funktionen' in line:
+                    parsing_function = True
+                    current_function_key = None
+                elif parsing_function and line.startswith('..nr='):
+                    current_function_key = line.split('=', 1)[1].strip()
+                    current_functions[current_function_key] = {}
+                elif parsing_function and line.startswith('..') and ('=' in line) and current_function_key:
+                    key, value = line[2:].split('=', 1)
+                    current_functions[current_function_key][key.strip()] = parse_value(value)
+                elif line.startswith('.') and '=' in line and (not line.startswith('..')):
+                    key, value = line[1:].split('=', 1)
+                    current_locomotive[key.strip()] = parse_value(value)
+                    parsing_function = False
+        if current_locomotive:
+            if current_functions:
+                current_locomotive['funktionen'] = current_functions
+            locomotives.append(current_locomotive)
+    return locomotives
+
+def parse_magnetartikel_cs2(file_path):
+    """Function `parse_magnetartikel_cs2`.
+    Args:
+        file_path
+    Returns:
+        See implementation."""
+    articles = {}
+    current_section = None
+    current_entry = {}
+    with open(file_path, 'r', encoding='utf-8') as file:
+        for line in file:
+            line = line.strip()
+            if not line:
+                continue
+            if not line.startswith('.'):
+                if line == 'artikel':
+                    current_section = 'artikel'
+                    current_entry = {}
+                    if 'artikel' not in articles:
+                        articles['artikel'] = []
+                    articles['artikel'].append(current_entry)
+            else:
+                key_value = line.lstrip('.').split('=', 1)
+                if len(key_value) == 2:
+                    key, value = key_value
+                    value = parse_value(value)
+                    if current_section == 'artikel':
+                        current_entry[key] = value
+    return articles
+
+#************************************************************************************
+# Main
+#************************************************************************************
+    
+@app.route('/')
+def index():
+    """Function `index`.
+    Args:
+        None
+    Returns:
+        See implementation."""
+    return render_template('index.html')
+
 if __name__ == '__main__':
-    loc_list = parse_lokomotive_cs2(os.path.join(path_config_files, 'lokomotive.cs2'))
-    switch_list = parse_magnetartikel_cs2(os.path.join(path_config_files, 'magnetartikel.cs2'))
+    try:
+        loc_list = parse_lokomotive_cs2(os.path.join(path_config_files, 'lokomotive.cs2'))
+    except Exception as e:
+        loc_list = []
+        print(f"Error loading lokomotive.cs2 file: {e}")
+    
+    try:
+        switch_list = parse_magnetartikel_cs2(os.path.join(path_config_files, 'magnetartikel.cs2'))
+    except Exception as e:
+        switch_list = []
+        print(f"Error loading magnetartikel.cs2 file: {e}")
+    
     try:
         for loco in loc_list:
             _ensure_state(int(loco.get('uid') if isinstance(loco, dict) else loco['uid']))
     except Exception:
         pass
+    
     t = threading.Thread(target=listen_cs2_udp, args=('', UDP_PORT_RX, _stop_evt), daemon=True)
     t.start()
+
     app.run(host='0.0.0.0', port=5005)
