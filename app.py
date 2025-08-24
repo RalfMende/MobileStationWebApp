@@ -450,24 +450,25 @@ def listen_cs2_udp(host: str='', port: int=UDP_PORT_RX, stop_event: threading.Ev
             cmd_resp = can_id >> 16 & 511
             command = cmd_resp >> 1 & 255
             resp_bit = cmd_resp & 1
-            if command == Command.SYSTEM and dlc >= 5:
-                sub = data[4]
-                if sub in (0, 1, 2):
-                    state = {0: SystemState.STOPPED, 1: SystemState.RUNNING, 2: SystemState.HALTED}[sub]
-                    set_system_state(state)
-            elif command == Command.SPEED and dlc >= 6:
-                loc_id = int.from_bytes(data[0:4], 'big')
-                speed = int.from_bytes(data[4:6], 'big')
-                set_loco_state_speed(loc_id, speed)
-            elif command == Command.DIRECTION and dlc >= 5:
-                loc_id = int.from_bytes(data[0:4], 'big')
-                direction = data[4]
-                set_loco_state_direction(loc_id, direction)
-            elif command == Command.FUNCTION and dlc >= 5:
-                loc_id = int.from_bytes(data[0:4], 'big')
-                fn_no = data[4]
-                fn_val = data[5] if dlc >= 6 else 1
-                set_loco_state_function(loc_id, fn_no, fn_val)
+            if resp_bit == 1:
+                if command == Command.SYSTEM and dlc >= 5:
+                    sub = data[4]
+                    if sub in (0, 1, 2):
+                        state = {0: SystemState.STOPPED, 1: SystemState.RUNNING, 2: SystemState.HALTED}[sub]
+                        set_system_state(state)
+                elif command == Command.SPEED and dlc >= 6:
+                    loc_id = int.from_bytes(data[0:4], 'big')
+                    speed = int.from_bytes(data[4:6], 'big')
+                    set_loco_state_speed(loc_id, speed)
+                elif command == Command.DIRECTION and dlc >= 5:
+                    loc_id = int.from_bytes(data[0:4], 'big')
+                    direction = data[4]
+                    set_loco_state_direction(loc_id, direction)
+                elif command == Command.FUNCTION and dlc >= 5:
+                    loc_id = int.from_bytes(data[0:4], 'big')
+                    fn_no = data[4]
+                    fn_val = data[5] if dlc >= 6 else 1
+                    set_loco_state_function(loc_id, fn_no, fn_val)
     except Exception as e:
         publish_event({'type': 'error', 'message': f'UDP listener crashed: {e}'})
     finally:
