@@ -230,7 +230,7 @@ html, body {
 */
 :root {
   --bar-h: calc(var(--vh) * 0.1);
-  --top-btn-h: calc(var(--bar-h) * 0.6666666667);
+  --top-btn-h: calc(var(--bar-h) * 0.6);
   --loco-item-h: calc(var(--bar-h) * 0.5);
 }
 
