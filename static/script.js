@@ -2,6 +2,8 @@ let locList = {};
 let isRunning = false;
 let currentLocoUid = 1; // Default loco ID
 
+const debounce_udp_message = 10; // Timer in ms
+
 const stopBtn = document.getElementById('stopBtn');
 const speedSlider = document.getElementById('speedSlider');
 const speedFill = document.getElementById('speedFill');
@@ -176,14 +178,18 @@ function fetchAndApplyState(locoUid) {
 
 function updateSlider(val) {
   applySpeedUI(val);
-  fetch('/api/speed', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      loco_id: currentLocoUid,
-      speed: val
-    })
-  });
+  // Debounce UDP message
+  if (window._sliderDebounce) clearTimeout(window._sliderDebounce);
+  window._sliderDebounce = setTimeout(() => {
+    fetch('/api/speed', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        loco_id: currentLocoUid,
+        speed: val
+      })
+    });
+  }, debounce_udp_message);
 }
 
 let isDragging = false;
