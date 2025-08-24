@@ -76,22 +76,20 @@ stopBtn.addEventListener('click', () => {
 
 const evtSource = new EventSource('/api/events');
 evtSource.onmessage = function(event) {
-    const data = JSON.parse(event.data);
-    if (data.type === 'system') {
-        isRunning = data.status;
-        updateStopBtn();
+  const data = JSON.parse(event.data);
+  if (data.type === 'system') {
+      isRunning = data.status;
+      updateStopBtn();
+  }
+  if (currentLocoUid == data.loc_id) {
+    if (data.type === 'direction') {
+      applyDirectionUI(data.value === 1 ? 'forward' : data.value === 2 ? 'reverse' : undefined);
     }
+  }
 };
 
 function setDirection(dir) {
   console.log("Sending direction for loco_id:", currentLocoUid, "direction:", dir);
-  if (dir === 'forward') {
-    forwardBtn.src = '/static/grafics/dir_right_active.png';
-    reverseBtn.src = '/static/grafics/dir_left_inactive.png';
-  } else {
-    forwardBtn.src = '/static/grafics/dir_right_inactive.png';
-    reverseBtn.src = '/static/grafics/dir_left_active.png';
-  }
   fetch('/api/direction', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

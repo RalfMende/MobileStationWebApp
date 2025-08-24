@@ -184,17 +184,17 @@ def _ensure_state(uid: int):
 def set_loco_state_speed(loc_id, speed):
     st = _ensure_state(int(loc_id))
     st['speed'] = int(speed)
-    #publish_event({'type': 'speed', 'loc_id': loc_id, 'value': speed})
+    publish_event({'type': 'speed', 'loc_id': loc_id, 'value': speed})
 
 def set_loco_state_direction(loc_id, direction):
     st = _ensure_state(int(loc_id))
     st['direction'] = int(direction)
-    #publish_event({'type': 'direction', 'loc_id': loc_id, 'value': direction})
+    publish_event({'type': 'direction', 'loc_id': loc_id, 'value': direction})
 
 def set_loco_state_function(loc_id, fn_no, fn_val):
     st = _ensure_state(int(loc_id))
     st['functions'][int(fn_no)] = bool(fn_val)
-    #publish_event({'type': 'function', 'loc_id': loc_id, 'fn': fn_no, 'value': fn_val})
+    publish_event({'type': 'function', 'loc_id': loc_id, 'fn': fn_no, 'value': fn_val})
 
 @app.route('/api/locs')
 def get_locs():
@@ -260,7 +260,7 @@ def direction():
         dir_int = _coerce_direction(direction)
     except (TypeError, ValueError):
         return (jsonify(status='error', message='invalid direction'), 400)
-    set_loco_state_direction(uid_int, dir_int)
+    #set_loco_state_direction(uid_int, dir_int)
     can_id = build_can_id(DEVICE_UID, Command.DIRECTION, prio=0, resp=0)
     data_bytes = _payload_direction(uid_int, dir_int)
     data_bytes = _pad_to_8(data_bytes)
