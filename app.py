@@ -94,12 +94,10 @@ def _udp_send_frame(can_id: int, payload: bytes | bytearray, dlc: int) -> None:
 
 def generate_hash(uid: int) -> int:
     """Function `generate_hash`.
-
-Args:
-    uid
-
-Returns:
-    See implementation."""
+    Args:
+        uid
+    Returns:
+        See implementation."""
     hi = uid >> 16 & 65535
     lo = uid & 65535
     h = hi ^ lo
@@ -108,12 +106,10 @@ Returns:
 
 def build_can_id(uid: int, command: int, prio: int=0, resp: int=0) -> int:
     """Function `build_can_id`.
-
-Args:
-    uid, command, prio, resp
-
-Returns:
-    See implementation."""
+    Args:
+        uid, command, prio, resp
+    Returns:
+        See implementation."""
     hash16 = generate_hash(uid)
     return prio << 25 | (command << 1 | resp & 1) << 16 | hash16
 
@@ -198,12 +194,10 @@ def _payload_function(loco_uid: int, function: int, value: int) -> bytes:
 
 def publish_event(ev: dict):
     """Function `publish_event`.
-
-Args:
-    ev
-
-Returns:
-    See implementation."""
+    Args:
+        ev
+    Returns:
+        See implementation."""
     try:
         data = json.dumps(ev, separators=(',', ':'))
     except Exception:
@@ -221,24 +215,20 @@ Returns:
 @app.get('/api/events')
 def sse_events():
     """Function `sse_events`.
-
-Args:
-    None
-
-Returns:
-    See implementation."""
+    Args:
+        None
+    Returns:
+        See implementation."""
     q = queue.Queue(maxsize=1000)
     with subs_lock:
         subscribers.add(q)
 
     def stream():
         """Function `stream`.
-
-Args:
-    None
-
-Returns:
-    See implementation."""
+        Args:
+            None
+        Returns:
+            See implementation."""
         try:
             while True:
                 data = q.get()
@@ -267,12 +257,10 @@ def _ensure_state(uid: int):
 
 def parse_lokomotive_cs2(file_path):
     """Function `parse_lokomotive_cs2`.
-
-Args:
-    file_path
-
-Returns:
-    See implementation."""
+    Args:
+        file_path
+    Returns:
+        See implementation."""
     locomotives = []
     current_locomotive = None
     current_functions = {}
@@ -312,12 +300,10 @@ Returns:
 
 def parse_magnetartikel_cs2(file_path):
     """Function `parse_magnetartikel_cs2`.
-
-Args:
-    file_path
-
-Returns:
-    See implementation."""
+    Args:
+        file_path
+    Returns:
+        See implementation."""
     articles = {}
     current_section = None
     current_entry = {}
@@ -350,12 +336,10 @@ def get_system_state():
 @app.route('/api/stop_button', methods=['POST'])
 def toggle():
     """Function `stop_button`.
-
-Args:
-    None
-
-Returns:
-    See implementation."""
+    Args:
+        None
+    Returns:
+        See implementation."""
     data = _require_json()
     running = bool(data.get(K_STATE, False))
     can_id = build_can_id(DEVICE_UID, Command.SYSTEM, prio=0, resp=0)
@@ -371,12 +355,10 @@ Returns:
 @app.route('/')
 def index():
     """Function `index`.
-
-Args:
-    None
-
-Returns:
-    See implementation."""
+    Args:
+        None
+    Returns:
+        See implementation."""
     return render_template('index.html')
 
 @app.route('/api/state')
@@ -390,12 +372,10 @@ def get_state():
 @app.route('/api/locs')
 def get_locs():
     """Function `get_locs`.
-
-Args:
-    None
-
-Returns:
-    See implementation."""
+    Args:
+        None
+    Returns:
+        See implementation."""
     loc_dict = {str(loco['uid']): loco for loco in loc_list}
     return jsonify(loc_dict)
 
@@ -409,12 +389,10 @@ def set_system_state(new_state):
 @app.route('/api/speed', methods=['POST'])
 def speed():
     """Function `speed`.
-
-Args:
-    None
-
-Returns:
-    See implementation."""
+    Args:
+        None
+    Returns:
+        See implementation."""
     data = _require_json()
     try:
         uid_int = _require_int(data, K_LOCO_ID, 'invalid loco_id')
@@ -441,12 +419,10 @@ Returns:
 @app.route('/api/direction', methods=['POST'])
 def direction():
     """Function `direction`.
-
-Args:
-    None
-
-Returns:
-    See implementation."""
+    Args:
+        None
+    Returns:
+        See implementation."""
     data = _require_json()
     try:
         uid_int = _require_int(data, K_LOCO_ID, 'invalid loco_id')
@@ -471,12 +447,10 @@ Returns:
 @app.route('/api/function', methods=['POST'])
 def function():
     """Function `function`.
-
-Args:
-    None
-
-Returns:
-    See implementation."""
+    Args:
+        None
+    Returns:
+        See implementation."""
     data = _require_json()
     try:
         uid_int = _require_int(data, K_LOCO_ID, 'invalid loco_id')
@@ -502,12 +476,10 @@ Returns:
 
 def listen_cs2_udp(host: str='', port: int=UDP_PORT_RX, stop_event: threading.Event | None=None):
     """Function `listen_cs2_udp`.
-
-Args:
-    host, port, stop_event
-
-Returns:
-    See implementation."""
+    Args:
+        host, port, stop_event
+    Returns:
+        See implementation."""
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
@@ -538,8 +510,6 @@ Returns:
                 if sub in (0, 1, 2):
                     state = {0: SystemState.STOPPED, 1: SystemState.RUNNING, 2: SystemState.HALTED}[sub]
                     set_system_state(state)
-                    #state_wif = 1 if system_state == SystemState.RUNNING else 0
-                    #publish_event({'type': 'system', 'status': state_wif, 'resp': resp_bit})
             elif command == Command.SPEED and dlc >= 6:
                 loc_id = int.from_bytes(data[0:4], 'big')
                 speed = int.from_bytes(data[4:6], 'big')
@@ -569,12 +539,10 @@ Returns:
 
 def parse_value(val):
     """Function `parse_value`.
-
-Args:
-    val
-
-Returns:
-    See implementation."""
+    Args:
+        val
+    Returns:
+        See implementation."""
     val = val.strip()
     if val.startswith('0x'):
         try:
