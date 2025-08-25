@@ -4,6 +4,7 @@ let currentLocoUid = 1; // Default loco ID
 
 const debounce_udp_message = 10; // Timer in ms
 
+
 const stopBtn = document.getElementById('stopBtn');
 const speedSlider = document.getElementById('speedSlider');
 const speedFill = document.getElementById('speedFill');
@@ -15,6 +16,14 @@ const locoImg = document.getElementById('locoImg');
 const locoList = document.getElementById('locoList');
 const leftCol = document.getElementById('leftFunctions');
 const rightCol = document.getElementById('rightFunctions');
+
+// Info-Button leitet auf /info weiter
+const infoBtn = document.getElementById('infoBtn');
+if (infoBtn) {
+  infoBtn.onclick = function() {
+    window.location.href = '/info';
+  };
+}
 
 /** Read function 'typ' from current loco's locList entry */
 
@@ -179,8 +188,8 @@ function fetchAndApplyState(locoUid) {
 function updateSlider(val) {
   applySpeedUI(val);
   // Debounce UDP message
-  if (window._sliderDebounce) clearTimeout(window._sliderDebounce);
-  window._sliderDebounce = setTimeout(() => {
+  //if (window._sliderDebounce) clearTimeout(window._sliderDebounce);
+  //window._sliderDebounce = setTimeout(() => {
     fetch('/api/speed', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -189,7 +198,7 @@ function updateSlider(val) {
         speed: val
       })
     });
-  }, debounce_udp_message);
+  //}, debounce_udp_message);
 }
 
 let isDragging = false;

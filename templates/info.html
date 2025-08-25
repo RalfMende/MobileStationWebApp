@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>MobileStation WebApp - Infopage</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="top-bar">
+    <button id="backBtn" class="tab">Back</button>
+  </div>
+  <div class="page">
+  <div style="height:50%; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+    <h2 style="margin:0; text-align:center; font-weight:bold;">
+      Webinterface des SRSEII
+    </h2>
+    <div style="margin-top:1.2rem; font-size:clamp(1rem,calc(var(--top-btn-h)*0.40),1.3rem); font-weight:normal; text-align:center;">
+        Der Code dieser WebApp ist öffentlich verfügbar auf <a href="https://github.com/dein-repo/MobileStationWebApp" target="_blank">GitHub</a>.<br>
+        Dort findest du auch die Lizenzbedingungen (siehe Datei LICENSE) und die jeweils aktuelle Version.<br>
+        <br>
+        <b>Version:</b> v1.0<br>
+        <b>Commit:</b> abcdef123456<br>
+        <br>
+        Autor: Ralf Mende<br>
+        Für Fragen, Bug-Reports oder Feature-Wünsche bitte ein Issue auf GitHub eröffnen.<br>
+    </div>
+  </div>
+  <div style="height:50%; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:1.2rem;">
+    <div style="margin-top:1.2rem; font-size:clamp(1rem,calc(var(--top-btn-h)*0.40),1.3rem); font-weight:normal; text-align:center;">
+      Steuerung der SRSEII-Lokliste:
+    </div>
+    <button class="event-btn" id="eventBtn1" style="height:var(--top-btn-h); min-height:0; font-size:clamp(0.8rem,calc(var(--top-btn-h)*0.30),1.1rem); padding-inline:clamp(0.7rem,calc(var(--top-btn-h)*0.40),2rem); width:50vw; max-width:320px; display:block; margin:0 auto;">Lokliste aktualisieren</button>
+    <button class="event-btn" id="eventBtn2" style="height:var(--top-btn-h); min-height:0; font-size:clamp(0.8rem,calc(var(--top-btn-h)*0.30),1.1rem); padding-inline:clamp(0.7rem,calc(var(--top-btn-h)*0.40),2rem); width:50vw; max-width:320px; display:block; margin:0 auto;">Loklistenimport Railcontrol</button>
+    <button class="event-btn" id="eventBtn3" style="height:var(--top-btn-h); min-height:0; font-size:clamp(0.8rem,calc(var(--top-btn-h)*0.30),1.1rem); padding-inline:clamp(0.7rem,calc(var(--top-btn-h)*0.40),2rem); width:50vw; max-width:320px; display:block; margin:0 auto;">Railcontrol neu starten</button>
+    <button class="event-btn" id="eventBtn4" style="height:var(--top-btn-h); min-height:0; font-size:clamp(0.8rem,calc(var(--top-btn-h)*0.30),1.1rem); padding-inline:clamp(0.7rem,calc(var(--top-btn-h)*0.40),2rem); width:50vw; max-width:320px; display:block; margin:0 auto;">Lokliste neu einlesen</button>
+  </div>
+  </div>
+  <script src="/static/info.js"></script>
+</body>
+</html>

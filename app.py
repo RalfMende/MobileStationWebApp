@@ -467,6 +467,33 @@ def listen_cs2_udp(host: str='', port: int=UDP_PORT_RX, stop_event: threading.Ev
             pass
 
 #************************************************************************************
+# Custom Event API for Info-Site
+#************************************************************************************
+
+@app.route('/api/custom_function', methods=['POST'])
+def custom_function():
+    """API-Endpunkt für Info-Seite: Führt beliebige Funktion für aktuelle Lok aus."""
+    data = _require_json()
+    loco_id = data.get('loco_id')
+    fn_no = data.get('function', 0)
+    value = data.get('value', 1)
+    if loco_id is None:
+        return jsonify({'status': 'error', 'message': 'loco_id fehlt'}), 400
+    payload = {
+        K_LOCO_ID: loco_id,
+        K_FUNCTION: fn_no,
+        K_VALUE: value
+    }
+    return send_cs2_udp(
+        payload,
+        [K_FUNCTION, K_VALUE],
+        set_loco_state_function,
+        Command.FUNCTION,
+        _payload_function,
+        6
+    )
+
+#************************************************************************************
 # Config file handling
 #************************************************************************************
 
@@ -571,6 +598,11 @@ def index():
     Returns:
         See implementation."""
     return render_template('index.html')
+
+@app.route('/info')
+def info():
+    """Info-Seite für das Webinterface."""
+    return render_template('info.html')
 
 if __name__ == '__main__':
     try:
