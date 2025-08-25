@@ -1,3 +1,7 @@
+.keyboard-btn.active {
+  color: #000;
+  background: rgba(255,255,255,0.3);
+}
 /* Keyboard panel styles */
 .hidden {
   display: none !important;
@@ -21,7 +25,7 @@
 .keyboard-btn {
   width: 3.5rem;
   height: 3.5rem;
-  font-size: 1.5rem;
+  font-size: var(--top-btn-h);
   background: #222;
   color: #fff;
   border: 2px solid #888;
@@ -33,26 +37,31 @@
   background: #0a84ff;
   border-color: #0a84ff;
 }
+/* Keyboard bottom bar: 1/10 screen height, 8 buttons fit, transparent, text color changes */
 .keyboard-bottom-bar {
   display: flex;
   justify-content: center;
   align-items: center;
   background: var(--bar-gradient);
-  padding: 0.5rem 0;
-  gap: 0.5rem;
+  height: calc(var(--vh) * 0.1);
+  padding: 0;
+  gap: 0.2rem;
 }
 .keyboard-page-btn {
-  background: #333;
+  background: transparent;
   color: #fff;
   border: none;
   border-radius: 5px;
-  padding: 0.4rem 1rem;
+  padding: 0.4rem 0.5rem;
   font-size: 1rem;
   cursor: pointer;
-  margin: 0 0.1rem;
+  margin: 0 0.05rem;
+  min-width: 2.5rem;
+  transition: color 0.2s, background 0.2s;
 }
-.keyboard-page-btn:active {
-  background: #0a84ff;
+.keyboard-page-btn.active {
+  color: #000;
+  background: rgba(255,255,255,0.3);
 }
 
 html, body {

@@ -390,6 +390,8 @@ if (keyboardTab && controlTab && controlPage && keyboardPage) {
 const keyboardBtns = document.querySelectorAll('.keyboard-btn');
 keyboardBtns.forEach(btn => {
   btn.addEventListener('click', function() {
+    keyboardBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
     const key = btn.getAttribute('data-key');
     // Send event to backend (customize endpoint as needed)
     fetch('/api/keyboard_event', {
@@ -397,6 +399,17 @@ keyboardBtns.forEach(btn => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ key: key })
     });
+  });
+});
+
+// Keyboard bottom bar button logic
+const keyboardPageBtns = document.querySelectorAll('.keyboard-page-btn');
+keyboardPageBtns.forEach(btn => {
+  btn.addEventListener('click', function() {
+    keyboardPageBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    // Optionally send event to backend if needed
+    // fetch('/api/keyboard_page', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ page: btn.textContent }) });
   });
 });
 
