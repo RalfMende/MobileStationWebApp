@@ -12,6 +12,8 @@ subscribers = set()
 subs_lock = threading.Lock()
 
 loco_state = {}
+switch_state = [0] * 64  # 64 switches, default state 0
+
 class SystemState(str, Enum):
     """System state as string-valued enum to keep JSON/API wire format unchanged."""
     STOPPED = 'stopped'
@@ -258,6 +260,41 @@ def function():
         6
     )
 
+#************************************************************************************
+# Switch state handling
+#************************************************************************************
+
+@app.route('/api/switch_state')
+def get_switch_state():
+    """Return the state of all switches."""
+    return jsonify({'switch_state': switch_state})
+
+def set_switch_state(idx, value):
+    idx = int(idx)
+    value = int(value)
+    if 0 < idx < 65:
+        switch_state[idx] = value
+        publish_event({'type': 'switch', 'idx': idx, 'value': value})
+
+@app.route('/api/keyboard_event', methods=['POST'])
+def keyboard_event():
+    """Empfängt Keyboard-Events von der UI und setzt den Wert im switch_state."""
+    data = _require_json()
+    idx = data.get('idx')
+    value = data.get('value')
+    keyboard_id = data.get('keyboard_id')
+    if idx is None or value is None or keyboard_id is None:
+        return jsonify({'status': 'error', 'message': 'idx, value und keyboard_id erforderlich'}), 400
+    try:
+        idx = int(idx)
+        value = int(value)
+        keyboard_id = int(keyboard_id)
+        switch_idx = keyboard_id * 8 + idx
+        set_switch_state(switch_idx, value)
+        return jsonify({'status': 'ok'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 400
+    
 #************************************************************************************
 # CS2 interaction
 #************************************************************************************

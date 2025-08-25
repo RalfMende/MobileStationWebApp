@@ -445,15 +445,15 @@ function applyFunctionButtonState(btn, idx, active) {
 
 // Keyboard button event handler (SwitchBtn1..16): no dependent activation
 const keyboardBtns = document.querySelectorAll('.keyboard-btn');
-keyboardBtns.forEach(btn => {
+keyboardBtns.forEach((btn, idx) => {
   btn.addEventListener('click', function() {
     btn.classList.toggle('active');
-    const key = btn.getAttribute('data-key');
-    // Send event to backend (customize endpoint as needed)
+    // idx: Button-Index (0-basiert), value: Zustand (1=aktiv, 0=inaktiv)
+    const value = btn.classList.contains('active') ? 1 : 0;
     fetch('/api/keyboard_event', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: key })
+      body: JSON.stringify({ idx: idx, value: value, keyboard_id: currentKeyboardId })
     });
   });
 });
