@@ -16,6 +16,10 @@ const locoImg = document.getElementById('locoImg');
 const locoList = document.getElementById('locoList');
 const leftCol = document.getElementById('leftFunctions');
 const rightCol = document.getElementById('rightFunctions');
+const keyboardTab = document.getElementById('keyboardTab');
+const controlTab = document.getElementById('controlTab');
+const controlPage = document.getElementById('controlPage');
+const keyboardPage = document.getElementById('keyboardPage');
 
 // Info button redirects to /info
 const infoBtn = document.getElementById('infoBtn');
@@ -28,9 +32,6 @@ if (infoBtn) {
     window.location.href = '/info';
   };
 }
-
-/** Read function 'typ' from the current locomotive's locList entry */
-
 
 /** Format an icon id as two digits (e.g., 1 -> "01") */
 function pad2(v) {
@@ -368,4 +369,34 @@ function applyFunctionButtonState(btn, idx, active) {
   const img = btn.querySelector('img');
   if (img) setFunctionIcon(img, iconPrefix, imgid, idx);
 }
+
+// Tab navigation between control and keyboard panels
+if (keyboardTab && controlTab && controlPage && keyboardPage) {
+  keyboardTab.addEventListener('click', function() {
+    controlPage.classList.add('hidden');
+    keyboardPage.classList.remove('hidden');
+    keyboardTab.classList.add('active');
+    controlTab.classList.remove('active');
+  });
+  controlTab.addEventListener('click', function() {
+    keyboardPage.classList.add('hidden');
+    controlPage.classList.remove('hidden');
+    controlTab.classList.add('active');
+    keyboardTab.classList.remove('active');
+  });
+}
+
+// Keyboard button event handler
+const keyboardBtns = document.querySelectorAll('.keyboard-btn');
+keyboardBtns.forEach(btn => {
+  btn.addEventListener('click', function() {
+    const key = btn.getAttribute('data-key');
+    // Send event to backend (customize endpoint as needed)
+    fetch('/api/keyboard_event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: key })
+    });
+  });
+});
 
