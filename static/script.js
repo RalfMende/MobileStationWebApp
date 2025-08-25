@@ -1,6 +1,6 @@
 let locList = {};
 let isRunning = false;
-let currentLocoUid = 1; // Default loco ID
+let currentLocoUid = null; // Default loco ID
 
 const debounce_udp_message = 10; // Timer in ms
 
@@ -17,15 +17,19 @@ const locoList = document.getElementById('locoList');
 const leftCol = document.getElementById('leftFunctions');
 const rightCol = document.getElementById('rightFunctions');
 
-// Info-Button leitet auf /info weiter
+// Info button redirects to /info
 const infoBtn = document.getElementById('infoBtn');
 if (infoBtn) {
   infoBtn.onclick = function() {
+    // Save locomotive ID
+    if (currentLocoUid != null) {
+      localStorage.setItem('currentLocoUid', currentLocoUid);
+    }
     window.location.href = '/info';
   };
 }
 
-/** Read function 'typ' from current loco's locList entry */
+/** Read function 'typ' from the current locomotive's locList entry */
 
 
 /** Format an icon id as two digits (e.g., 1 -> "01") */
@@ -34,7 +38,7 @@ function pad2(v) {
   return s.length >= 2 ? s : s.padStart(2, '0');
 }
 
-/** Set function icon with fallbacks (browser-safe, no fs).
+/** Set function icon with fallbacks (browser-safe, no filesystem).
  *  Tries the specific icon first; on 404 loads the fallback.
  *  @param {HTMLImageElement} img
  *  @param {string} iconPrefix
@@ -82,7 +86,7 @@ stopBtn.addEventListener('click', () => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ state: !isRunning })
   });
-  // isRunning und updateStopBtn() werden erst durch SSE gesetzt!
+  // isRunning and updateStopBtn() are only set via SSE!
 });
 
 const evtSource = new EventSource('/api/events');
@@ -112,9 +116,20 @@ fetch('/api/locs')
     locList = data;
     // Mirror state from server (authoritative)
     fetch('/api/state').then(r=>r.json()).then(s => { locoState = s; }).catch(()=>{ locoState = {}; });
+
+    // Initialize currentLocoUid
+    let savedLocoUid = localStorage.getItem('currentLocoUid');
+    if (savedLocoUid && locList[savedLocoUid]) {
+      currentLocoUid = Number(savedLocoUid);
+    } else {
+      // Initialize with the first locomotive from locList
+      const firstUid = Object.keys(locList)[0];
+      currentLocoUid = locList[firstUid]?.uid || Number(firstUid);
+    }
+
     Object.keys(locList).forEach(uid => {
-      // 2. Lok-Icon erzeugen
-      console.log("Initialisiere Lok:", uid, locList[uid]);
+      // 2. Create locomotive icon
+      console.log("Initializing locomotive:", uid, locList[uid]);
       const img = new Image();
       img.alt = locList[uid].name;
       img.title = locList[uid].name;
@@ -125,14 +140,28 @@ fetch('/api/locs')
       const iconName = locList[uid].icon || locList[uid].bild || 'leeres Gleis';
       img.src = `/static/icons/${iconName}.png`;
       document.getElementById("locoList").appendChild(img);
-      // 3. Lok-Icon Eventhandler setzen
+      // 3. Set locomotive icon event handler
       img.onclick = () => {
         currentLocoUid = locList[uid].uid;
         locoDesc.textContent = locList[uid].name;
         locoImg.src = img.src;
         fetchAndApplyState(currentLocoUid);
+        localStorage.setItem('currentLocoUid', currentLocoUid);
       };
     });
+
+    // After initialization: Apply state of the current locomotive and update function buttons
+    if (currentLocoUid) {
+      locoDesc.textContent = locList[currentLocoUid]?.name || '';
+      locoImg.src = `/static/icons/${locList[currentLocoUid]?.icon || locList[currentLocoUid]?.bild || 'leeres Gleis'}.png`;
+      fetch(`/api/state?loco_id=${currentLocoUid}`)
+        .then(r => r.json())
+        .then(state => {
+          updateAllFunctionButtons(state.functions || {});
+          applySpeedUI(state.speed || 0);
+          applyDirectionUI(state.direction === 'reverse' ? 'reverse' : 'forward');
+        });
+    }
   });
 
 function setDirection(dir) {
@@ -169,7 +198,7 @@ function applySpeedUI(val) {
   speedValue.textContent = `${kmh} km/h`;
 }
 
-// Fetch state for a given loco from the server and update the UI (no commands sent)
+// Fetch state for a given locomotive from the server and update the UI (no commands sent)
 function fetchAndApplyState(locoUid) {
   fetch(`/api/state?loco_id=${locoUid}`)
     .then(r => r.json())
