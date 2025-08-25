@@ -443,12 +443,11 @@ function applyFunctionButtonState(btn, idx, active) {
   if (img) setFunctionIcon(img, iconPrefix, imgid, idx);
 }
 
-// Keyboard button event handler
+// Keyboard button event handler (SwitchBtn1..16): no dependent activation
 const keyboardBtns = document.querySelectorAll('.keyboard-btn');
 keyboardBtns.forEach(btn => {
   btn.addEventListener('click', function() {
-    keyboardBtns.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+    btn.classList.toggle('active');
     const key = btn.getAttribute('data-key');
     // Send event to backend (customize endpoint as needed)
     fetch('/api/keyboard_event', {
