@@ -1,3 +1,9 @@
+/* DEBUG: Show index in SwitchBtn1..16 with top control button font size */
+.keyboard-btn-debug {
+  font-size: clamp(0.9rem, calc(var(--top-btn-h) * 0.40), 1.6rem);
+  font-weight: bold;
+  color: #222;
+}
 .keyboard-row {
   display: flex;
   flex-direction: row;

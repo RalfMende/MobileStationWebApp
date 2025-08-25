@@ -2,7 +2,7 @@ let locList = {};
 let isRunning = false;
 let currentActiveContainer = 'control'; // Keeps selcted page, in case of returning to website
 let currentLocoUid = null; // Keeps selected locomotive from control page (via UID)
-let currentKeyboardId = 1; // Keeps selected keyboard ID from keyboard page
+let currentKeyboardId = 0; // Keeps selected keyboard ID from keyboard page
 const debounce_udp_message = 10; // Timer in ms
 
 const stopBtn = document.getElementById('stopBtn');
@@ -28,7 +28,7 @@ keyboardPageBtns.forEach((btn, idx) => {
   btn.addEventListener('click', function() {
     keyboardPageBtns.forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    currentKeyboardId = idx + 1;
+    currentKeyboardId = idx;
   });
 });
 
@@ -52,9 +52,9 @@ if (keyboardTab && controlTab && controlPage && keyboardPage) {
 
 // On page load, restore currentKeyboardId and active container from localStorage if available
 function activateKeyboardBtnById(id) {
-  if (keyboardPageBtns.length > 0 && id >= 1 && id <= keyboardPageBtns.length) {
+  if (keyboardPageBtns.length > 0 && id >= 0 && id < keyboardPageBtns.length) {
     keyboardPageBtns.forEach(b => b.classList.remove('active'));
-    keyboardPageBtns[id - 1].classList.add('active');
+    keyboardPageBtns[id].classList.add('active');
     currentKeyboardId = id;
     updateKeyboardHeaderText();
   }
@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', function() {
   if (savedKeyboardId) {
     activateKeyboardBtnById(Number(savedKeyboardId));
   } else {
-    activateKeyboardBtnById(1);
+    activateKeyboardBtnById(0);
   }
   if (savedContainer === 'keyboard') {
     activateContainer('keyboard');
@@ -445,23 +445,61 @@ function applyFunctionButtonState(btn, idx, active) {
 
 // Keyboard button event handler (SwitchBtn1..16): no dependent activation
 const keyboardBtns = document.querySelectorAll('.keyboard-btn');
+
+// Initialisiere jeweils den ersten Button jeder Gruppe als aktiv (0,2,4,6,8,10,12,14)
+const initialActiveIdx = [0,2,4,6,8,10,12,14];
+keyboardBtns.forEach((btn, idx) => {
+  if (initialActiveIdx.includes(idx)) {
+    btn.classList.add('active');
+  } else {
+    btn.classList.remove('active');
+  }
+});
+
 keyboardBtns.forEach((btn, idx) => {
   btn.addEventListener('click', function() {
-    btn.classList.toggle('active');
-    // idx: Button-Index (0-basiert), value: Zustand (1=aktiv, 0=inaktiv)
-    const switch_idx = currentKeyboardId * 8 + (idx % 4);
-    const value = btn.classList.contains('active') ? 1 : 0;
+    // Paare: 0+1, 2+3, 4+5, ...
+    const isOdd = idx % 2 === 1;
+    const groupFirstIdx = isOdd ? idx : idx - 1;
+    const groupSecondIdx = isOdd ? idx - 1 : idx + 1;
+    // Deaktiviere das Paar, aktiviere aktuellen Button
+    keyboardBtns.forEach((b, i) => {
+      if (i === idx) {
+        b.classList.add('active');
+      } else if (i === groupSecondIdx) {
+        b.classList.remove('active');
+      }
+    });
+    // eventIdx: (currentKeyboardId * 8) + (Math.floor(idx / 2) + 1)
+    const groupIdx = Math.floor(idx / 2);
+    const eventIdx = (currentKeyboardId * 8) + (groupIdx + 1);
+    const value = isOdd ? 0 : 1;
     fetch('/api/keyboard_event', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idx: switch_idx, value: value })
+      body: JSON.stringify({ idx: eventIdx, value: value })
     });
   });
 });
 
 // Remove text from SwitchBtn1..16 (keyboard-btn)
-document.querySelectorAll('.keyboard-btn').forEach(btn => {
-  btn.textContent = '';
+document.querySelectorAll('.keyboard-btn').forEach((btn, idx) => {
+  btn.textContent = (idx + 1).toString();
+  btn.classList.add('keyboard-btn-debug');
+});
+
+function updateKeyboardGroupLabels() {
+  const labels = document.querySelectorAll('.keyboard-btn-group-label');
+  labels.forEach((label, groupIdx) => {
+    const eventIdx = (currentKeyboardId * 8) + (groupIdx + 1);
+    label.textContent = 'Demo ' + eventIdx;
+  });
+}
+
+// Call on page load and when keyboard ID changes
+document.addEventListener('DOMContentLoaded', updateKeyboardGroupLabels);
+keyboardPageBtns.forEach(btn => {
+  btn.addEventListener('click', updateKeyboardGroupLabels);
 });
 
 // Update keyboard header text dynamically based on selected KeyboardBtn
@@ -474,9 +512,9 @@ function updateKeyboardHeaderText() {
 
 // Update header on page load and when KeyboardBtn changes
 function activateKeyboardBtnById(id) {
-  if (keyboardPageBtns.length > 0 && id >= 1 && id <= keyboardPageBtns.length) {
+  if (keyboardPageBtns.length > 0 && id >= 0 && id < keyboardPageBtns.length) {
     keyboardPageBtns.forEach(b => b.classList.remove('active'));
-    keyboardPageBtns[id - 1].classList.add('active');
+    keyboardPageBtns[id].classList.add('active');
     currentKeyboardId = id;
     updateKeyboardHeaderText();
   }
@@ -485,7 +523,7 @@ keyboardPageBtns.forEach((btn, idx) => {
   btn.addEventListener('click', function() {
     keyboardPageBtns.forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    currentKeyboardId = idx + 1;
+    currentKeyboardId = idx;
     updateKeyboardHeaderText();
   });
 });
