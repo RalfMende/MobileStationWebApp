@@ -402,6 +402,11 @@ keyboardBtns.forEach(btn => {
   });
 });
 
+// Remove text from SwitchBtn1..16 (keyboard-btn)
+document.querySelectorAll('.keyboard-btn').forEach(btn => {
+  btn.textContent = '';
+});
+
 // Keyboard bottom bar button logic
 const keyboardPageBtns = document.querySelectorAll('.keyboard-page-btn');
 keyboardPageBtns.forEach(btn => {
