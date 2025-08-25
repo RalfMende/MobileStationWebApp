@@ -50,31 +50,76 @@
   </div>
 
   <div id="keyboardPage" class="page hidden">
-    <div class="keyboard-grid">
-      <!-- 16 buttons, 2 rows x 8 columns -->
-      <div class="keyboard-row">
-        <button class="keyboard-btn" data-key="1">1</button>
-        <button class="keyboard-btn" data-key="2">2</button>
-        <button class="keyboard-btn" data-key="3">3</button>
-        <button class="keyboard-btn" data-key="4">4</button>
-        <button class="keyboard-btn" data-key="5">5</button>
-        <button class="keyboard-btn" data-key="6">6</button>
-        <button class="keyboard-btn" data-key="7">7</button>
-        <button class="keyboard-btn" data-key="8">8</button>
+    <div class="keyboard-area">
+      <div class="keyboard-header">
+        <span id="keyboardHeaderText">Keyboard Seite 1a</span>
       </div>
-      <div class="keyboard-row">
-        <button class="keyboard-btn" data-key="9">9</button>
-        <button class="keyboard-btn" data-key="10">10</button>
-        <button class="keyboard-btn" data-key="11">11</button>
-        <button class="keyboard-btn" data-key="12">12</button>
-        <button class="keyboard-btn" data-key="13">13</button>
-        <button class="keyboard-btn" data-key="14">14</button>
-        <button class="keyboard-btn" data-key="15">15</button>
-        <button class="keyboard-btn" data-key="16">16</button>
+      <div class="keyboard-grid-4x4">
+        <!-- Row 1: Demo labels above each button group -->
+        <div class="keyboard-row">
+          <div class="keyboard-btn-col">
+            <span class="demo-label">Demo 1</span>
+            <div class="keyboard-btn-group">
+              <button class="keyboard-btn" data-key="1"></button>
+              <button class="keyboard-btn" data-key="2"></button>
+            </div>
+          </div>
+          <div class="keyboard-btn-col">
+            <span class="demo-label">Demo 2</span>
+            <div class="keyboard-btn-group">
+              <button class="keyboard-btn" data-key="3"></button>
+              <button class="keyboard-btn" data-key="4"></button>
+            </div>
+          </div>
+          <div class="keyboard-btn-col">
+            <span class="demo-label">Demo 3</span>
+            <div class="keyboard-btn-group">
+              <button class="keyboard-btn" data-key="5"></button>
+              <button class="keyboard-btn" data-key="6"></button>
+            </div>
+          </div>
+          <div class="keyboard-btn-col">
+            <span class="demo-label">Demo 4</span>
+            <div class="keyboard-btn-group">
+              <button class="keyboard-btn" data-key="7"></button>
+              <button class="keyboard-btn" data-key="8"></button>
+            </div>
+          </div>
+        </div>
+        <!-- Row 2: Demo labels above each button group -->
+        <div class="keyboard-row">
+          <div class="keyboard-btn-col">
+            <span class="demo-label">Demo 5</span>
+            <div class="keyboard-btn-group">
+              <button class="keyboard-btn" data-key="9"></button>
+              <button class="keyboard-btn" data-key="10"></button>
+            </div>
+          </div>
+          <div class="keyboard-btn-col">
+            <span class="demo-label">Demo 6</span>
+            <div class="keyboard-btn-group">
+              <button class="keyboard-btn" data-key="11"></button>
+              <button class="keyboard-btn" data-key="12"></button>
+            </div>
+          </div>
+          <div class="keyboard-btn-col">
+            <span class="demo-label">Demo 7</span>
+            <div class="keyboard-btn-group">
+              <button class="keyboard-btn" data-key="13"></button>
+              <button class="keyboard-btn" data-key="14"></button>
+            </div>
+          </div>
+          <div class="keyboard-btn-col">
+            <span class="demo-label">Demo 8</span>
+            <div class="keyboard-btn-group">
+              <button class="keyboard-btn" data-key="15"></button>
+              <button class="keyboard-btn" data-key="16"></button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="keyboard-bottom-bar">
-      <!-- Example: 1a 1b 2a 2b ... 4a 4b -->
       <button class="keyboard-page-btn">1a</button>
       <button class="keyboard-page-btn">1b</button>
       <button class="keyboard-page-btn">2a</button>

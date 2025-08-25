@@ -56,6 +56,7 @@ function activateKeyboardBtnById(id) {
     keyboardPageBtns.forEach(b => b.classList.remove('active'));
     keyboardPageBtns[id - 1].classList.add('active');
     currentKeyboardId = id;
+    updateKeyboardHeaderText();
   }
 }
 
@@ -88,6 +89,7 @@ document.addEventListener('DOMContentLoaded', function() {
   } else {
     activateContainer('control');
   }
+  updateKeyboardHeaderText();
 });
 
 if (infoBtn) {
@@ -460,5 +462,47 @@ keyboardBtns.forEach(btn => {
 // Remove text from SwitchBtn1..16 (keyboard-btn)
 document.querySelectorAll('.keyboard-btn').forEach(btn => {
   btn.textContent = '';
+});
+
+// Update keyboard header text dynamically based on selected KeyboardBtn
+function updateKeyboardHeaderText() {
+  const header = document.getElementById('keyboardHeaderText');
+  if (!header) return;
+  const btn = document.querySelector('.keyboard-page-btn.active');
+  header.textContent = 'Keyboard Seite ' + (btn ? btn.textContent : '1a');
+}
+
+// Update header on page load and when KeyboardBtn changes
+function activateKeyboardBtnById(id) {
+  if (keyboardPageBtns.length > 0 && id >= 1 && id <= keyboardPageBtns.length) {
+    keyboardPageBtns.forEach(b => b.classList.remove('active'));
+    keyboardPageBtns[id - 1].classList.add('active');
+    currentKeyboardId = id;
+    updateKeyboardHeaderText();
+  }
+}
+keyboardPageBtns.forEach((btn, idx) => {
+  btn.addEventListener('click', function() {
+    keyboardPageBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentKeyboardId = idx + 1;
+    updateKeyboardHeaderText();
+  });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  let savedKeyboardId = localStorage.getItem('currentKeyboardId');
+  let savedContainer = localStorage.getItem('currentActiveContainer');
+  if (savedKeyboardId) {
+    activateKeyboardBtnById(Number(savedKeyboardId));
+  } else {
+    activateKeyboardBtnById(1);
+  }
+  if (savedContainer === 'keyboard') {
+    activateContainer('keyboard');
+  } else {
+    activateContainer('control');
+  }
+  updateKeyboardHeaderText();
 });
 
