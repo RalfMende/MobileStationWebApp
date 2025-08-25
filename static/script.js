@@ -1,9 +1,9 @@
 let locList = {};
 let isRunning = false;
-let currentLocoUid = null; // Default loco ID
-
+let currentActiveContainer = 'control'; // Keeps selcted page, in case of returning to website
+let currentLocoUid = null; // Keeps selected locomotive from control page (via UID)
+let currentKeyboardId = 1; // Keeps selected keyboard ID from keyboard page
 const debounce_udp_message = 10; // Timer in ms
-
 
 const stopBtn = document.getElementById('stopBtn');
 const speedSlider = document.getElementById('speedSlider');
@@ -20,15 +20,86 @@ const keyboardTab = document.getElementById('keyboardTab');
 const controlTab = document.getElementById('controlTab');
 const controlPage = document.getElementById('controlPage');
 const keyboardPage = document.getElementById('keyboardPage');
-
-// Info button redirects to /info
+const keyboardPageBtns = document.querySelectorAll('.keyboard-page-btn');
 const infoBtn = document.getElementById('infoBtn');
+
+// Keyboard bottom bar button logic
+keyboardPageBtns.forEach((btn, idx) => {
+  btn.addEventListener('click', function() {
+    keyboardPageBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentKeyboardId = idx + 1;
+  });
+});
+
+// Tab navigation between control and keyboard panels
+if (keyboardTab && controlTab && controlPage && keyboardPage) {
+  keyboardTab.addEventListener('click', function() {
+    controlPage.classList.add('hidden');
+    keyboardPage.classList.remove('hidden');
+    keyboardTab.classList.add('active');
+    controlTab.classList.remove('active');
+    currentActiveContainer = 'keyboard';
+  });
+  controlTab.addEventListener('click', function() {
+    keyboardPage.classList.add('hidden');
+    controlPage.classList.remove('hidden');
+    controlTab.classList.add('active');
+    keyboardTab.classList.remove('active');
+    currentActiveContainer = 'control';
+  });
+}
+
+// On page load, restore currentKeyboardId and active container from localStorage if available
+function activateKeyboardBtnById(id) {
+  if (keyboardPageBtns.length > 0 && id >= 1 && id <= keyboardPageBtns.length) {
+    keyboardPageBtns.forEach(b => b.classList.remove('active'));
+    keyboardPageBtns[id - 1].classList.add('active');
+    currentKeyboardId = id;
+  }
+}
+
+function activateContainer(container) {
+  if (container === 'keyboard') {
+    controlPage.classList.add('hidden');
+    keyboardPage.classList.remove('hidden');
+    keyboardTab.classList.add('active');
+    controlTab.classList.remove('active');
+    currentActiveContainer = 'keyboard';
+  } else {
+    keyboardPage.classList.add('hidden');
+    controlPage.classList.remove('hidden');
+    controlTab.classList.add('active');
+    keyboardTab.classList.remove('active');
+    currentActiveContainer = 'control';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  let savedKeyboardId = localStorage.getItem('currentKeyboardId');
+  let savedContainer = localStorage.getItem('currentActiveContainer');
+  if (savedKeyboardId) {
+    activateKeyboardBtnById(Number(savedKeyboardId));
+  } else {
+    activateKeyboardBtnById(1);
+  }
+  if (savedContainer === 'keyboard') {
+    activateContainer('keyboard');
+  } else {
+    activateContainer('control');
+  }
+});
+
 if (infoBtn) {
   infoBtn.onclick = function() {
+    // Save current active container (control/keyboard)
+    localStorage.setItem('currentActiveContainer', currentActiveContainer);
     // Save locomotive ID
     if (currentLocoUid != null) {
       localStorage.setItem('currentLocoUid', currentLocoUid);
     }
+    // Save current keyboard button
+    localStorage.setItem('currentKeyboardId', currentKeyboardId);
     window.location.href = '/info';
   };
 }
@@ -370,22 +441,6 @@ function applyFunctionButtonState(btn, idx, active) {
   if (img) setFunctionIcon(img, iconPrefix, imgid, idx);
 }
 
-// Tab navigation between control and keyboard panels
-if (keyboardTab && controlTab && controlPage && keyboardPage) {
-  keyboardTab.addEventListener('click', function() {
-    controlPage.classList.add('hidden');
-    keyboardPage.classList.remove('hidden');
-    keyboardTab.classList.add('active');
-    controlTab.classList.remove('active');
-  });
-  controlTab.addEventListener('click', function() {
-    keyboardPage.classList.add('hidden');
-    controlPage.classList.remove('hidden');
-    controlTab.classList.add('active');
-    keyboardTab.classList.remove('active');
-  });
-}
-
 // Keyboard button event handler
 const keyboardBtns = document.querySelectorAll('.keyboard-btn');
 keyboardBtns.forEach(btn => {
@@ -405,16 +460,5 @@ keyboardBtns.forEach(btn => {
 // Remove text from SwitchBtn1..16 (keyboard-btn)
 document.querySelectorAll('.keyboard-btn').forEach(btn => {
   btn.textContent = '';
-});
-
-// Keyboard bottom bar button logic
-const keyboardPageBtns = document.querySelectorAll('.keyboard-page-btn');
-keyboardPageBtns.forEach(btn => {
-  btn.addEventListener('click', function() {
-    keyboardPageBtns.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    // Optionally send event to backend if needed
-    // fetch('/api/keyboard_page', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ page: btn.textContent }) });
-  });
 });
 
