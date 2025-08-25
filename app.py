@@ -282,15 +282,12 @@ def keyboard_event():
     data = _require_json()
     idx = data.get('idx')
     value = data.get('value')
-    keyboard_id = data.get('keyboard_id')
-    if idx is None or value is None or keyboard_id is None:
-        return jsonify({'status': 'error', 'message': 'idx, value und keyboard_id erforderlich'}), 400
+    if idx is None or value is None:
+        return jsonify({'status': 'error', 'message': 'idx und value erforderlich'}), 400
     try:
         idx = int(idx)
         value = int(value)
-        keyboard_id = int(keyboard_id)
-        switch_idx = keyboard_id * 8 + idx
-        set_switch_state(switch_idx, value)
+        set_switch_state(idx, value)
         return jsonify({'status': 'ok'})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 400

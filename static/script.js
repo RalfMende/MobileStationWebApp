@@ -449,11 +449,12 @@ keyboardBtns.forEach((btn, idx) => {
   btn.addEventListener('click', function() {
     btn.classList.toggle('active');
     // idx: Button-Index (0-basiert), value: Zustand (1=aktiv, 0=inaktiv)
+    const switch_idx = currentKeyboardId * 8 + (idx % 4);
     const value = btn.classList.contains('active') ? 1 : 0;
     fetch('/api/keyboard_event', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idx: idx, value: value, keyboard_id: currentKeyboardId })
+      body: JSON.stringify({ idx: switch_idx, value: value })
     });
   });
 });
