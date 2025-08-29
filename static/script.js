@@ -531,7 +531,7 @@ function updateKeyboardGroupLabels() {
   const labels = document.querySelectorAll('.keyboard-btn-group-label');
   labels.forEach((label, groupIdx) => {
   const eventIdx = (currentKeyboardId * 8) + groupIdx;
-    label.textContent = 'Demo ' + eventIdx;
+    label.textContent = eventIdx + 1;
   });
 }
 
