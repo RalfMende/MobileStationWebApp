@@ -36,7 +36,7 @@ keyboardPageBtns.forEach((btn, idx) => {
         if (data && data.switch_state) {
           const keyboardBtns = document.querySelectorAll('.keyboard-btn');
           for (let groupIdx = 0; groupIdx < 8; groupIdx++) {
-            const eventIdx = (currentKeyboardId * 8) + (groupIdx + 1);
+            const eventIdx = (currentKeyboardId * 8) + groupIdx;
             const value = data.switch_state[eventIdx];
             const btn1 = keyboardBtns[groupIdx * 2];
             const btn2 = keyboardBtns[groupIdx * 2 + 1];
@@ -197,12 +197,12 @@ evtSource.onmessage = function(event) {
       updateStopBtn();
   }
   if (data.type === 'switch' && typeof data.idx === 'number' && typeof data.value !== 'undefined') {
-    // idx: 1-64
-    // Rückwärts rechnen: keyboardId = Math.floor((idx-1)/8), groupIdx = ((idx-1)%8)
-    const idxNum = Number(data.idx);
-    const valueNum = Number(data.value);
-    const keyboardId = Math.floor((idxNum - 1) / 8);
-    const groupIdx = (idxNum - 1) % 8;
+  // idx: 0-63
+  // Rückwärts rechnen: keyboardId = Math.floor(idxNum/8), groupIdx = (idxNum%8)
+  const idxNum = Number(data.idx);
+  const valueNum = Number(data.value);
+  const keyboardId = Math.floor(idxNum / 8);
+  const groupIdx = idxNum % 8;
     // Nur wenn die aktuelle Seite betroffen ist:
     if (keyboardId === currentKeyboardId) {
       // Finde die beiden Buttons der Gruppe
@@ -510,8 +510,8 @@ keyboardBtns.forEach((btn, idx) => {
   btn.addEventListener('click', function() {
     // Pairs: 0+1, 2+3, 4+5, ...
     const isOdd = idx % 2 === 1;
-    const groupIdx = Math.floor(idx / 2);
-    const eventIdx = (currentKeyboardId * 8) + (groupIdx + 1);
+  const groupIdx = Math.floor(idx / 2);
+  const eventIdx = (currentKeyboardId * 8) + groupIdx;
     const value = isOdd ? 0 : 1;
     fetch('/api/keyboard_event', {
       method: 'POST',
@@ -523,14 +523,14 @@ keyboardBtns.forEach((btn, idx) => {
 
 // Remove text from SwitchBtn1..16 (keyboard-btn)
 document.querySelectorAll('.keyboard-btn').forEach((btn, idx) => {
-  btn.textContent = (idx + 1).toString();
+  btn.textContent = idx.toString();
   btn.classList.add('keyboard-btn-debug');
 });
 
 function updateKeyboardGroupLabels() {
   const labels = document.querySelectorAll('.keyboard-btn-group-label');
   labels.forEach((label, groupIdx) => {
-    const eventIdx = (currentKeyboardId * 8) + (groupIdx + 1);
+  const eventIdx = (currentKeyboardId * 8) + groupIdx;
     label.textContent = 'Demo ' + eventIdx;
   });
 }

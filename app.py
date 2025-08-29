@@ -272,7 +272,7 @@ def get_switch_state():
 def set_switch_state(idx, value):
     idx = int(idx)
     value = int(value)
-    if 0 < idx < 65:
+    if 0 <= idx < 64:
         switch_state[idx] = value
         publish_event({'type': 'switch', 'idx': idx, 'value': value})
 
@@ -496,7 +496,7 @@ def listen_cs2_udp(host: str='', port: int=UDP_PORT_RX, stop_event: threading.Ev
                     #loc_id = int.from_bytes(data[0:4], 'big')
                     #idx = loc_id & 0xFFFF
                     #protocol = (loc_id >> 16) & 0xFFFF
-                    idx = int.from_bytes(data[3:4], 'big') + 1 #workaround as CS2 uses 0-based indexing
+                    idx = int.from_bytes(data[3:4], 'big')
                     value = data[4]
                     set_switch_state(idx, value)
     except Exception as e:
