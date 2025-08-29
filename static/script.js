@@ -29,6 +29,32 @@ keyboardPageBtns.forEach((btn, idx) => {
     keyboardPageBtns.forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     currentKeyboardId = idx;
+    updateKeyboardHeaderText();
+    fetch('/api/switch_state')
+      .then(response => response.json())
+      .then(data => {
+        if (data && data.switch_state) {
+          const keyboardBtns = document.querySelectorAll('.keyboard-btn');
+          for (let groupIdx = 0; groupIdx < 8; groupIdx++) {
+            const eventIdx = (currentKeyboardId * 8) + (groupIdx + 1);
+            const value = data.switch_state[eventIdx];
+            const btn1 = keyboardBtns[groupIdx * 2];
+            const btn2 = keyboardBtns[groupIdx * 2 + 1];
+            if (btn1 && btn2) {
+              if (value === 0) {
+                btn1.classList.add('active');
+                btn2.classList.remove('active');
+              } else if (value === 1) {
+                btn1.classList.remove('active');
+                btn2.classList.add('active');
+              } else {
+                btn1.classList.remove('active');
+                btn2.classList.remove('active');
+              }
+            }
+          }
+        }
+      });
   });
 });
 
