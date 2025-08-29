@@ -170,6 +170,30 @@ evtSource.onmessage = function(event) {
       isRunning = data.status;
       updateStopBtn();
   }
+  if (data.type === 'switch' && typeof data.idx === 'number' && typeof data.value !== 'undefined') {
+    // idx: 1-64
+    // Rückwärts rechnen: keyboardId = Math.floor((idx-1)/8), groupIdx = ((idx-1)%8)
+    const idxNum = Number(data.idx);
+    const valueNum = Number(data.value);
+    const keyboardId = Math.floor((idxNum - 1) / 8);
+    const groupIdx = (idxNum - 1) % 8;
+    // Nur wenn die aktuelle Seite betroffen ist:
+    if (keyboardId === currentKeyboardId) {
+      // Finde die beiden Buttons der Gruppe
+      const btn1 = document.querySelectorAll('.keyboard-btn')[groupIdx * 2];
+      const btn2 = document.querySelectorAll('.keyboard-btn')[groupIdx * 2 + 1];
+      if (btn1 && btn2) {
+        // value==0: btn1 aktiv, btn2 inaktiv; value==1: btn1 inaktiv, btn2 aktiv
+        if (valueNum === 0) {
+          btn1.classList.add('active');
+          btn2.classList.remove('active');
+        } else {
+          btn1.classList.remove('active');
+          btn2.classList.add('active');
+        }
+      }
+    }
+  }
   if (currentLocoUid == data.loc_id) {
     if (data.type === 'direction') {
       applyDirectionUI(data.value === 1 ? 'forward' : data.value === 2 ? 'reverse' : undefined);
@@ -458,19 +482,8 @@ keyboardBtns.forEach((btn, idx) => {
 
 keyboardBtns.forEach((btn, idx) => {
   btn.addEventListener('click', function() {
-    // Paare: 0+1, 2+3, 4+5, ...
+    // Pairs: 0+1, 2+3, 4+5, ...
     const isOdd = idx % 2 === 1;
-    const groupFirstIdx = isOdd ? idx : idx - 1;
-    const groupSecondIdx = isOdd ? idx - 1 : idx + 1;
-    // Deaktiviere das Paar, aktiviere aktuellen Button
-    keyboardBtns.forEach((b, i) => {
-      if (i === idx) {
-        b.classList.add('active');
-      } else if (i === groupSecondIdx) {
-        b.classList.remove('active');
-      }
-    });
-    // eventIdx: (currentKeyboardId * 8) + (Math.floor(idx / 2) + 1)
     const groupIdx = Math.floor(idx / 2);
     const eventIdx = (currentKeyboardId * 8) + (groupIdx + 1);
     const value = isOdd ? 0 : 1;
