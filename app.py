@@ -492,6 +492,13 @@ def listen_cs2_udp(host: str='', port: int=UDP_PORT_RX, stop_event: threading.Ev
                     fn_no = data[4]
                     fn_val = data[5] if dlc >= 6 else 1
                     set_loco_state_function(loc_id, fn_no, fn_val)
+                elif command == Command.SWITCH and dlc >= 6:
+                    #loc_id = int.from_bytes(data[0:4], 'big')
+                    #idx = loc_id & 0xFFFF
+                    #protocol = (loc_id >> 16) & 0xFFFF
+                    idx = int.from_bytes(data[3:4], 'big') + 1 #workaround as CS2 uses 0-based indexing
+                    value = data[4]
+                    set_switch_state(idx, value)
     except Exception as e:
         publish_event({'type': 'error', 'message': f'UDP listener crashed: {e}'})
     finally:
