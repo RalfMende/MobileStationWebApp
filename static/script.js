@@ -209,14 +209,7 @@ evtSource.onmessage = function(event) {
       const btn1 = document.querySelectorAll('.keyboard-btn')[groupIdx * 2];
       const btn2 = document.querySelectorAll('.keyboard-btn')[groupIdx * 2 + 1];
       if (btn1 && btn2) {
-        // value==0: btn1 aktiv, btn2 inaktiv; value==1: btn1 inaktiv, btn2 aktiv
-        if (valueNum === 0) {
-          btn1.classList.add('active');
-          btn2.classList.remove('active');
-        } else {
-          btn1.classList.remove('active');
-          btn2.classList.add('active');
-        }
+        applySwitchUI(btn1, btn2, valueNum);
       }
     }
   }
@@ -499,12 +492,54 @@ const keyboardBtns = document.querySelectorAll('.keyboard-btn');
 // Initialisiere jeweils den ersten Button jeder Gruppe als aktiv (0,2,4,6,8,10,12,14)
 const initialActiveIdx = [0,2,4,6,8,10,12,14];
 keyboardBtns.forEach((btn, idx) => {
-  if (initialActiveIdx.includes(idx)) {
-    btn.classList.add('active');
-  } else {
-    btn.classList.remove('active');
+  // Style: Kein Rahmen, keine Füllung
+  btn.style.border = 'none';
+  btn.style.background = 'transparent';
+  btn.style.boxShadow = 'none';
+  // Bild-Initialisierung
+  let img = btn.querySelector('img');
+  if (!img) {
+    img = document.createElement('img');
+    btn.appendChild(img);
   }
+  // Initialisiere Button-Paare
+  const groupIdx = Math.floor(idx / 2);
+  const isOdd = idx % 2 === 1;
+  const btn1 = keyboardBtns[groupIdx * 2];
+  const btn2 = keyboardBtns[groupIdx * 2 + 1];
+  if (btn1 && btn2) {
+    // Standard: btn1 aktiv, btn2 inaktiv (valueNum = 0), btn2 aktiv, btn1 inaktiv (valueNum = 1)
+    const valueNum = isOdd ? 1 : 0;
+    applySwitchUI(btn1, btn2, valueNum);
+  }
+  img.alt = 'SwitchBtn' + (idx + 1);
+  img.style.display = 'block';
+  img.style.margin = 'auto';
+  img.style.position = 'relative';
+  img.style.top = '50%';
+  img.style.left = '50%';
+  img.style.transform = 'translate(-50%, -50%)';
+  img.style.width = '60%';
+  img.style.height = '60%';
 });
+// UI-Logik für Switch-Button-Paare
+function applySwitchUI(btn1, btn2, valueNum) {
+  const img1 = btn1.querySelector('img');
+  const img2 = btn2.querySelector('img');
+  if (valueNum === 0) {
+    // btn1 aktiv, btn2 inaktiv
+    btn1.classList.add('active');
+    btn2.classList.remove('active');
+    if (img1) img1.src = '/static/grafics/switch_re_active.png';
+    if (img2) img2.src = '/static/grafics/switch_gr_inactive.png';
+  } else {
+    // btn1 inaktiv, btn2 aktiv
+    btn1.classList.remove('active');
+    btn2.classList.add('active');
+    if (img1) img1.src = '/static/grafics/switch_re_inactive.png';
+    if (img2) img2.src = '/static/grafics/switch_gr_active.png';
+  }
+}
 
 keyboardBtns.forEach((btn, idx) => {
   btn.addEventListener('click', function() {
@@ -522,10 +557,10 @@ keyboardBtns.forEach((btn, idx) => {
 });
 
 // Remove text from SwitchBtn1..16 (keyboard-btn)
-document.querySelectorAll('.keyboard-btn').forEach((btn, idx) => {
+/*document.querySelectorAll('.keyboard-btn').forEach((btn, idx) => {
   btn.textContent = idx.toString();
   btn.classList.add('keyboard-btn-debug');
-});
+});*/
 
 function updateKeyboardGroupLabels() {
   const labels = document.querySelectorAll('.keyboard-btn-group-label');
