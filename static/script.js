@@ -493,34 +493,35 @@ const keyboardBtns = document.querySelectorAll('.keyboard-btn');
 const initialActiveIdx = [0,2,4,6,8,10,12,14];
 keyboardBtns.forEach((btn, idx) => {
   // Style: Kein Rahmen, keine Füllung
-  btn.style.border = 'none';
-  btn.style.background = 'transparent';
+  btn.style.border = '2px solid #ccc';
+  btn.style.background = '#fff';
   btn.style.boxShadow = 'none';
+  btn.style.height = '150%';
+  btn.style.maxHeight = 'none';
   // Bild-Initialisierung
   let img = btn.querySelector('img');
   if (!img) {
     img = document.createElement('img');
     btn.appendChild(img);
   }
-  // Initialisiere Button-Paare
+  // Initialisiere Button-Paare wie beim Backend-Update
   const groupIdx = Math.floor(idx / 2);
-  const isOdd = idx % 2 === 1;
   const btn1 = keyboardBtns[groupIdx * 2];
   const btn2 = keyboardBtns[groupIdx * 2 + 1];
   if (btn1 && btn2) {
-    // Standard: btn1 aktiv, btn2 inaktiv (valueNum = 0), btn2 aktiv, btn1 inaktiv (valueNum = 1)
-    const valueNum = isOdd ? 1 : 0;
-    applySwitchUI(btn1, btn2, valueNum);
+    // Standard: btn1 aktiv, btn2 inaktiv (valueNum = 0)
+    applySwitchUI(btn1, btn2, 0);
   }
   img.alt = 'SwitchBtn' + (idx + 1);
   img.style.display = 'block';
   img.style.margin = 'auto';
-  img.style.position = 'relative';
-  img.style.top = '50%';
-  img.style.left = '50%';
-  img.style.transform = 'translate(-50%, -50%)';
-  img.style.width = '60%';
-  img.style.height = '60%';
+  img.style.position = 'absolute';
+  img.style.top = '0';
+  img.style.left = '0';
+  img.style.transform = 'none';
+  img.style.width = '100%';
+  img.style.height = '100%';
+  btn.style.position = 'relative';
 });
 // UI-Logik für Switch-Button-Paare
 function applySwitchUI(btn1, btn2, valueNum) {
@@ -547,7 +548,7 @@ keyboardBtns.forEach((btn, idx) => {
     const isOdd = idx % 2 === 1;
   const groupIdx = Math.floor(idx / 2);
   const eventIdx = (currentKeyboardId * 8) + groupIdx;
-    const value = isOdd ? 0 : 1;
+    const value = isOdd ? 1 : 0;
     fetch('/api/keyboard_event', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
