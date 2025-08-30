@@ -41,16 +41,7 @@ keyboardPageBtns.forEach((btn, idx) => {
             const btn1 = keyboardBtns[groupIdx * 2];
             const btn2 = keyboardBtns[groupIdx * 2 + 1];
             if (btn1 && btn2) {
-              if (value === 0) {
-                btn1.classList.add('active');
-                btn2.classList.remove('active');
-              } else if (value === 1) {
-                btn1.classList.remove('active');
-                btn2.classList.add('active');
-              } else {
-                btn1.classList.remove('active');
-                btn2.classList.remove('active');
-              }
+              applySwitchUI(btn1, btn2, value);
             }
           }
         }
