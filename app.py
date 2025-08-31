@@ -264,6 +264,10 @@ def function():
 # Switch state handling
 #************************************************************************************
 
+@app.route('/api/switch_list')
+def get_switch_list():
+    return jsonify(switch_list)
+
 @app.route('/api/switch_state')
 def get_switch_state():
     """Return the state of all switches."""

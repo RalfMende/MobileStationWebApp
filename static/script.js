@@ -1,4 +1,6 @@
 let locList = {};
+let switchList = {};
+
 let isRunning = false;
 let currentActiveContainer = 'control'; // Keeps selcted page, in case of returning to website
 let currentLocoUid = null; // Keeps selected locomotive from control page (via UID)
@@ -107,6 +109,17 @@ document.addEventListener('DOMContentLoaded', function() {
     activateContainer('control');
   }
   updateKeyboardHeaderText();
+  // Magnetartikel-Liste laden
+  fetch('/api/switch_list')
+    .then(response => response.json())
+    .then(data => {
+      switchList = data;
+      updateKeyboardGroupLabels();
+    })
+    .catch(() => {
+      switchList = {};
+      updateKeyboardGroupLabels();
+    });
 });
 
 if (infoBtn) {
@@ -557,8 +570,15 @@ keyboardBtns.forEach((btn, idx) => {
 function updateKeyboardGroupLabels() {
   const labels = document.querySelectorAll('.keyboard-btn-group-label');
   labels.forEach((label, groupIdx) => {
-  const eventIdx = (currentKeyboardId * 8) + groupIdx;
-    label.textContent = eventIdx + 1;
+    const eventIdx = (currentKeyboardId * 8) + groupIdx;
+    let name = '';
+    if (switchList && switchList.artikel && Array.isArray(switchList.artikel)) {
+      const entry = switchList.artikel[eventIdx];
+      if (entry && entry.name) {
+        name = entry.name;
+      }
+    }
+    label.textContent = name ? name : (eventIdx + 1);
   });
 }
 
