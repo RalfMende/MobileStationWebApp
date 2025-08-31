@@ -81,6 +81,10 @@ FUNCTION_MAX = 31
 # General event handling
 #************************************************************************************
 
+def _require_json() -> dict:
+    """Return JSON body or an empty dict if none was provided."""
+    return request.get_json(silent=True) or {}
+
 def publish_event(ev: dict):
     """Function `publish_event`.
     Args:
@@ -140,6 +144,13 @@ def sse_events():
 # System state handling
 #************************************************************************************
 
+def _payload_system_state(device_uid: int, running: bool) -> bytes:
+    """Build payload for starting/stopping the system."""
+    b = bytearray()
+    b.extend(device_uid.to_bytes(4, 'big'))
+    b.append(1 if running else 0)
+    return b
+
 @app.route('/api/system_state')
 def get_system_state():
     state_wif = 1 if system_state == SystemState.RUNNING else 0
@@ -182,6 +193,35 @@ def _ensure_loco_state(uid: int):
         st = {'speed': 0, 'direction': 1, 'functions': {}}
         loco_state[uid] = st
     return st
+
+def _payload_speed(loco_uid: int, speed: int) -> bytes:
+    """Build payload for setting a locomotive's speed."""
+    b = bytearray()
+    b.extend(loco_uid.to_bytes(4, 'big'))
+    b.extend(int(speed).to_bytes(2, 'big'))
+    return b
+
+def _payload_direction(loco_uid: int, direction: int) -> bytes:
+    """Build payload for setting a locomotive's direction."""
+    b = bytearray()
+    b.extend(loco_uid.to_bytes(4, 'big'))
+    b.append(direction & 255)
+    return b
+
+def _payload_function(loco_uid: int, function: int, value: int) -> bytes:
+    """Build payload for toggling a locomotive function (e.g., lights)."""
+    b = bytearray()
+    b.extend(loco_uid.to_bytes(4, 'big'))
+    b.append(function & 255)
+    b.append(value & 255)
+    return b
+
+def _get_first(data: dict, *keys):
+    """Return the first present key from *keys in data (or None)."""
+    for k in keys:
+        if k in data:
+            return data.get(k)
+    return None
 
 def set_loco_state_speed(loc_id, speed):
     st = _ensure_loco_state(int(loc_id))
@@ -272,6 +312,14 @@ def _ensure_switch_state(uid: int):
         switch_state[uid] = st
     return st
 
+def _payload_switch(loco_uid: int, switch_state: int) -> bytes:
+    # CS2-Protokoll: 4 Byte Index, 1 Byte Wert, 1 Byte Protokoll (optional)
+    b = bytearray()
+    b.extend(loco_uid.to_bytes(4, 'big'))
+    b.append(switch_state & 255)
+    b.append(0x01)
+    return b
+
 @app.route('/api/switch_list')
 def get_switch_list():
     return jsonify(switch_list)
@@ -318,7 +366,7 @@ def keyboard_event():
             [K_VALUE],
             dummy_state_func,
             Command.SWITCH,
-            payload_switch,
+            _payload_switch,
             6
         )
     except Exception as e:
@@ -327,23 +375,6 @@ def keyboard_event():
 #************************************************************************************
 # CS2 interaction
 #************************************************************************************
-
-def _pad_to_8(data: bytearray | bytes) -> bytes:
-    """Utility: Pad payload to 8 bytes for CAN frames."""
-    b = bytearray(data)
-    while len(b) < 8:
-        b.append(0)
-    return bytes(b)
-
-def _udp_send_frame(can_id: int, payload: bytes | bytearray, dlc: int) -> None:
-    """Utility: Assemble and send one UDP-encapsulated CAN frame to the CS2 bridge."""
-    data_bytes = _pad_to_8(payload)
-    send_bytes = bytearray()
-    send_bytes.extend(can_id.to_bytes(4, 'big'))
-    send_bytes.append(dlc & 255)
-    send_bytes.extend(data_bytes)
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.sendto(send_bytes, (UDP_IP, UDP_PORT_TX))
 
 def generate_hash(uid: int) -> int:
     """Function `generate_hash`.
@@ -366,9 +397,22 @@ def build_can_id(uid: int, command: int, prio: int=0, resp: int=0) -> int:
     hash16 = generate_hash(uid)
     return prio << 25 | (command << 1 | resp & 1) << 16 | hash16
 
-def _require_json() -> dict:
-    """Return JSON body or an empty dict if none was provided."""
-    return request.get_json(silent=True) or {}
+def _pad_to_8(data: bytearray | bytes) -> bytes:
+    """Utility: Pad payload to 8 bytes for CAN frames."""
+    b = bytearray(data)
+    while len(b) < 8:
+        b.append(0)
+    return bytes(b)
+
+def _udp_send_frame(can_id: int, payload: bytes | bytearray, dlc: int) -> None:
+    """Utility: Assemble and send one UDP-encapsulated CAN frame to the CS2 bridge."""
+    data_bytes = _pad_to_8(payload)
+    send_bytes = bytearray()
+    send_bytes.extend(can_id.to_bytes(4, 'big'))
+    send_bytes.append(dlc & 255)
+    send_bytes.extend(data_bytes)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.sendto(send_bytes, (UDP_IP, UDP_PORT_TX))
 
 def _require_int(data: dict, key: str, err_msg: str) -> int:
     """Fetch and cast a JSON field to int; raise ValueError with friendly message on failure."""
@@ -377,25 +421,10 @@ def _require_int(data: dict, key: str, err_msg: str) -> int:
     except (TypeError, ValueError):
         raise ValueError(err_msg)
 
+def _clamp_speed10(x: int) -> int:
+    """Clamp speed to 10-bit range (0..1023)."""
+    return max(0, min(1023, int(x)))
 
-def _get_first(data: dict, *keys):
-    """Return the first present key from *keys in data (or None)."""
-    for k in keys:
-        if k in data:
-            return data.get(k)
-    return None
-
-def _coerce_bool(val) -> int:
-    """Coerce truthy/falsy representations to 0/1 int for payloads."""
-    if isinstance(val, bool):
-        return 1 if val else 0
-    try:
-        if isinstance(val, (int, float)) and not isinstance(val, bool):
-            return 1 if int(val) != 0 else 0
-        s = str(val).strip().lower()
-        return 1 if s in ('1', 'true', 'on', 'yes') else 0
-    except Exception:
-        return 0
 
 def _coerce_direction(val) -> int:
     """Coerce direction input to enum int (KEEP/FORWARD/REVERSE/TOGGLE)."""
@@ -411,46 +440,17 @@ def _coerce_direction(val) -> int:
     except Exception:
         return 0
 
-def _clamp_speed10(x: int) -> int:
-    """Clamp speed to 10-bit range (0..1023)."""
-    return max(0, min(1023, int(x)))
-
-def _payload_system_state(device_uid: int, running: bool) -> bytes:
-    """Build payload for starting/stopping the system."""
-    b = bytearray()
-    b.extend(device_uid.to_bytes(4, 'big'))
-    b.append(1 if running else 0)
-    return b
-
-def _payload_speed(loco_uid: int, speed: int) -> bytes:
-    """Build payload for setting a locomotive's speed."""
-    b = bytearray()
-    b.extend(loco_uid.to_bytes(4, 'big'))
-    b.extend(int(speed).to_bytes(2, 'big'))
-    return b
-
-def _payload_direction(loco_uid: int, direction: int) -> bytes:
-    """Build payload for setting a locomotive's direction."""
-    b = bytearray()
-    b.extend(loco_uid.to_bytes(4, 'big'))
-    b.append(direction & 255)
-    return b
-
-def _payload_function(loco_uid: int, function: int, value: int) -> bytes:
-    """Build payload for toggling a locomotive function (e.g., lights)."""
-    b = bytearray()
-    b.extend(loco_uid.to_bytes(4, 'big'))
-    b.append(function & 255)
-    b.append(value & 255)
-    return b
-
-def payload_switch(loco_uid: int, switch_state: int) -> bytes:
-    # CS2-Protokoll: 4 Byte Index, 1 Byte Wert, 1 Byte Protokoll (optional)
-    b = bytearray()
-    b.extend(loco_uid.to_bytes(4, 'big'))
-    b.append(switch_state & 255)
-    b.append(0x01)
-    return b
+def _coerce_bool(val) -> int:
+    """Coerce truthy/falsy representations to 0/1 int for payloads."""
+    if isinstance(val, bool):
+        return 1 if val else 0
+    try:
+        if isinstance(val, (int, float)) and not isinstance(val, bool):
+            return 1 if int(val) != 0 else 0
+        s = str(val).strip().lower()
+        return 1 if s in ('1', 'true', 'on', 'yes') else 0
+    except Exception:
+        return 0
 
 def send_cs2_udp(data, key_map, state_func, can_command, payload_func, dlc):
     """Shared handler for loco commands (speed, direction, function)."""
