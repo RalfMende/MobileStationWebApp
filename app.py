@@ -175,7 +175,7 @@ def toggle():
 # Loco state handling
 #************************************************************************************
 
-def _ensure_state(uid: int):
+def _ensure_loco_state(uid: int):
     """Return mutable state dict for a loco, creating defaults if missing."""
     st = loco_state.get(uid)
     if st is None:
@@ -184,17 +184,17 @@ def _ensure_state(uid: int):
     return st
 
 def set_loco_state_speed(loc_id, speed):
-    st = _ensure_state(int(loc_id))
+    st = _ensure_loco_state(int(loc_id))
     st['speed'] = int(speed)
     publish_event({'type': 'speed', 'loc_id': loc_id, 'value': speed})
 
 def set_loco_state_direction(loc_id, direction):
-    st = _ensure_state(int(loc_id))
+    st = _ensure_loco_state(int(loc_id))
     st['direction'] = int(direction)
     publish_event({'type': 'direction', 'loc_id': loc_id, 'value': direction})
 
 def set_loco_state_function(loc_id, fn_no, fn_val):
-    st = _ensure_state(int(loc_id))
+    st = _ensure_loco_state(int(loc_id))
     st['functions'][int(fn_no)] = bool(fn_val)
     publish_event({'type': 'function', 'loc_id': loc_id, 'fn': fn_no, 'value': fn_val})
     
@@ -263,6 +263,19 @@ def function():
 #************************************************************************************
 # Switch state handling
 #************************************************************************************
+
+def _ensure_switch_state():
+    global switch_state
+    if not isinstance(switch_list, dict) or 'artikel' not in switch_list:
+        return
+    for entry in switch_list['artikel']:
+        idx = entry.get('id')
+        try:
+            idx = int(idx)
+        except Exception:
+            continue
+        if 0 <= idx < len(switch_state):
+            switch_state[idx] = 0
 
 @app.route('/api/switch_list')
 def get_switch_list():
@@ -706,7 +719,7 @@ if __name__ == '__main__':
     
     try:
         for loco in loc_list:
-            _ensure_state(int(loco.get('uid') if isinstance(loco, dict) else loco['uid']))
+            _ensure_loco_state(int(loco.get('uid') if isinstance(loco, dict) else loco['uid']))
     except Exception:
         pass
     
