@@ -300,28 +300,25 @@ def keyboard_event():
         idx = int(idx)
         value = int(value)
         set_switch_state(idx, value)
-        # UDP-Frame senden
+        # UID aus switch_list ermitteln
+        uid = idx
+        if isinstance(switch_list, dict) and 'artikel' in switch_list:
+            artikel = switch_list['artikel']
+            if isinstance(artikel, list) and idx < len(artikel):
+                entry = artikel[idx]
+                uid = entry.get('uid', idx)
         data = {
-            'loco_id': idx,  # switch index als "loco_id" für die Payload
-            'value': value
+            K_LOCO_ID: uid,
+            K_VALUE: value
         }
-        # Die Funktion send_cs2_udp erwartet: data, key_map, state_func, can_command, payload_func, dlc
-        # Wir wollen nur das UDP-Frame senden, kein weiteren State setzen
-        def dummy_state_func(idx, value):
+        def dummy_state_func(*args):
             pass
-        def payload_switch(idx, value):
-            # CS2-Protokoll: 4 Byte Index, 1 Byte Wert, 1 Byte Protokoll (optional)
-            b = bytearray()
-            b.extend(int(idx).to_bytes(4, 'big'))
-            b.append(int(value) & 0xFF)
-            b.append(0)  # Protokoll: 0 = MM, 1 = DCC, 2 = mfx (hier 0 als Default)
-            return b
         return send_cs2_udp(
-            data, 
-            ['loco_id', 'value'], 
-            dummy_state_func, 
-            Command.SWITCH, 
-            payload_switch, 
+            data,
+            [K_VALUE],
+            dummy_state_func,
+            Command.SWITCH,
+            payload_switch,
             6
         )
     except Exception as e:
@@ -447,6 +444,14 @@ def _payload_function(loco_uid: int, function: int, value: int) -> bytes:
     b.append(value & 255)
     return b
 
+def payload_switch(loco_uid: int, switch_state: int) -> bytes:
+    # CS2-Protokoll: 4 Byte Index, 1 Byte Wert, 1 Byte Protokoll (optional)
+    b = bytearray()
+    b.extend(loco_uid.to_bytes(4, 'big'))
+    # b.append(0x00)
+    b.append(switch_state & 255)
+    return b
+
 def send_cs2_udp(data, key_map, state_func, can_command, payload_func, dlc):
     """Shared handler for loco commands (speed, direction, function)."""
     try:
@@ -464,6 +469,8 @@ def send_cs2_udp(data, key_map, state_func, can_command, payload_func, dlc):
         elif can_command == Command.FUNCTION:
             values[0] = int(values[0])
             values[1] = _coerce_bool(values[1])
+        elif can_command == Command.SWITCH:
+            values[0] = int(values[0])
     except (TypeError, ValueError):
         return (jsonify(status='error', message=f'invalid {key_map}'), 400)
     # State update
@@ -590,6 +597,7 @@ def parse_value(val):
     return val
 
 def magnetartikel_uid(id_int, dectyp):
+    id_int = id_int - 1
     if dectyp == 'mm2':
         return 0x3000 | (id_int & 0x3FF)   # MM2
     elif dectyp == 'dcc':
