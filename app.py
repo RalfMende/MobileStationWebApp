@@ -278,7 +278,7 @@ def set_switch_state(idx, value):
 
 @app.route('/api/keyboard_event', methods=['POST'])
 def keyboard_event():
-    """Empfängt Keyboard-Events von der UI und setzt den Wert im switch_state."""
+    """Empfängt Keyboard-Events von der UI, setzt den Wert im switch_state und sendet ein UDP-Frame gemäß CS2-Protokoll."""
     data = _require_json()
     idx = data.get('idx')
     value = data.get('value')
@@ -288,7 +288,30 @@ def keyboard_event():
         idx = int(idx)
         value = int(value)
         set_switch_state(idx, value)
-        return jsonify({'status': 'ok'})
+        # UDP-Frame senden
+        data = {
+            'loco_id': idx,  # switch index als "loco_id" für die Payload
+            'value': value
+        }
+        # Die Funktion send_cs2_udp erwartet: data, key_map, state_func, can_command, payload_func, dlc
+        # Wir wollen nur das UDP-Frame senden, kein weiteren State setzen
+        def dummy_state_func(idx, value):
+            pass
+        def payload_switch(idx, value):
+            # CS2-Protokoll: 4 Byte Index, 1 Byte Wert, 1 Byte Protokoll (optional)
+            b = bytearray()
+            b.extend(int(idx).to_bytes(4, 'big'))
+            b.append(int(value) & 0xFF)
+            b.append(0)  # Protokoll: 0 = MM, 1 = DCC, 2 = mfx (hier 0 als Default)
+            return b
+        return send_cs2_udp(
+            data, 
+            ['loco_id', 'value'], 
+            dummy_state_func, 
+            Command.SWITCH, 
+            payload_switch, 
+            6
+        )
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 400
     
