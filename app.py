@@ -448,8 +448,8 @@ def payload_switch(loco_uid: int, switch_state: int) -> bytes:
     # CS2-Protokoll: 4 Byte Index, 1 Byte Wert, 1 Byte Protokoll (optional)
     b = bytearray()
     b.extend(loco_uid.to_bytes(4, 'big'))
-    # b.append(0x00)
     b.append(switch_state & 255)
+    b.append(0x01)
     return b
 
 def send_cs2_udp(data, key_map, state_func, can_command, payload_func, dlc):
