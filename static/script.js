@@ -493,39 +493,52 @@ function applyFunctionButtonState(btn, idx, active) {
 // Keyboard button event handler (SwitchBtn1..16): no dependent activation
 const keyboardBtns = document.querySelectorAll('.keyboard-btn');
 
-// Initialisiere jeweils den ersten Button jeder Gruppe als aktiv (0,2,4,6,8,10,12,14)
-const initialActiveIdx = [0,2,4,6,8,10,12,14];
-keyboardBtns.forEach((btn, idx) => {
-  // Style: Kein Rahmen, keine Füllung
-  btn.style.border = '2px solid #ccc';
-  btn.style.background = '#fff';
-  btn.style.boxShadow = 'none';
-  btn.style.height = '150%';
-  btn.style.maxHeight = 'none';
-  // Bild-Initialisierung
-  let img = btn.querySelector('img');
-  if (!img) {
-    img = document.createElement('img');
-    btn.appendChild(img);
-  }
-  // Initialisiere Button-Paare wie beim Backend-Update
-  const groupIdx = Math.floor(idx / 2);
-  const btn1 = keyboardBtns[groupIdx * 2];
-  const btn2 = keyboardBtns[groupIdx * 2 + 1];
-  if (btn1 && btn2) {
-    // Standard: btn1 aktiv, btn2 inaktiv (valueNum = 0)
-    applySwitchUI(btn1, btn2, 0);
-  }
-  img.alt = 'SwitchBtn' + (idx + 1);
-  img.style.display = 'block';
-  img.style.margin = 'auto';
-  img.style.position = 'absolute';
-  img.style.top = '0';
-  img.style.left = '0';
-  img.style.transform = 'none';
-  img.style.width = '100%';
-  img.style.height = '100%';
-  btn.style.position = 'relative';
+// Initialize Keyboard-Buttons
+function initializeKeyboardBtnsFromState(switchState) {
+  keyboardBtns.forEach((btn, idx) => {
+    // Style: No border, no filling
+    btn.style.border = '2px solid #ccc';
+    btn.style.background = '#fff';
+    btn.style.boxShadow = 'none';
+    btn.style.height = '150%';
+    btn.style.maxHeight = 'none';
+    let img = btn.querySelector('img');
+    if (!img) {
+      img = document.createElement('img');
+      btn.appendChild(img);
+    }
+    const groupIdx = Math.floor(idx / 2);
+    const btn1 = keyboardBtns[groupIdx * 2];
+    const btn2 = keyboardBtns[groupIdx * 2 + 1];
+    const eventIdx = (currentKeyboardId * 8) + groupIdx;
+    const valueNum = switchState && switchState.length > eventIdx ? switchState[eventIdx] : 0;
+    if (btn1 && btn2) {
+      applySwitchUI(btn1, btn2, valueNum);
+    }
+    img.alt = 'SwitchBtn' + (idx + 1);
+    img.style.display = 'block';
+    img.style.margin = 'auto';
+    img.style.position = 'absolute';
+    img.style.top = '0';
+    img.style.left = '0';
+    img.style.transform = 'none';
+    img.style.width = '100%';
+    img.style.height = '100%';
+    btn.style.position = 'relative';
+  });
+}
+
+// Initialisierung beim Laden der Seite
+document.addEventListener('DOMContentLoaded', function() {
+  fetch('/api/switch_state')
+    .then(response => response.json())
+    .then(data => {
+      const switchState = data && data.switch_state ? data.switch_state : [];
+      initializeKeyboardBtnsFromState(switchState);
+    })
+    .catch(() => {
+      initializeKeyboardBtnsFromState([]);
+    });
 });
 // UI-Logik für Switch-Button-Paare
 function applySwitchUI(btn1, btn2, valueNum) {
@@ -560,12 +573,6 @@ keyboardBtns.forEach((btn, idx) => {
     });
   });
 });
-
-// Remove text from SwitchBtn1..16 (keyboard-btn)
-/*document.querySelectorAll('.keyboard-btn').forEach((btn, idx) => {
-  btn.textContent = idx.toString();
-  btn.classList.add('keyboard-btn-debug');
-});*/
 
 function updateKeyboardGroupLabels() {
   const labels = document.querySelectorAll('.keyboard-btn-group-label');

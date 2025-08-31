@@ -3,448 +3,448 @@ version
  .minor=1
 artikel
  .id=1
- .name=SWITCH 1
+ .name=SW 1
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=2
- .name=SWITCH 2
+ .name=SW 2
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=3
- .name=SWITCH 3
+ .name=SW 3
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=4
- .name=SWITCH 4
+ .name=SW 4
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=5
- .name=SWITCH 5
+ .name=SW 5
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=6
- .name=SWITCH 6
+ .name=SW 6
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=7
- .name=SWITCH 7
+ .name=SW 7
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=8
- .name=SWITCH 8
+ .name=SW 8
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=9
- .name=SWITCH 9
+ .name=SW 9
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=10
- .name=SWITCH 10
+ .name=SW 10
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=11
- .name=SWITCH 11
+ .name=SW 11
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=12
- .name=SWITCH 12
+ .name=SW 12
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=13
- .name=SWITCH 13
+ .name=SW 13
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=14
- .name=SWITCH 14
+ .name=SW 14
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=15
- .name=SWITCH 15
+ .name=SW 15
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=16
- .name=SWITCH 16
+ .name=SW 16
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=17
- .name=SWITCH 17
+ .name=SW 17
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=18
- .name=SWITCH 18
+ .name=SW 18
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=19
- .name=SWITCH 19
+ .name=SW 19
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=20
- .name=SWITCH 20
+ .name=SW 20
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=21
- .name=SWITCH 21
+ .name=SW 21
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=22
- .name=SWITCH 22
+ .name=SW 22
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=23
- .name=SWITCH 23
+ .name=SW 23
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=24
- .name=SWITCH 24
+ .name=SW 24
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=25
- .name=SWITCH 25
+ .name=SW 25
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=26
- .name=SWITCH 26
+ .name=SW 26
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=27
- .name=SWITCH 27
+ .name=SW 27
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=28
- .name=SWITCH 28
+ .name=SW 28
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=29
- .name=SWITCH 29
+ .name=SW 29
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=30
- .name=SWITCH 30
+ .name=SW 30
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=31
- .name=SWITCH 31
+ .name=SW 31
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=32
- .name=SWITCH 32
+ .name=SW 32
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=33
- .name=SWITCH 33
+ .name=SW 33
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=34
- .name=SWITCH 34
+ .name=SW 34
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=35
- .name=SWITCH 35
+ .name=SW 35
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=36
- .name=SWITCH 36
+ .name=SW 36
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=37
- .name=SWITCH 37
+ .name=SW 37
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=38
- .name=SWITCH 38
+ .name=SW 38
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=39
- .name=SWITCH 39
+ .name=SW 39
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=40
- .name=SWITCH 40
+ .name=SW 40
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=41
- .name=SWITCH 41
+ .name=SW 41
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=42
- .name=SWITCH 42
+ .name=SW 42
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=43
- .name=SWITCH 43
+ .name=SW 43
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=44
- .name=SWITCH 44
+ .name=SW 44
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=45
- .name=SWITCH 45
+ .name=SW 45
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=46
- .name=SWITCH 46
+ .name=SW 46
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=47
- .name=SWITCH 47
+ .name=SW 47
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=48
- .name=SWITCH 48
+ .name=SW 48
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=49
- .name=SWITCH 49
+ .name=SW 49
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=50
- .name=SWITCH 50
+ .name=SW 50
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=51
- .name=SWITCH 51
+ .name=SW 51
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=52
- .name=SWITCH 52
+ .name=SW 52
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=53
- .name=SWITCH 53
+ .name=SW 53
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=54
- .name=SWITCH 54
+ .name=SW 54
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=55
- .name=SWITCH 55
+ .name=SW 55
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=56
- .name=SWITCH 56
+ .name=SW 56
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=57
- .name=SWITCH 57
+ .name=SW 57
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=58
- .name=SWITCH 58
+ .name=SW 58
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=59
- .name=SWITCH 59
+ .name=SW 59
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=60
- .name=SWITCH 60
+ .name=SW 60
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=61
- .name=SWITCH 61
+ .name=SW 61
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=62
- .name=SWITCH 62
+ .name=SW 62
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=63
- .name=SWITCH 63
+ .name=SW 63
  .typ=linksweiche
  .schaltzeit=200
  .decoder=mehr_neu
  .dectyp=mm2
 artikel
  .id=64
- .name=SWITCH 64
+ .name=SW 64
  .typ=rechtsweiche
  .schaltzeit=200
  .decoder=mehr_neu

@@ -140,8 +140,6 @@ def sse_events():
 # System state handling
 #************************************************************************************
 
-
-
 @app.route('/api/system_state')
 def get_system_state():
     state_wif = 1 if system_state == SystemState.RUNNING else 0
@@ -267,10 +265,12 @@ def function():
 #************************************************************************************
 
 def _ensure_switch_state(uid: int):
-    global switch_state
-    if 0 <= uid < len(switch_state):
-        if switch_state[uid] is None:
-            switch_state[uid] = 0
+    """Return mutable state dict for a schitch, creating defaults if missing."""
+    st = switch_state.get(uid)
+    if st is None:
+        st = {'value': 0}
+        switch_state[uid] = st
+    return st
 
 @app.route('/api/switch_list')
 def get_switch_list():
@@ -715,12 +715,6 @@ if __name__ == '__main__':
     try:
         for loco in loc_list:
             _ensure_loco_state(int(loco.get('uid') if isinstance(loco, dict) else loco['uid']))
-    except Exception:
-        pass
-
-    try:
-        for switch in switch_list:
-            _ensure_switch_state(int(switch.get('uid') if isinstance(switch, dict) else switch['uid']))
     except Exception:
         pass
 
