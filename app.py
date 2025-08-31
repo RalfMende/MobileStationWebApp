@@ -139,7 +139,9 @@ def sse_events():
 #************************************************************************************
 # System state handling
 #************************************************************************************
-        
+
+
+
 @app.route('/api/system_state')
 def get_system_state():
     state_wif = 1 if system_state == SystemState.RUNNING else 0
@@ -264,18 +266,11 @@ def function():
 # Switch state handling
 #************************************************************************************
 
-def _ensure_switch_state():
+def _ensure_switch_state(uid: int):
     global switch_state
-    if not isinstance(switch_list, dict) or 'artikel' not in switch_list:
-        return
-    for entry in switch_list['artikel']:
-        idx = entry.get('id')
-        try:
-            idx = int(idx)
-        except Exception:
-            continue
-        if 0 <= idx < len(switch_state):
-            switch_state[idx] = 0
+    if 0 <= uid < len(switch_state):
+        if switch_state[uid] is None:
+            switch_state[uid] = 0
 
 @app.route('/api/switch_list')
 def get_switch_list():
@@ -722,7 +717,13 @@ if __name__ == '__main__':
             _ensure_loco_state(int(loco.get('uid') if isinstance(loco, dict) else loco['uid']))
     except Exception:
         pass
-    
+
+    try:
+        for switch in switch_list:
+            _ensure_switch_state(int(switch.get('uid') if isinstance(switch, dict) else switch['uid']))
+    except Exception:
+        pass
+
     t = threading.Thread(target=listen_cs2_udp, args=('', UDP_PORT_RX, _stop_evt), daemon=True)
     t.start()
 
