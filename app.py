@@ -577,6 +577,16 @@ def parse_value(val):
         return int(val)
     return val
 
+def magnetartikel_uid(id_int, dectyp):
+    if dectyp == 'mm2':
+        return 0x3000 | (id_int & 0x3FF)   # MM2
+    elif dectyp == 'dcc':
+        return 0x3800 | (id_int & 0x3FF)   # DCC
+    elif dectyp == 'sx1':
+        return 0x2800 | (id_int & 0x3FF)   # SX1
+    else:
+        return (id_int & 0x3FF)            # Fallback
+    
 def parse_lokomotive_cs2(file_path):
     """Function `parse_lokomotive_cs2`.
     Args:
@@ -648,6 +658,15 @@ def parse_magnetartikel_cs2(file_path):
                     value = parse_value(value)
                     if current_section == 'artikel':
                         current_entry[key] = value
+    for entry in articles.get('artikel', []):
+        id_val = entry.get('id')
+        dectyp = str(entry.get('dectyp', '')).lower()
+        if id_val is not None:
+            try:
+                id_int = int(id_val)
+            except Exception:
+                continue
+            entry['uid'] = magnetartikel_uid(id_int, dectyp)
     return articles
 
 #************************************************************************************
