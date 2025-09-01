@@ -172,15 +172,20 @@ def toggle():
         See implementation."""
     data = _require_json()
     running = bool(data.get(K_STATE, False))
-    can_id = build_can_id(DEVICE_UID, Command.SYSTEM, prio=0, resp=0)
-    data_bytes = _payload_system_state(DEVICE_UID, running)
-    data_bytes = _pad_to_8(data_bytes)
-    try:
-        _udp_send_frame(can_id, data_bytes, dlc=5)
-        set_system_state(SystemState.RUNNING if running else SystemState.STOPPED)
-        return jsonify(status='ok')
-    except Exception as e:
-        return (jsonify(status='error', message=str(e)), 500)
+    payload = {
+        K_LOCO_ID: DEVICE_UID,
+        K_STATE: running
+    }
+    def update_state(uid, state):
+        set_system_state(SystemState.RUNNING if state else SystemState.STOPPED)
+    return send_cs2_udp(
+        payload,
+        [K_STATE],
+        update_state,
+        Command.SYSTEM,
+        _payload_system_state,
+        5
+    )
 
 #************************************************************************************
 # Loco state handling
