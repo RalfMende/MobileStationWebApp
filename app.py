@@ -176,12 +176,10 @@ def toggle():
         K_LOCO_ID: DEVICE_UID,
         K_STATE: running
     }
-    def update_state(uid, state):
-        set_system_state(SystemState.RUNNING if state else SystemState.STOPPED)
+    set_system_state(SystemState.RUNNING if running else SystemState.STOPPED)
     return send_cs2_udp(
         payload,
         [K_STATE],
-        update_state,
         Command.SYSTEM,
         _payload_system_state,
         5
@@ -265,10 +263,10 @@ def get_state():
 def speed():
     """Unified handler for speed."""
     data = _require_json()
+    set_loco_state_speed(data.get(K_LOCO_ID), data.get(K_SPEED))
     return send_cs2_udp(
         data,
         [K_SPEED],
-        set_loco_state_speed,
         Command.SPEED,
         _payload_speed,
         6
@@ -278,10 +276,10 @@ def speed():
 def direction():
     """Unified handler for direction."""
     data = _require_json()
+    set_loco_state_direction(data.get(K_LOCO_ID), data.get(K_DIRECTION))
     return send_cs2_udp(
         data,
         [K_DIRECTION],
-        set_loco_state_direction,
         Command.DIRECTION,
         _payload_direction,
         5
@@ -296,10 +294,10 @@ def function():
     # Pass both fn and val to the handler
     data[K_FUNCTION] = fn
     data[K_VALUE] = val
+    set_loco_state_function(data.get(K_LOCO_ID), fn, val)
     return send_cs2_udp(
         data,
         [K_FUNCTION, K_VALUE],
-        set_loco_state_function,
         Command.FUNCTION,
         _payload_function,
         6
@@ -364,12 +362,10 @@ def keyboard_event():
             K_LOCO_ID: uid,
             K_VALUE: value
         }
-        def dummy_state_func(*args):
-            pass
+        # State already set above with set_switch_state(idx, value)
         return send_cs2_udp(
             data,
             [K_VALUE],
-            dummy_state_func,
             Command.SWITCH,
             _payload_switch,
             6
@@ -457,16 +453,14 @@ def _coerce_bool(val) -> int:
     except Exception:
         return 0
 
-def send_cs2_udp(data, key_map, state_func, can_command, payload_func, dlc):
-    """Shared handler for loco commands (speed, direction, function)."""
+def send_cs2_udp(data, key_map, can_command, payload_func, dlc):
+    """Send UDP frame for loco/switch commands. No state changes here."""
     try:
         uid_int = _require_int(data, K_LOCO_ID, 'invalid loco_id')
     except ValueError as e:
         return (jsonify(status='error', message=str(e)), 400)
-    # Extract and validate command-specific values
     try:
         values = [data.get(k) for k in key_map]
-        # Custom conversion for direction and function
         if can_command == Command.SPEED:
             values[0] = _clamp_speed10(int(values[0]))
         elif can_command == Command.DIRECTION:
@@ -478,8 +472,6 @@ def send_cs2_udp(data, key_map, state_func, can_command, payload_func, dlc):
             values[0] = int(values[0])
     except (TypeError, ValueError):
         return (jsonify(status='error', message=f'invalid {key_map}'), 400)
-    # State update
-    state_func(uid_int, *values)
     can_id = build_can_id(DEVICE_UID, can_command, prio=0, resp=0)
     data_bytes = payload_func(uid_int, *values)
     data_bytes = _pad_to_8(data_bytes)
@@ -575,7 +567,6 @@ def custom_function():
     return send_cs2_udp(
         payload,
         [K_FUNCTION, K_VALUE],
-        set_loco_state_function,
         Command.FUNCTION,
         _payload_function,
         6
