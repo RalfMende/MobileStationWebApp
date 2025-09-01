@@ -5,6 +5,7 @@ import threading
 import queue
 import json
 from enum import IntEnum, Enum
+import argparse
 
 app = Flask(__name__)
 
@@ -21,8 +22,8 @@ class SystemState(str, Enum):
     HALTED  = 'halted'
 system_state = SystemState.STOPPED
 
-path_config_files = 'tmp'
-UDP_IP = '192.168.20.42'
+path_config_files = 'tmp'  # default, kann via CLI/Debug überschrieben werden
+UDP_IP = '192.168.20.42'   # default, kann via CLI/Debug überschrieben werden
 UDP_PORT_TX = 15731
 UDP_PORT_RX = 15730
 DEVICE_UID = 0
@@ -414,7 +415,13 @@ def _udp_send_frame(can_id: int, payload: bytes | bytearray, dlc: int) -> None:
     send_bytes.append(dlc & 255)
     send_bytes.extend(data_bytes)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.sendto(send_bytes, (UDP_IP, UDP_PORT_TX))
+    try:
+        target_ip = app.config.get('UDP_IP', UDP_IP)
+        target_port = app.config.get('UDP_PORT_TX', UDP_PORT_TX)
+    except Exception:
+        target_ip = UDP_IP
+        target_port = UDP_PORT_TX
+    sock.sendto(send_bytes, (target_ip, target_port))
 
 def _require_int(data: dict, key: str, err_msg: str) -> int:
     """Fetch and cast a JSON field to int; raise ValueError with friendly message on failure."""
@@ -704,26 +711,50 @@ def info():
     """Info-Seite für das Webinterface."""
     return render_template('info.html')
 
-if __name__ == '__main__':
+def parse_args():
+    parser = argparse.ArgumentParser(description='MobileStationWebApp Server')
+    parser.add_argument('--udp-ip', dest='udp_ip', default=UDP_IP, help='IP-Adresse des CS2-UDP-Ziels')
+    parser.add_argument('--config', dest='config_path', default=path_config_files, help='Pfad zu den CS2-Konfigurationsdateien')
+    parser.add_argument('--host', dest='host', default='0.0.0.0', help='Bind Host für Flask')
+    parser.add_argument('--port', dest='port', type=int, default=6020, help='Port für Flask')
+    return parser.parse_args()
+
+def run_server(udp_ip: str = UDP_IP, config_path: str = path_config_files, host: str = '0.0.0.0', port: int = 6020):
+    """Startet den Server mit konfigurierbarer UDP-IP und Pfad zu den CS2-Konfigdateien."""
+    global loc_list, switch_list
+    # App-Konfiguration setzen
+    app.config['UDP_IP'] = udp_ip
+    app.config['UDP_PORT_TX'] = UDP_PORT_TX
+    app.config['UDP_PORT_RX'] = UDP_PORT_RX
+    app.config['CONFIG_PATH'] = config_path
+
+    # CS2-Dateien laden
     try:
-        loc_list = parse_lokomotive_cs2(os.path.join(path_config_files, 'lokomotive.cs2'))
+        loc_list = parse_lokomotive_cs2(os.path.join(config_path, 'lokomotive.cs2'))
     except Exception as e:
         loc_list = []
         print(f"Error loading lokomotive.cs2 file: {e}")
-    
+
     try:
-        switch_list = parse_magnetartikel_cs2(os.path.join(path_config_files, 'magnetartikel.cs2'))
+        switch_list = parse_magnetartikel_cs2(os.path.join(config_path, 'magnetartikel.cs2'))
     except Exception as e:
         switch_list = []
         print(f"Error loading magnetartikel.cs2 file: {e}")
-    
+
+    # Loco-States initialisieren
     try:
         for loco in loc_list:
             _ensure_loco_state(int(loco.get('uid') if isinstance(loco, dict) else loco['uid']))
     except Exception:
         pass
 
+    # UDP Listener starten
     t = threading.Thread(target=listen_cs2_udp, args=('', UDP_PORT_RX, _stop_evt), daemon=True)
     t.start()
 
-    app.run(host='0.0.0.0', port=6020)
+    # Flask starten
+    app.run(host=host, port=port)
+
+if __name__ == '__main__':
+    args = parse_args()
+    run_server(udp_ip=args.udp_ip, config_path=args.config_path, host=args.host, port=args.port)
