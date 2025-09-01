@@ -346,32 +346,33 @@ def keyboard_event():
     idx = data.get('idx')
     value = data.get('value')
     if idx is None or value is None:
-        return jsonify({'status': 'error', 'message': 'idx und value erforderlich'}), 400
+        return jsonify({'status': 'error', 'message': 'idx and value required'}), 400
     try:
         idx = int(idx)
         value = int(value)
-        set_switch_state(idx, value)
-        # UID aus switch_list ermitteln
-        uid = idx
-        if isinstance(switch_list, dict) and 'artikel' in switch_list:
-            artikel = switch_list['artikel']
-            if isinstance(artikel, list) and idx < len(artikel):
-                entry = artikel[idx]
-                uid = entry.get('uid', idx)
-        data = {
-            K_LOCO_ID: uid,
-            K_VALUE: value
-        }
-        # State already set above with set_switch_state(idx, value)
-        return send_cs2_udp(
-            data,
-            [K_VALUE],
-            Command.SWITCH,
-            _payload_switch,
-            6
-        )
-    except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 400
+    except Exception:
+        return jsonify({'status': 'error', 'message': 'idx and value must be integers'}), 400
+
+    set_switch_state(idx, value)
+
+    # Determine UID from switch_list if available
+    uid = idx
+    artikel = switch_list.get('artikel') if isinstance(switch_list, dict) else None
+    if isinstance(artikel, list) and idx < len(artikel):
+        entry = artikel[idx]
+        uid = entry.get('uid', idx)
+
+    payload = {
+        K_LOCO_ID: uid,
+        K_VALUE: value
+    }
+    return send_cs2_udp(
+        payload,
+        [K_VALUE],
+        Command.SWITCH,
+        _payload_switch,
+        6
+    )
     
 #************************************************************************************
 # CS2 interaction
