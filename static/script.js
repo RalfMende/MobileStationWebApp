@@ -171,15 +171,6 @@ function updateStopButtonUI() {
   stopBtn.textContent = isRunning ? 'STOP' : 'GO';
 }
 
-// Fetch the initial system running state from the backend.
-// This one‑off request determines whether the stop button should display "GO" or "STOP" at page load.
-fetch('/api/system_state')
-  .then(response => response.json())
-  .then(data => {
-    isRunning = data.status;
-    updateStopButtonUI();
-  });
-
 // Handle clicks on the stop button by toggling the overall system state.
 // The new desired state is sent to the server; the isRunning flag is only updated when
 // the server broadcasts a system event via SSE.
@@ -203,6 +194,18 @@ evtSource.onmessage = function(event) {
       isRunning = data.status;
     updateStopButtonUI();
   }
+  if (currentLocoUid == data.loc_id) {
+    if (data.type === 'direction') {
+      updateDirectionUI(data.value === 1 ? 'forward' : data.value === 2 ? 'reverse' : undefined);
+    }
+    if (data.type === 'speed') {
+      speedSlider.value = data.value;
+      updateSpeedUI(data.value);
+    }
+    if (data.type === 'function') {
+      updateLocoFunctionButton(data.fn, data.value);
+    }
+  }
   if (data.type === 'switch' && typeof data.idx === 'number' && typeof data.value !== 'undefined') {
   // idx: 0-63
   // Back-calculate: keyboardId = Math.floor(idxNum/8), groupIdx = (idxNum%8)
@@ -218,18 +221,6 @@ evtSource.onmessage = function(event) {
       if (btn1 && btn2) {
         updateSwitchUI(btn1, btn2, valueNum);
       }
-    }
-  }
-  if (currentLocoUid == data.loc_id) {
-    if (data.type === 'direction') {
-      updateDirectionUI(data.value === 1 ? 'forward' : data.value === 2 ? 'reverse' : undefined);
-    }
-    if (data.type === 'speed') {
-      speedSlider.value = data.value;
-      updateSpeedUI(data.value);
-    }
-    if (data.type === 'function') {
-      updateLocoFunctionButton(data.fn, data.value);
     }
   }
 };

@@ -152,11 +152,6 @@ def _payload_system_state(device_uid: int, running: bool) -> bytes:
     b.append(1 if running else 0)
     return b
 
-@app.route('/api/system_state')
-def get_system_state():
-    state_wif = 1 if system_state == SystemState.RUNNING else 0
-    return jsonify({'status': state_wif})
-
 def set_system_state(new_state):
     global system_state
     if system_state != new_state:
