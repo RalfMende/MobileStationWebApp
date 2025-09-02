@@ -2,15 +2,19 @@ let locList = {};
 let switchList = {};
 
 let isRunning = false;
-let currentActiveContainer = 'control'; // Keeps selcted page, in case of returning to website
+let currentActiveContainer = 'control'; // Keeps selected page, in case of returning to website
 let currentLocoUid = null; // Keeps selected locomotive from control page (via UID)
 let currentKeyboardId = 0; // Keeps selected keyboard ID from keyboard page
 const debounce_udp_message = 10; // Timer in ms
+
+let isDragging = false;
+let dragTimeout = null;
 
 const stopBtn = document.getElementById('stopBtn');
 const speedSlider = document.getElementById('speedSlider');
 const speedFill = document.getElementById('speedFill');
 const speedValue = document.getElementById('speedValue');
+const speedBar = document.getElementById('speedBar');
 const reverseBtn = document.getElementById('reverseBtn');
 const forwardBtn = document.getElementById('forwardBtn');
 const locoDesc = document.getElementById('locoDesc');
@@ -24,34 +28,13 @@ const controlPage = document.getElementById('controlPage');
 const keyboardPage = document.getElementById('keyboardPage');
 const keyboardPageBtns = document.querySelectorAll('.keyboard-page-btn');
 const infoBtn = document.getElementById('infoBtn');
+const keyboardBtns = document.querySelectorAll('.keyboard-btn');
 
-// Keyboard bottom bar button logic
-keyboardPageBtns.forEach((btn, idx) => {
-  btn.addEventListener('click', function() {
-    keyboardPageBtns.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    currentKeyboardId = idx;
-    updateKeyboardHeaderText();
-    fetch('/api/switch_state')
-      .then(response => response.json())
-      .then(data => {
-        if (data && data.switch_state) {
-          const keyboardBtns = document.querySelectorAll('.keyboard-btn');
-          for (let groupIdx = 0; groupIdx < 8; groupIdx++) {
-            const eventIdx = (currentKeyboardId * 8) + groupIdx;
-            const value = data.switch_state[eventIdx];
-            const btn1 = keyboardBtns[groupIdx * 2];
-            const btn2 = keyboardBtns[groupIdx * 2 + 1];
-            if (btn1 && btn2) {
-              applySwitchUI(btn1, btn2, value);
-            }
-          }
-        }
-      });
-  });
-});
-
-// Tab navigation between control and keyboard panels
+// Tab navigation between control and keyboard panels.
+// The markup contains two tabs: one for the locomotive control view and one for the keyboard view.
+// Attach click listeners to each tab so that clicking a tab hides the inactive page, reveals the
+// chosen page and updates the 'active' CSS class on the tab.  This also updates the
+// `currentActiveContainer` global so other code knows which panel is showing.
 if (keyboardTab && controlTab && controlPage && keyboardPage) {
   keyboardTab.addEventListener('click', function() {
     controlPage.classList.add('hidden');
@@ -69,16 +52,18 @@ if (keyboardTab && controlTab && controlPage && keyboardPage) {
   });
 }
 
-// On page load, restore currentKeyboardId and active container from localStorage if available
-function activateKeyboardBtnById(id) {
-  if (keyboardPageBtns.length > 0 && id >= 0 && id < keyboardPageBtns.length) {
-    keyboardPageBtns.forEach(b => b.classList.remove('active'));
-    keyboardPageBtns[id].classList.add('active');
-    currentKeyboardId = id;
-    updateKeyboardHeaderText();
-  }
-}
-
+/**
+ * Switch between the control and keyboard views.
+ *
+ * When the user navigates via the tab bar or when persisted state
+ * is restored on page load, the UI must show either the locomotive
+ * control panel or the keyboard panel.  This helper applies
+ * appropriate CSS classes to hide or reveal the pages and sets
+ * the `currentActiveContainer` global to reflect the new active
+ * view.
+ *
+ * @param {('control'|'keyboard')} container – which container to activate
+ */
 function activateContainer(container) {
   if (container === 'keyboard') {
     controlPage.classList.add('hidden');
@@ -95,6 +80,10 @@ function activateContainer(container) {
   }
 }
 
+// Restore persisted UI state and initialise accessory data on page load.
+// When the DOM content is ready, read persisted selections from localStorage (the active
+// keyboard page and last active container) and apply them.  Then load the accessory (switch)
+// list and state from the backend so the keyboard view can be initialised correctly.
 document.addEventListener('DOMContentLoaded', function() {
   let savedKeyboardId = localStorage.getItem('currentKeyboardId');
   let savedContainer = localStorage.getItem('currentActiveContainer');
@@ -109,7 +98,7 @@ document.addEventListener('DOMContentLoaded', function() {
     activateContainer('control');
   }
   updateKeyboardHeaderText();
-  // Magnetartikel-Liste laden
+  // Load accessory (switch) list
   fetch('/api/switch_list')
     .then(response => response.json())
     .then(data => {
@@ -120,173 +109,175 @@ document.addEventListener('DOMContentLoaded', function() {
       switchList = {};
       updateKeyboardGroupLabels();
     });
+  // Load and initialize keyboard switch states
+  fetch('/api/switch_state')
+    .then(response => response.json())
+    .then(data => {
+      const switchState = data && data.switch_state ? data.switch_state : [];
+      initializeKeyboardButtons(switchState);
+    })
+    .catch(() => {
+      initializeKeyboardButtons([]);
+    });
 });
 
+//
+// ==========================
+//  INFO BUTTON SECTION
+// ==========================
+//
+// The functions in this section handle the behaviour of the global
+// "INFO" button. With this button you leave the current view and
+// navigate to the info page.
+
+// When the user clicks the info button, persist the current UI state and navigate to /info.
+// This persists the active container, selected locomotive and keyboard page so the UI can
+// be restored when returning from the info page.
 if (infoBtn) {
   infoBtn.onclick = function() {
-    // Save current active container (control/keyboard)
     localStorage.setItem('currentActiveContainer', currentActiveContainer);
-    // Save locomotive ID
     if (currentLocoUid != null) {
       localStorage.setItem('currentLocoUid', currentLocoUid);
     }
-    // Save current keyboard button
     localStorage.setItem('currentKeyboardId', currentKeyboardId);
     window.location.href = '/info';
   };
 }
 
-/** Format an icon id as two digits (e.g., 1 -> "01") */
-function pad2(v) {
-  const s = String(v ?? '');
-  return s.length >= 2 ? s : s.padStart(2, '0');
-}
+//
+// ==========================
+//  STOP BUTTON SECTION
+// ==========================
+//
+// The functions in this section handle the behaviour of the global
+// "STOP" button.  This button toggles the overall system state
+// (start/stop) and updates its own appearance based on that state.
+// Grouping these together makes it easier to reason about the
+// stop‑button behaviour independently of locomotive control or
+// keyboard logic.
 
-/** Set function icon with fallbacks (browser-safe, no filesystem).
- *  Tries the specific icon first; on 404 loads the fallback.
- *  @param {HTMLImageElement} img
- *  @param {string} iconPrefix
- *  @param {number} id
- *  @param {number} index
+/**
+ * Update the visual state of the stop button.
+ *
+ * The stop button toggles between a running and a stopped state.
+ * Whenever the server reports a change in the overall system status,
+ * this function adjusts the CSS class and label accordingly.  It
+ * encapsulates DOM manipulation so that other parts of the code
+ * simply call {@link updateStopButtonUI} without worrying about how
+ * the styling or text is applied.
  */
-function setFunctionIcon(img, iconPrefix, id, index) {
-  const primary  = `/static/fcticons/FktIcon_a_${iconPrefix}_${pad2(id)}.png`;
-  const fallback = `/static/fcticons/FktIcon_a_${iconPrefix}_${pad2(50 + index)}.png`;
-
-  const probe = new Image();
-  probe.onload  = () => { img.src = primary; };
-  probe.onerror = () => { img.src = fallback; };
-  probe.src = primary;
-  return primary;
-}
-
-function getTypFromLocList(idx) {
-  try {
-    const loco = locList[currentLocoUid];
-    if (!loco || !loco.funktionen) return null;
-    const entry = loco.funktionen[idx] ?? loco.funktionen[String(idx)];
-    if (!entry) return null;
-    return entry.typ ?? entry.type ?? null;
-  } catch (e) {
-    return null;
-  }
-}
-
-function updateStopBtn() {
+function updateStopButtonUI() {
   stopBtn.className = isRunning ? 'stop tab' : 'go tab';
   stopBtn.textContent = isRunning ? 'STOP' : 'GO';
 }
 
+// Fetch the initial system running state from the backend.
+// This one‑off request determines whether the stop button should display "GO" or "STOP" at page load.
 fetch('/api/system_state')
   .then(response => response.json())
   .then(data => {
     isRunning = data.status;
-    updateStopBtn();
+    updateStopButtonUI();
   });
 
+// Handle clicks on the stop button by toggling the overall system state.
+// The new desired state is sent to the server; the isRunning flag is only updated when
+// the server broadcasts a system event via SSE.
 stopBtn.addEventListener('click', () => {
   fetch('/api/stop_button', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ state: !isRunning })
   });
-  // isRunning and updateStopBtn() are only set via SSE!
+  // isRunning and updateStopButtonUI() are only set via SSE!
 });
 
+// Subscribe to Server‑Sent Events (SSE) from the backend to keep the UI in sync.
+// The backend emits events for system status, switch changes and locomotive state changes.
+// When messages arrive, update the corresponding UI (stop button, switch pairs, direction, speed
+// and function buttons) if they relate to the currently active locomotive or keyboard page.
 const evtSource = new EventSource('/api/events');
 evtSource.onmessage = function(event) {
   const data = JSON.parse(event.data);
   if (data.type === 'system') {
       isRunning = data.status;
-      updateStopBtn();
+    updateStopButtonUI();
   }
   if (data.type === 'switch' && typeof data.idx === 'number' && typeof data.value !== 'undefined') {
   // idx: 0-63
-  // Rückwärts rechnen: keyboardId = Math.floor(idxNum/8), groupIdx = (idxNum%8)
+  // Back-calculate: keyboardId = Math.floor(idxNum/8), groupIdx = (idxNum%8)
   const idxNum = Number(data.idx);
   const valueNum = Number(data.value);
   const keyboardId = Math.floor(idxNum / 8);
   const groupIdx = idxNum % 8;
-    // Nur wenn die aktuelle Seite betroffen ist:
+    // Only if the current page is affected:
     if (keyboardId === currentKeyboardId) {
-      // Finde die beiden Buttons der Gruppe
+      // Find the two buttons of the group
       const btn1 = document.querySelectorAll('.keyboard-btn')[groupIdx * 2];
       const btn2 = document.querySelectorAll('.keyboard-btn')[groupIdx * 2 + 1];
       if (btn1 && btn2) {
-        applySwitchUI(btn1, btn2, valueNum);
+        updateSwitchUI(btn1, btn2, valueNum);
       }
     }
   }
   if (currentLocoUid == data.loc_id) {
     if (data.type === 'direction') {
-      applyDirectionUI(data.value === 1 ? 'forward' : data.value === 2 ? 'reverse' : undefined);
+      updateDirectionUI(data.value === 1 ? 'forward' : data.value === 2 ? 'reverse' : undefined);
     }
-        if (data.type === 'speed') {
+    if (data.type === 'speed') {
       speedSlider.value = data.value;
-      applySpeedUI(data.value);
+      updateSpeedUI(data.value);
     }
     if (data.type === 'function') {
-      updateFunctionButton(data.fn, data.value);
+      updateLocoFunctionButton(data.fn, data.value);
     }
   }
 };
 
-fetch('/api/locs')
-  .then(response => response.json())
-  .then(data => {
-    locList = data;
-    // Mirror state from server (authoritative)
-    fetch('/api/state').then(r=>r.json()).then(s => { locoState = s; }).catch(()=>{ locoState = {}; });
+//
+// ==========================
+//  LOCOMOTIVE CONTROL SECTION
+// ==========================
+//
+// The functions in this section manipulate a single locomotive.  They
+// send commands to the backend (speed, direction, functions) and
+// reflect state changes in the UI.  Naming is normalised to start
+// with "setLoco…" for actions that send commands to the server, and
+// "update…" for pure UI updates.  Fetch functions that only read
+// state are prefixed with "fetchAnd…".
 
-    // Initialize currentLocoUid
-    let savedLocoUid = localStorage.getItem('currentLocoUid');
-    if (savedLocoUid && locList[savedLocoUid]) {
-      currentLocoUid = Number(savedLocoUid);
-    } else {
-      // Initialize with the first locomotive from locList
-      const firstUid = Object.keys(locList)[0];
-      currentLocoUid = locList[firstUid]?.uid || Number(firstUid);
-    }
+/**
+ * Update the direction buttons in the UI.
+ *
+ * The direction buttons (forward/reverse) use different images to
+ * indicate which one is active.  This function takes a direction
+ * string and swaps the corresponding images.  The value may come
+ * either from the server (state update) or from user interaction.
+ *
+ * @param {'forward'|'reverse'} dir – the direction to show
+ */
+function updateDirectionUI(dir) {
+  if (dir === 'forward') {
+    forwardBtn.src = '/static/grafics/dir_right_active.png';
+    reverseBtn.src = '/static/grafics/dir_left_inactive.png';
+  } else {
+    forwardBtn.src = '/static/grafics/dir_right_inactive.png';
+    reverseBtn.src = '/static/grafics/dir_left_active.png';
+  }
+}
 
-    Object.keys(locList).forEach(uid => {
-      // 2. Create locomotive icon
-      console.log("Initializing locomotive:", uid, locList[uid]);
-      const img = new Image();
-      img.alt = locList[uid].name;
-      img.title = locList[uid].name;
-      img.onerror = function() {
-        img.onerror = null;
-        img.src = '/static/icons/leeres Gleis.png';
-      };
-      const iconName = locList[uid].icon || locList[uid].bild || 'leeres Gleis';
-      img.src = `/static/icons/${iconName}.png`;
-      document.getElementById("locoList").appendChild(img);
-      // 3. Set locomotive icon event handler
-      img.onclick = () => {
-        currentLocoUid = locList[uid].uid;
-        locoDesc.textContent = locList[uid].name;
-        locoImg.src = img.src;
-        fetchAndApplyState(currentLocoUid);
-        localStorage.setItem('currentLocoUid', currentLocoUid);
-      };
-    });
-
-    // After initialization: Apply state of the current locomotive and update function buttons
-    if (currentLocoUid) {
-      locoDesc.textContent = locList[currentLocoUid]?.name || '';
-      locoImg.src = `/static/icons/${locList[currentLocoUid]?.icon || locList[currentLocoUid]?.bild || 'leeres Gleis'}.png`;
-      fetch(`/api/state?loco_id=${currentLocoUid}`)
-        .then(r => r.json())
-        .then(state => {
-          updateAllFunctionButtons(state.functions || {});
-          applySpeedUI(state.speed || 0);
-          applyDirectionUI(state.direction === 'reverse' ? 'reverse' : 'forward');
-        });
-    }
-  });
-
-function setDirection(dir) {
-  console.log("Sending direction for loco_id:", currentLocoUid, "direction:", dir);
+/**
+ * Send a direction command for the current locomotive.
+ *
+ * Converts a human‑friendly string ('forward'/'reverse') into the
+ * numeric values understood by the backend (1 for forward, 2 for
+ * reverse) and posts the update via fetch.  Logging is kept for
+ * debugging purposes.
+ *
+ * @param {'forward'|'reverse'} dir – desired direction
+ */
+function setLocoDirection(dir) {
+  console.log('Sending direction for loco_id:', currentLocoUid, 'direction:', dir);
   fetch('/api/direction', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -297,64 +288,57 @@ function setDirection(dir) {
   });
 }
 
-reverseBtn.addEventListener('click', () => setDirection('reverse'));
-forwardBtn.addEventListener('click', () => setDirection('forward'));
-
-function applyDirectionUI(dir) {
-  if (dir === 'forward') {
-    forwardBtn.src = '/static/grafics/dir_right_active.png';
-    reverseBtn.src = '/static/grafics/dir_left_inactive.png';
-  } else {
-    forwardBtn.src = '/static/grafics/dir_right_inactive.png';
-    reverseBtn.src = '/static/grafics/dir_left_active.png';
-  }
-}
-
-function applySpeedUI(val) {
+/**
+ * Update the speed readout and bar in the UI.
+ *
+ * The protocol expresses speed from 0–1000.  The UI displays a bar
+ * scaled 0–100 % and a textual km/h value based on each
+ * locomotive's maximum.  This function performs both calculations.
+ *
+ * @param {number} val – the raw speed value (0–1000)
+ */
+function updateSpeedUI(val) {
   speedFill.style.height = `${(val / 1000) * 100}%`;
-  // Calculation: 0–1000 (Protocol) to 0–tachomax (Display)
-  // const kmh = Math.round((val / 1000) * tachomax);
+  // Each locomotive may declare its own max speed in km/h.  If not
+  // provided, default to 200.  Convert the protocol value to km/h.
   const tachomax = locList[currentLocoUid].tachomax || 200;
   const kmh = Math.round(val * tachomax / 1000);
   speedValue.textContent = `${kmh} km/h`;
 }
 
-// Fetch state for a given locomotive from the server and update the UI (no commands sent)
-function fetchAndApplyState(locoUid) {
+/**
+ * Fetch the current state for a given locomotive and update the UI.
+ *
+ * This function reads the latest speed, direction and function states
+ * from the backend without sending any commands.  It then applies
+ * those values to the controls.  Use this after selecting a new
+ * locomotive or when you need to mirror server state on page load.
+ *
+ * @param {number} locoUid – the unique id of the locomotive
+ */
+function fetchAndApplyLocoState(locoUid) {
   fetch(`/api/state?loco_id=${locoUid}`)
     .then(r => r.json())
     .then(state => {
       const s = state || {};
       const spd = Number(s.speed || 0);
       speedSlider.value = spd;
-      applySpeedUI(spd);
+      updateSpeedUI(spd);
       const dir = (s.direction === 'reverse') ? 'reverse' : 'forward';
-      applyDirectionUI(dir);
-      updateAllFunctionButtons(s.functions || {});
+      updateDirectionUI(dir);
+      updateAllLocoFunctionButtons(s.functions || {});
     })
     .catch(err => console.warn('Failed to fetch state:', err));
 }
 
-function updateSlider(val) {
-  applySpeedUI(val);
-  // Debounce UDP message
-  //if (window._sliderDebounce) clearTimeout(window._sliderDebounce);
-  //window._sliderDebounce = setTimeout(() => {
-    fetch('/api/speed', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        loco_id: currentLocoUid,
-        speed: val
-      })
-    });
-  //}, debounce_udp_message);
-}
 
-let isDragging = false;
-let dragTimeout = null;
-const speedBar = document.getElementById('speedBar');
-
+//
+// Pointer event handling for the vertical speed bar.  When the user
+// presses and drags on the speed bar, update the slider value
+// continuously; on click release, send a final update.  These
+// handlers operate on the global `speedBar` element defined in
+// the markup.  They are grouped here because they tie directly into
+// speed setting for the locomotive.
 speedBar.addEventListener('pointerdown', (e) => {
   isDragging = false;
   const startY = e.clientY;
@@ -371,7 +355,7 @@ speedBar.addEventListener('pointerdown', (e) => {
     const percent = 1 - (y / rect.height);
     const value = Math.min(1000, Math.max(0, Math.round(percent * 1000)));
     speedSlider.value = value;
-    updateSlider(value);
+    setLocoSpeed(value);
   };
 
   const onUp = (e) => {
@@ -387,7 +371,7 @@ speedBar.addEventListener('pointerdown', (e) => {
       const percent = 1 - (y / rect.height);
       const value = Math.min(1000, Math.max(0, Math.round(percent * 1000)));
       speedSlider.value = value;
-      updateSlider(value);
+      setLocoSpeed(value);
     }
   };
 
@@ -396,7 +380,109 @@ speedBar.addEventListener('pointerdown', (e) => {
   speedBar.addEventListener('pointercancel', onUp);
 });
 
-function createFunctionButton(idx) {
+/**
+ * Set the speed of the current locomotive.
+ *
+ * Writes the speed slider value back to the UI (so the bar and
+ * readout update) and posts the new speed to the server.  A
+ * debounce could be added here but is commented out for now.
+ *
+ * @param {number} val – the raw speed (0–1000)
+ */
+function setLocoSpeed(val) {
+  updateSpeedUI(val);
+  fetch('/api/speed', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      loco_id: currentLocoUid,
+      speed: val
+    })
+  });
+}
+
+/**
+ * Format an icon id as two digits (e.g., 1 → "01").
+ *
+ * The server provides icon identifiers as numbers.  Many of the
+ * filenames on disk expect two‑character numeric strings.  This helper
+ * pads single‑digit numbers with a leading zero.  It is kept near
+ * the stop‑button group because icons are also used in several UI
+ * elements and having this utility here aids readability.
+ *
+ * @param {number|string} v – the numeric value to pad
+ * @returns {string} the zero‑padded string
+ */
+function pad2(v) {
+  const s = String(v ?? '');
+  return s.length >= 2 ? s : s.padStart(2, '0');
+}
+
+/**
+ * Set a function icon with fallbacks (browser‑safe, no filesystem).
+ *
+ * Each locomotive function (e.g. headlights, horn) is represented by
+ * an icon.  Icons may differ across locomotives, so this helper
+ * constructs a URL for the appropriate file and falls back to a
+ * generic icon if the specific one isn't available.  The browser
+ * preloads the primary icon and selects the fallback on error.  This
+ * avoids filesystem access issues on certain platforms.
+ *
+ * @param {HTMLImageElement} img – the DOM image element to mutate
+ * @param {string} iconPrefix – 'we' for inactive or 'ge' for active
+ * @param {number} id – the icon identifier
+ * @param {number} index – the function index (used for fallback)
+ * @returns {string} the URL of the primary image
+ */
+function setFunctionIcon(img, iconPrefix, id, index) {
+  const primary  = `/static/fcticons/FktIcon_a_${iconPrefix}_${pad2(id)}.png`;
+  const fallback = `/static/fcticons/FktIcon_a_${iconPrefix}_${pad2(50 + index)}.png`;
+
+  const probe = new Image();
+  probe.onload  = () => { img.src = primary; };
+  probe.onerror = () => { img.src = fallback; };
+  probe.src = primary;
+  return primary;
+}
+
+/**
+ * Look up the configured icon type for a function index on the
+ * currently selected locomotive.
+ *
+ * Locomotives advertise their available functions (e.g. headlights,
+ * horn) via the `funktionen` array.  This helper retrieves the
+ * `typ`/`type` property for the given index, falling back to null if
+ * missing.  By encapsulating this lookup, the UI can remain agnostic
+ * about the underlying data structures.
+ *
+ * @param {number} idx – the numeric function index
+ * @returns {number|null} the function type id or null
+ */
+function getFunctionTypeFromLocList(idx) {
+  try {
+    const loco = locList[currentLocoUid];
+    if (!loco || !loco.funktionen) return null;
+    const entry = loco.funktionen[idx] ?? loco.funktionen[String(idx)];
+    if (!entry) return null;
+    return entry.typ ?? entry.type ?? null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Create a function button element for a locomotive.
+ *
+ * Locomotives may have many auxiliary functions (F0–F28 etc.).  This
+ * helper constructs a button with the correct icon and state
+ * attributes.  The returned button does not yet have a click
+ * handler; event delegation is set up separately.  See
+ * {@link handleLocoFunctionButtonClick} for click handling.
+ *
+ * @param {number} idx – the function index (0–27)
+ * @returns {HTMLButtonElement} the newly created button
+ */
+function createLocoFunctionButton(idx) {
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'fn-btn';
@@ -406,7 +492,7 @@ function createFunctionButton(idx) {
   btn.style.background = 'transparent';
   btn.style.padding = '0';
   btn.dataset.index = String(idx);
-  let imgid = getTypFromLocList(idx);
+  let imgid = getFunctionTypeFromLocList(idx);
   if (imgid == null) imgid = 50 + idx;
   btn.dataset.imgid = String(imgid);
   btn.setAttribute('aria-pressed', 'false');
@@ -418,24 +504,50 @@ function createFunctionButton(idx) {
   return btn;
 }
 
-function setupFunctionButtons(col, offset) {
+/**
+ * Append eight locomotive function buttons to a column element.
+ *
+ * Each locomotive has up to 28 functions.  In the UI these are split
+ * between two columns.  This helper populates a column (left or
+ * right) with eight buttons starting at the given offset.  It also
+ * attaches a delegated click handler once per column to minimise
+ * individual listeners.
+ *
+ * @param {HTMLElement} col – the container column (left or right)
+ * @param {number} offset – starting index for the eight buttons
+ */
+function setupLocoFunctionButtons(col, offset) {
   const frag = document.createDocumentFragment();
   for (let i = 0; i < 8; i++) {
     const idx = offset + i;
-    frag.appendChild(createFunctionButton(idx));
+    frag.appendChild(createLocoFunctionButton(idx));
   }
   col.appendChild(frag);
   if (!col.dataset.fnDelegated) {
-    col.addEventListener('click', onFunctionButtonClick);
+    col.addEventListener('click', handleLocoFunctionButtonClick);
     col.dataset.fnDelegated = '1';
   }
 }
 
-function onFunctionButtonClick(ev) {
+// Create and attach the locomotive function buttons on initial load
+setupLocoFunctionButtons(leftCol, 0);
+setupLocoFunctionButtons(rightCol, 7);
+
+/**
+ * Handle clicks on locomotive function buttons via event delegation.
+ *
+ * Determines which button was clicked, toggles its active state,
+ * updates its icon and notifies the server.  Event delegation is
+ * preferred here because it avoids attaching individual listeners
+ * for each function button and simplifies dynamic DOM insertion.
+ *
+ * @param {MouseEvent} ev – the click event
+ */
+function handleLocoFunctionButtonClick(ev) {
   const btn = ev.target instanceof Element ? ev.target.closest('button.fn-btn') : null;
   if (!btn) return;
   const idx = Number(btn.dataset.index);
-  let imgid = getTypFromLocList(idx);
+  let imgid = getFunctionTypeFromLocList(idx);
   if (imgid == null) imgid = Number(btn.dataset.imgid) || (50 + idx);
   btn.dataset.imgid = String(imgid);
   const wasActive = btn.dataset.active === '1' || btn.getAttribute('aria-pressed') === 'true';
@@ -460,27 +572,20 @@ function onFunctionButtonClick(ev) {
   }
 }
 
-setupFunctionButtons(leftCol, 0);
-setupFunctionButtons(rightCol, 7);
-  
-function updateFunctionButton(idx, value) {
-  const btn = document.querySelector(`#leftFunctions button.fn-btn[data-index="${idx}"]`) ||
-              document.querySelector(`#rightFunctions button.fn-btn[data-index="${idx}"]`);
-  if (!btn) return;
-  applyFunctionButtonState(btn, idx, value);
-}
-
-function updateAllFunctionButtons(functions) {
-  const buttons = document.querySelectorAll('#leftFunctions button.fn-btn, #rightFunctions button.fn-btn');
-  buttons.forEach((btn) => {
-    const idx = Number(btn.dataset.index);
-    const active = !!(functions && functions[idx]);
-    applyFunctionButtonState(btn, idx, active);
-  });
-}
-
-function applyFunctionButtonState(btn, idx, active) {
-  let imgid = getTypFromLocList(idx);
+/**
+ * Apply the visual state to a locomotive function button.
+ *
+ * Chooses the correct icon for the button based on whether it is
+ * active or inactive, records the active state via data attributes
+ * and aria flags, and updates the image.  This helper is used by
+ * both the bulk updater and the SSE handler for individual changes.
+ *
+ * @param {HTMLButtonElement} btn – the button to update
+ * @param {number} idx – the function index
+ * @param {boolean|number} active – whether the function is active
+ */
+function applyLocoFunctionButtonState(btn, idx, active) {
+  let imgid = getFunctionTypeFromLocList(idx);
   if (imgid == null) imgid = Number(btn.dataset.imgid) || (50 + idx);
   btn.dataset.imgid = String(imgid);
   btn.dataset.active = active ? '1' : '0';
@@ -490,11 +595,157 @@ function applyFunctionButtonState(btn, idx, active) {
   if (img) setFunctionIcon(img, iconPrefix, imgid, idx);
 }
 
-// Keyboard button event handler (SwitchBtn1..16): no dependent activation
-const keyboardBtns = document.querySelectorAll('.keyboard-btn');
+/**
+ * Update a single locomotive function button from server state.
+ *
+ * When the backend broadcasts a function state change (e.g. via SSE)
+ * this helper locates the corresponding button in either column and
+ * applies the active/inactive visual state.  See also
+ * {@link updateAllLocoFunctionButtons} for bulk updates.
+ *
+ * @param {number} idx – the function index
+ * @param {boolean|number} value – whether the function is active
+ */
+function updateLocoFunctionButton(idx, value) {
+  const btn = document.querySelector(`#leftFunctions button.fn-btn[data-index="${idx}"]`) ||
+              document.querySelector(`#rightFunctions button.fn-btn[data-index="${idx}"]`);
+  if (!btn) return;
+  applyLocoFunctionButtonState(btn, idx, value);
+}
 
-// Initialize Keyboard-Buttons
-function initializeKeyboardBtnsFromState(switchState) {
+/**
+ * Update all function buttons based on a functions dictionary.
+ *
+ * Takes an object keyed by function index (0–27) with truthy values
+ * indicating active functions.  Iterates over all buttons in both
+ * columns and applies each state accordingly.  This is invoked
+ * whenever a new locomotive is selected or when a bulk state update
+ * arrives from the server.
+ *
+ * @param {Object.<number,boolean>} functions – mapping of active functions
+ */
+function updateAllLocoFunctionButtons(functions) {
+  const buttons = document.querySelectorAll('#leftFunctions button.fn-btn, #rightFunctions button.fn-btn');
+  buttons.forEach((btn) => {
+    const idx = Number(btn.dataset.index);
+    const active = !!(functions && functions[idx]);
+    applyLocoFunctionButtonState(btn, idx, active);
+  });
+}
+
+//
+// ==========================
+//  SWITCH KEYBOARD SECTION
+// ==========================
+//
+// Functions and handlers related to the keyboard view live here.
+// The keyboard allows control of switches or accessories via groups
+// of paired buttons.  State is mirrored from the backend and
+// displayed visually.  Naming is normalised to start with
+// "initializeKeyboard…", "updateKeyboard…" and so on.
+
+/**
+ * Update the group labels under each pair of keyboard buttons.
+ *
+ * Switch groups correspond to entries in the `switchList.artikel`
+ * array returned from the backend.  For each group, this helper
+ * retrieves the configured name and falls back to numbering when no
+ * name is set.  It is called on page load and whenever the
+ * keyboard page index changes.
+ */
+function updateKeyboardGroupLabels() {
+  const labels = document.querySelectorAll('.keyboard-btn-group-label');
+  labels.forEach((label, groupIdx) => {
+    const eventIdx = (currentKeyboardId * 8) + groupIdx;
+    let name = '';
+    if (switchList && switchList.artikel && Array.isArray(switchList.artikel)) {
+      const entry = switchList.artikel[eventIdx];
+      if (entry && entry.name) {
+        name = entry.name;
+      }
+    }
+    label.textContent = name ? name : (eventIdx + 1);
+  });
+}
+
+/**
+ * Update the dynamic header text on the keyboard page.
+ *
+ * The header indicates which keyboard page is currently active.  This
+ * function inspects the `.keyboard-page-btn.active` element and
+ * sets the header text to "Keyboard Seite" followed by the label
+ * of the active page.  When no button is active, it defaults to
+ * "1a" to match the first page.
+ */
+function updateKeyboardHeaderText() {
+  const header = document.getElementById('keyboardHeaderText');
+  if (!header) return;
+  const btn = document.querySelector('.keyboard-page-btn.active');
+  header.textContent = 'Keyboard Seite ' + (btn ? btn.textContent : '1a');
+}
+
+/**
+ * Activate a keyboard page button by index.
+ *
+ * This helper assigns the 'active' class to the selected page
+ * button, removes it from others, updates the global
+ * `currentKeyboardId` and refreshes the header to reflect the
+ * selection.  It is called on page load to restore the persisted
+ * state and when the user clicks a page selector.
+ *
+ * @param {number} id – zero‑based index of the keyboard page
+ */
+function activateKeyboardBtnById(id) {
+  if (keyboardPageBtns.length > 0 && id >= 0 && id < keyboardPageBtns.length) {
+    keyboardPageBtns.forEach(b => b.classList.remove('active'));
+    keyboardPageBtns[id].classList.add('active');
+    currentKeyboardId = id;
+    updateKeyboardHeaderText();
+  }
+}
+
+// Keyboard bottom bar button logic.
+// These buttons allow the user to switch between keyboard pages (1a, 1b, etc.).
+// When a page button is clicked, update the active class, set the currentKeyboardId,
+// update the header text and group labels, and fetch the switch state to update the UI.
+keyboardPageBtns.forEach((btn, idx) => {
+  btn.addEventListener('click', function() {
+    keyboardPageBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentKeyboardId = idx;
+    updateKeyboardHeaderText();
+  // Update group labels when switching keyboard page
+  updateKeyboardGroupLabels();
+    fetch('/api/switch_state')
+      .then(response => response.json())
+      .then(data => {
+        if (data && data.switch_state) {
+          const keyboardBtns = document.querySelectorAll('.keyboard-btn');
+          for (let groupIdx = 0; groupIdx < 8; groupIdx++) {
+            const eventIdx = (currentKeyboardId * 8) + groupIdx;
+            const value = data.switch_state[eventIdx];
+            const btn1 = keyboardBtns[groupIdx * 2];
+            const btn2 = keyboardBtns[groupIdx * 2 + 1];
+            if (btn1 && btn2) {
+              updateSwitchUI(btn1, btn2, value);
+            }
+          }
+        }
+      });
+  });
+});
+
+/**
+ * Initialise keyboard buttons based on the current switch state.
+ *
+ * This helper prepares each keyboard button (16 per page) by
+ * removing borders, setting sizes and injecting an <img> element if
+ * necessary.  It also applies the current state (left/right
+ * positions) by delegating to {@link updateSwitchUI}.
+ *
+ * @param {number[]} switchState – array of switch positions from the server
+ */
+function initializeKeyboardButtons(switchState) {
   keyboardBtns.forEach((btn, idx) => {
     // Style: No border, no filling
     btn.style.border = '2px solid #ccc';
@@ -513,7 +764,7 @@ function initializeKeyboardBtnsFromState(switchState) {
     const eventIdx = (currentKeyboardId * 8) + groupIdx;
     const valueNum = switchState && switchState.length > eventIdx ? switchState[eventIdx] : 0;
     if (btn1 && btn2) {
-      applySwitchUI(btn1, btn2, valueNum);
+      updateSwitchUI(btn1, btn2, valueNum);
     }
     img.alt = 'SwitchBtn' + (idx + 1);
     img.style.display = 'block';
@@ -528,30 +779,31 @@ function initializeKeyboardBtnsFromState(switchState) {
   });
 }
 
-// Initialisierung beim Laden der Seite
-document.addEventListener('DOMContentLoaded', function() {
-  fetch('/api/switch_state')
-    .then(response => response.json())
-    .then(data => {
-      const switchState = data && data.switch_state ? data.switch_state : [];
-      initializeKeyboardBtnsFromState(switchState);
-    })
-    .catch(() => {
-      initializeKeyboardBtnsFromState([]);
-    });
-});
-// UI-Logik für Switch-Button-Paare
-function applySwitchUI(btn1, btn2, valueNum) {
+/**
+ * Apply the visual state to a pair of keyboard buttons.
+ *
+ * Switches are represented by two adjacent buttons: one for the
+ * straight (red) position and one for the diverging (green)
+ * position.  This helper marks the active button with the 'active'
+ * class and sets appropriate images on both buttons.  It is used
+ * both during initialisation and when switch events arrive from the
+ * server.
+ *
+ * @param {HTMLElement} btn1 – the left/straight button
+ * @param {HTMLElement} btn2 – the right/diverging button
+ * @param {number} valueNum – 0 if btn1 is active, 1 if btn2 is active
+ */
+function updateSwitchUI(btn1, btn2, valueNum) {
   const img1 = btn1.querySelector('img');
   const img2 = btn2.querySelector('img');
   if (valueNum === 0) {
-    // btn1 aktiv, btn2 inaktiv
+    // btn1 active, btn2 inactive
     btn1.classList.add('active');
     btn2.classList.remove('active');
     if (img1) img1.src = '/static/grafics/switch_re_active.png';
     if (img2) img2.src = '/static/grafics/switch_gr_inactive.png';
   } else {
-    // btn1 inaktiv, btn2 aktiv
+    // btn1 inactive, btn2 active
     btn1.classList.remove('active');
     btn2.classList.add('active');
     if (img1) img1.src = '/static/grafics/switch_re_inactive.png';
@@ -559,6 +811,75 @@ function applySwitchUI(btn1, btn2, valueNum) {
   }
 }
 
+// Load the list of available locomotives and initialise their UI elements.
+// This call retrieves the locomotive metadata, populates the locomotive list with icons and
+// names, restores the previously selected locomotive if present and applies its state to the
+// UI.  It also fetches the overall state once to mirror the authoritative state from the server.
+fetch('/api/locs')
+  .then(response => response.json())
+  .then(data => {
+    locList = data;
+    // Mirror state from server (authoritative)
+    fetch('/api/state').then(r=>r.json()).then(s => { locoState = s; }).catch(()=>{ locoState = {}; });
+
+    // Initialize currentLocoUid
+    let savedLocoUid = localStorage.getItem('currentLocoUid');
+    if (savedLocoUid && locList[savedLocoUid]) {
+      currentLocoUid = Number(savedLocoUid);
+    } else {
+      // Initialize with the first locomotive from locList
+      const firstUid = Object.keys(locList)[0];
+      currentLocoUid = locList[firstUid]?.uid || Number(firstUid);
+    }
+
+    Object.keys(locList).forEach(uid => {
+      // Create locomotive icon
+      console.log("Initializing locomotive:", uid, locList[uid]);
+      const img = new Image();
+      img.alt = locList[uid].name;
+      img.title = locList[uid].name;
+      img.onerror = function() {
+        img.onerror = null;
+        img.src = '/static/icons/leeres Gleis.png';
+      };
+      const iconName = locList[uid].icon || locList[uid].bild || 'leeres Gleis';
+      img.src = `/static/icons/${iconName}.png`;
+      document.getElementById("locoList").appendChild(img);
+      // Set locomotive icon event handler
+      img.onclick = () => {
+        currentLocoUid = locList[uid].uid;
+        locoDesc.textContent = locList[uid].name;
+        locoImg.src = img.src;
+        fetchAndApplyLocoState(currentLocoUid);
+        localStorage.setItem('currentLocoUid', currentLocoUid);
+      };
+    });
+
+    // After initialization: Apply state of the current locomotive and update function buttons
+    if (currentLocoUid) {
+      locoDesc.textContent = locList[currentLocoUid]?.name || '';
+      locoImg.src = `/static/icons/${locList[currentLocoUid]?.icon || locList[currentLocoUid]?.bild || 'leeres Gleis'}.png`;
+      fetch(`/api/state?loco_id=${currentLocoUid}`)
+        .then(r => r.json())
+        .then(state => {
+          updateAllLocoFunctionButtons(state.functions || {});
+          updateSpeedUI(state.speed || 0);
+          updateDirectionUI(state.direction === 'reverse' ? 'reverse' : 'forward');
+        });
+    }
+  });
+
+
+// Attach direction change handlers: clicking the reverse/forward arrows
+// sends the appropriate command to the backend via setLocoDirection().
+reverseBtn.addEventListener('click', () => setLocoDirection('reverse'));
+forwardBtn.addEventListener('click', () => setLocoDirection('forward'));
+
+// UI logic for switch button pairs.
+// Each keyboard "switch" is represented by a pair of adjacent buttons.  Clicking either
+// button sends a keyboard_event to the backend with the appropriate index and value (0 for the
+// left/straight button, 1 for the right/diverging button).  The server updates the switch state
+// and broadcasts the result via SSE, which then updates the UI.
 keyboardBtns.forEach((btn, idx) => {
   btn.addEventListener('click', function() {
     // Pairs: 0+1, 2+3, 4+5, ...
@@ -572,68 +893,5 @@ keyboardBtns.forEach((btn, idx) => {
       body: JSON.stringify({ idx: eventIdx, value: value })
     });
   });
-});
-
-function updateKeyboardGroupLabels() {
-  const labels = document.querySelectorAll('.keyboard-btn-group-label');
-  labels.forEach((label, groupIdx) => {
-    const eventIdx = (currentKeyboardId * 8) + groupIdx;
-    let name = '';
-    if (switchList && switchList.artikel && Array.isArray(switchList.artikel)) {
-      const entry = switchList.artikel[eventIdx];
-      if (entry && entry.name) {
-        name = entry.name;
-      }
-    }
-    label.textContent = name ? name : (eventIdx + 1);
-  });
-}
-
-// Call on page load and when keyboard ID changes
-document.addEventListener('DOMContentLoaded', updateKeyboardGroupLabels);
-keyboardPageBtns.forEach(btn => {
-  btn.addEventListener('click', updateKeyboardGroupLabels);
-});
-
-// Update keyboard header text dynamically based on selected KeyboardBtn
-function updateKeyboardHeaderText() {
-  const header = document.getElementById('keyboardHeaderText');
-  if (!header) return;
-  const btn = document.querySelector('.keyboard-page-btn.active');
-  header.textContent = 'Keyboard Seite ' + (btn ? btn.textContent : '1a');
-}
-
-// Update header on page load and when KeyboardBtn changes
-function activateKeyboardBtnById(id) {
-  if (keyboardPageBtns.length > 0 && id >= 0 && id < keyboardPageBtns.length) {
-    keyboardPageBtns.forEach(b => b.classList.remove('active'));
-    keyboardPageBtns[id].classList.add('active');
-    currentKeyboardId = id;
-    updateKeyboardHeaderText();
-  }
-}
-keyboardPageBtns.forEach((btn, idx) => {
-  btn.addEventListener('click', function() {
-    keyboardPageBtns.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    currentKeyboardId = idx;
-    updateKeyboardHeaderText();
-  });
-});
-
-document.addEventListener('DOMContentLoaded', function() {
-  let savedKeyboardId = localStorage.getItem('currentKeyboardId');
-  let savedContainer = localStorage.getItem('currentActiveContainer');
-  if (savedKeyboardId) {
-    activateKeyboardBtnById(Number(savedKeyboardId));
-  } else {
-    activateKeyboardBtnById(1);
-  }
-  if (savedContainer === 'keyboard') {
-    activateContainer('keyboard');
-  } else {
-    activateContainer('control');
-  }
-  updateKeyboardHeaderText();
 });
 
