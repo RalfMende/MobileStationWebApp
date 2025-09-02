@@ -10,6 +10,11 @@ const debounce_udp_message = 10; // Timer in ms
 let isDragging = false;
 let dragTimeout = null;
 
+const Direction = Object.freeze({
+  FORWARD: 1,
+  REVERSE: 2,
+});
+
 const stopBtn = document.getElementById('stopBtn');
 const speedSlider = document.getElementById('speedSlider');
 const speedFill = document.getElementById('speedFill');
@@ -196,7 +201,10 @@ evtSource.onmessage = function(event) {
   }
   if (currentLocoUid == data.loc_id) {
     if (data.type === 'direction') {
-      updateDirectionUI(data.value === 1 ? 'forward' : data.value === 2 ? 'reverse' : undefined);
+      const v = (data.value === 'reverse' || data.value === 2 || data.value === '2')
+        ? Direction.REVERSE
+        : Direction.FORWARD;
+      updateDirectionUI(v);
     }
     if (data.type === 'speed') {
       speedSlider.value = data.value;
@@ -245,10 +253,10 @@ evtSource.onmessage = function(event) {
  * string and swaps the corresponding images.  The value may come
  * either from the server (state update) or from user interaction.
  *
- * @param {'forward'|'reverse'} dir – the direction to show
+ * @param {1|2} dir – direction enum (Direction.FORWARD or Direction.REVERSE)
  */
 function updateDirectionUI(dir) {
-  if (dir === 'forward') {
+  if (dir === Direction.FORWARD) {
     forwardBtn.src = '/static/grafics/dir_right_active.png';
     reverseBtn.src = '/static/grafics/dir_left_inactive.png';
   } else {
@@ -265,7 +273,7 @@ function updateDirectionUI(dir) {
  * reverse) and posts the update via fetch.  Logging is kept for
  * debugging purposes.
  *
- * @param {'forward'|'reverse'} dir – desired direction
+ * @param {1|2} dir – direction enum (Direction.FORWARD or Direction.REVERSE)
  */
 function setLocoDirection(dir) {
   console.log('Sending direction for loco_id:', currentLocoUid, 'direction:', dir);
@@ -274,7 +282,7 @@ function setLocoDirection(dir) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       loco_id: currentLocoUid,
-      direction: dir === 'forward' ? 1 : 2
+   direction: dir
     })
   });
 }
@@ -315,7 +323,9 @@ function fetchAndApplyLocoState(locoUid) {
       const spd = Number(s.speed || 0);
       speedSlider.value = spd;
       updateSpeedUI(spd);
-      const dir = (s.direction === 'reverse') ? 'reverse' : 'forward';
+      const dir = (s.direction === 'reverse' || s.direction === 2 || s.direction === '2')
+        ? Direction.REVERSE
+        : Direction.FORWARD;
       updateDirectionUI(dir);
       updateAllLocoFunctionButtons(s.functions || {});
     })
@@ -855,7 +865,11 @@ fetch('/api/locs')
         .then(state => {
           updateAllLocoFunctionButtons(state.functions || {});
           updateSpeedUI(state.speed || 0);
-          updateDirectionUI(state.direction === 'reverse' ? 'reverse' : 'forward');
+          updateDirectionUI(
+            (state.direction === 'reverse' || state.direction === 2 || state.direction === '2')
+              ? Direction.REVERSE
+              : Direction.FORWARD
+          );
         });
     }
   });
@@ -863,8 +877,8 @@ fetch('/api/locs')
 
 // Attach direction change handlers: clicking the reverse/forward arrows
 // sends the appropriate command to the backend via setLocoDirection().
-reverseBtn.addEventListener('click', () => setLocoDirection('reverse'));
-forwardBtn.addEventListener('click', () => setLocoDirection('forward'));
+reverseBtn.addEventListener('click', () => setLocoDirection(Direction.REVERSE));
+forwardBtn.addEventListener('click', () => setLocoDirection(Direction.FORWARD));
 
 // UI logic for switch button pairs.
 // Each keyboard "switch" is represented by a pair of adjacent buttons.  Clicking either
