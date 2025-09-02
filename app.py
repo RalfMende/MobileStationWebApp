@@ -237,7 +237,7 @@ def set_loco_state_function(loc_id, fn_no, fn_val):
     st['functions'][int(fn_no)] = bool(fn_val)
     publish_event({'type': 'function', 'loc_id': loc_id, 'fn': fn_no, 'value': fn_val})
     
-@app.route('/api/locs')
+@app.route('/api/loco_list')
 def get_locs():
     """Function `get_locs`.
     Args:
@@ -247,7 +247,7 @@ def get_locs():
     loc_dict = {str(loco['uid']): loco for loco in loc_list}
     return jsonify(loc_dict)
 
-@app.route('/api/state')
+@app.route('/api/loco_state')
 def get_state():
     """Return full state or state for a specific loco_id (query param)."""
     uid = request.args.get('loco_id', type=int)

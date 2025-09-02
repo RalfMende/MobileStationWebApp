@@ -316,7 +316,7 @@ function updateSpeedUI(val) {
  * @param {number} locoUid – the unique id of the locomotive
  */
 function fetchAndApplyLocoState(locoUid) {
-  fetch(`/api/state?loco_id=${locoUid}`)
+  fetch(`/api/loco_state?loco_id=${locoUid}`)
     .then(r => r.json())
     .then(state => {
       const s = state || {};
@@ -816,12 +816,12 @@ function updateSwitchUI(btn1, btn2, valueNum) {
 // This call retrieves the locomotive metadata, populates the locomotive list with icons and
 // names, restores the previously selected locomotive if present and applies its state to the
 // UI.  It also fetches the overall state once to mirror the authoritative state from the server.
-fetch('/api/locs')
+fetch('/api/loco_list')
   .then(response => response.json())
   .then(data => {
     locList = data;
     // Mirror state from server (authoritative)
-    fetch('/api/state').then(r=>r.json()).then(s => { locoState = s; }).catch(()=>{ locoState = {}; });
+    fetch('/api/loco_state').then(r=>r.json()).then(s => { locoState = s; }).catch(()=>{ locoState = {}; });
 
     // Initialize currentLocoUid
     let savedLocoUid = localStorage.getItem('currentLocoUid');
@@ -860,7 +860,7 @@ fetch('/api/locs')
     if (currentLocoUid) {
       locoDesc.textContent = locList[currentLocoUid]?.name || '';
       locoImg.src = `/static/icons/${locList[currentLocoUid]?.icon || locList[currentLocoUid]?.bild || 'leeres Gleis'}.png`;
-      fetch(`/api/state?loco_id=${currentLocoUid}`)
+      fetch(`/api/loco_state?loco_id=${currentLocoUid}`)
         .then(r => r.json())
         .then(state => {
           updateAllLocoFunctionButtons(state.functions || {});
