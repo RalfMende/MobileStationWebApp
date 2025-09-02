@@ -277,7 +277,7 @@ function updateDirectionUI(dir) {
  */
 function setLocoDirection(dir) {
   console.log('Sending direction for loco_id:', currentLocoUid, 'direction:', dir);
-  fetch('/api/direction', {
+  fetch('/api/control_event', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -392,7 +392,7 @@ speedBar.addEventListener('pointerdown', (e) => {
  */
 function setLocoSpeed(val) {
   updateSpeedUI(val);
-  fetch('/api/speed', {
+  fetch('/api/control_event', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -559,7 +559,7 @@ function handleLocoFunctionButtonClick(ev) {
   const img = btn.querySelector('img');
   if (img) setFunctionIcon(img, iconPrefix, imgid, idx);
   try {
-    fetch('/api/function', {
+  fetch('/api/control_event', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

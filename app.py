@@ -255,49 +255,56 @@ def get_state():
         return jsonify({str(k): v for k, v in loco_state.items()})
     return jsonify(loco_state.get(uid, {}))
 
-@app.route('/api/speed', methods=['POST'])
-def speed():
-    """Unified handler for speed."""
-    data = _require_json()
-    set_loco_state_speed(data.get(K_LOCO_ID), data.get(K_SPEED))
-    return send_cs2_udp(
-        data,
-        [K_SPEED],
-        Command.SPEED,
-        _payload_speed,
-        6
-    )
+@app.route('/api/control_event', methods=['POST'])
+def control_event():
+    """Unified control endpoint for speed, direction, and function.
 
-@app.route('/api/direction', methods=['POST'])
-def direction():
-    """Unified handler for direction."""
+    Expected JSON payload:
+    - loco_id: number (required)
+    - One of:
+        • speed: 0..1023
+        • direction: 0/1/2/3 or 'keep'/'forward'/'reverse'/'toggle'
+        • function (+ value): fn/function index and value/val/on (0/1 or truthy)
+    """
     data = _require_json()
-    set_loco_state_direction(data.get(K_LOCO_ID), data.get(K_DIRECTION))
-    return send_cs2_udp(
-        data,
-        [K_DIRECTION],
-        Command.DIRECTION,
-        _payload_direction,
-        5
-    )
+    if data.get(K_LOCO_ID) is None:
+        return jsonify({'status': 'error', 'message': 'loco_id required'}), 400
 
-@app.route('/api/function', methods=['POST'])
-def function():
-    """Unified handler for function."""
-    data = _require_json()
+    if K_SPEED in data:
+        set_loco_state_speed(data.get(K_LOCO_ID), data.get(K_SPEED))
+        return send_cs2_udp(
+            data,
+            [K_SPEED],
+            Command.SPEED,
+            _payload_speed,
+            6
+        )
+
+    if K_DIRECTION in data:
+        set_loco_state_direction(data.get(K_LOCO_ID), data.get(K_DIRECTION))
+        return send_cs2_udp(
+            data,
+            [K_DIRECTION],
+            Command.DIRECTION,
+            _payload_direction,
+            5
+        )
+
     fn = _get_first(data, K_FUNCTION, 'fn')
-    val = _get_first(data, K_VALUE, 'val', 'on')
-    # Pass both fn and val to the handler
-    data[K_FUNCTION] = fn
-    data[K_VALUE] = val
-    set_loco_state_function(data.get(K_LOCO_ID), fn, val)
-    return send_cs2_udp(
-        data,
-        [K_FUNCTION, K_VALUE],
-        Command.FUNCTION,
-        _payload_function,
-        6
-    )
+    if fn is not None:
+        val = _get_first(data, K_VALUE, 'val', 'on')
+        data[K_FUNCTION] = fn
+        data[K_VALUE] = val
+        set_loco_state_function(data.get(K_LOCO_ID), fn, val)
+        return send_cs2_udp(
+            data,
+            [K_FUNCTION, K_VALUE],
+            Command.FUNCTION,
+            _payload_function,
+            6
+        )
+    
+    return jsonify({'status': 'error', 'message': 'no control field (speed/direction/function)'}), 400
 
 #************************************************************************************
 # Switch state handling
