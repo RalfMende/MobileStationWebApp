@@ -7,8 +7,12 @@
  Ralf Mende
 */
 
+// Number of switch groups per keyboard page (each group has 2 buttons) -> can be set to 8/16
+const keyboardGroupCnt = 8;
+
 let locList = {};
 let switchList = {};
+let locoState = {};
 
 let isRunning = false;
 let currentActiveContainer = 'control'; // Keeps selected page, in case of returning to website
@@ -40,9 +44,9 @@ const keyboardTab = document.getElementById('keyboardTab');
 const controlTab = document.getElementById('controlTab');
 const controlPage = document.getElementById('controlPage');
 const keyboardPage = document.getElementById('keyboardPage');
-const keyboardPageBtns = document.querySelectorAll('.keyboard-page-btn');
 const infoBtn = document.getElementById('infoBtn');
-const keyboardBtns = document.querySelectorAll('.keyboard-btn');
+// Keyboard buttons and page buttons are built dynamically; query as needed
+let keyboardPageBtns = null; // will be set after dynamic build
 
 // Tab navigation between control and keyboard panels.
 // The markup contains two tabs: one for the locomotive control view and one for the keyboard view.
@@ -112,6 +116,7 @@ document.addEventListener('DOMContentLoaded', function() {
     activateContainer('control');
   }
   updateKeyboardHeaderText();
+  updateKeyboardGroupLabels();
   // Load accessory (switch) list
   fetch('/api/switch_list')
     .then(response => response.json())
@@ -225,11 +230,11 @@ evtSource.onmessage = function(event) {
   }
   if (data.type === 'switch' && typeof data.idx === 'number' && typeof data.value !== 'undefined') {
   // idx: 0-63
-  // Back-calculate: keyboardId = Math.floor(idxNum/8), groupIdx = (idxNum%8)
+  // Back-calculate: keyboardId = Math.floor(idxNum/keyboardGroupCnt), groupIdx = (idxNum%keyboardGroupCnt)
   const idxNum = Number(data.idx);
   const valueNum = Number(data.value);
-  const keyboardId = Math.floor(idxNum / 8);
-  const groupIdx = idxNum % 8;
+  const keyboardId = Math.floor(idxNum / keyboardGroupCnt);
+  const groupIdx = idxNum % keyboardGroupCnt;
     // Only if the current page is affected:
     if (keyboardId === currentKeyboardId) {
       // Find the two buttons of the group
@@ -666,7 +671,7 @@ function updateAllLocoFunctionButtons(functions) {
 function updateKeyboardGroupLabels() {
   const labels = document.querySelectorAll('.keyboard-btn-group-label');
   labels.forEach((label, groupIdx) => {
-    const eventIdx = (currentKeyboardId * 8) + groupIdx;
+  const eventIdx = (currentKeyboardId * keyboardGroupCnt) + groupIdx;
     let name = '';
     if (switchList && switchList.artikel && Array.isArray(switchList.artikel)) {
       const entry = switchList.artikel[eventIdx];
@@ -714,36 +719,111 @@ function activateKeyboardBtnById(id) {
   }
 }
 
+// Dynamically build the keyboard bottom-bar pages based on keyboardGroupCnt.
+// If keyboardGroupCnt === 8  -> 8 pages: 1a,1b,2a,2b,3a,3b,4a,4b
+// If keyboardGroupCnt === 16 -> 4 pages: 1,2,3,4
+function buildKeyboardBottomBar() {
+  const bar = document.querySelector('.keyboard-bottom-bar');
+  if (!bar) return;
+  bar.innerHTML = '';
+  let labels = [];
+  if (keyboardGroupCnt === 8) {
+    labels = ['1a','1b','2a','2b','3a','3b','4a','4b'];
+  } else if (keyboardGroupCnt === 16) {
+    labels = ['1','2','3','4'];
+  } else {
+    // Fallback: derive a simple numeric page count (assume 64 total groups)
+    const totalGroups = 64;
+    const pages = Math.max(1, Math.floor(totalGroups / Math.max(1, keyboardGroupCnt)));
+    labels = Array.from({ length: pages }, (_, i) => String(i + 1));
+  }
+  labels.forEach((label, idx) => {
+    const b = document.createElement('button');
+    b.className = 'keyboard-page-btn';
+    b.textContent = label;
+    bar.appendChild(b);
+  });
+  // Refresh NodeList reference after (re)building
+  keyboardPageBtns = document.querySelectorAll('.keyboard-page-btn');
+}
+
+// Build pages immediately (HTML is already parsed since script is at end of body)
+buildKeyboardBottomBar();
+
+// Build the keyboard grid (groups with 2 buttons each) based on keyboardGroupCnt
+function buildKeyboardGrid() {
+  const grid = document.querySelector('.keyboard-grid-4x4');
+  if (!grid) return;
+  grid.innerHTML = '';
+  const colsPerRow = 4;
+  const rows = Math.ceil(keyboardGroupCnt / colsPerRow);
+  let groupIndex = 0;
+  for (let r = 0; r < rows; r++) {
+    const row = document.createElement('div');
+    row.className = 'keyboard-row';
+    for (let c = 0; c < colsPerRow && groupIndex < keyboardGroupCnt; c++, groupIndex++) {
+      const col = document.createElement('div');
+      col.className = 'keyboard-btn-col';
+      const label = document.createElement('span');
+      label.className = 'keyboard-btn-group-label';
+      col.appendChild(label);
+      const group = document.createElement('div');
+      group.className = 'keyboard-btn-group';
+      const btn1 = document.createElement('button');
+      btn1.className = 'keyboard-btn';
+      btn1.setAttribute('data-key', String(groupIndex * 2 + 1));
+      const btn2 = document.createElement('button');
+      btn2.className = 'keyboard-btn';
+      btn2.setAttribute('data-key', String(groupIndex * 2 + 2));
+      group.appendChild(btn1);
+      group.appendChild(btn2);
+      col.appendChild(group);
+      row.appendChild(col);
+    }
+    grid.appendChild(row);
+  }
+}
+  // Build keyboard grid according to group count
+  buildKeyboardGrid();
+
 // Keyboard bottom bar button logic.
 // These buttons allow the user to switch between keyboard pages (1a, 1b, etc.).
 // When a page button is clicked, update the active class, set the currentKeyboardId,
 // update the header text and group labels, and fetch the switch state to update the UI.
-keyboardPageBtns.forEach((btn, idx) => {
-  btn.addEventListener('click', function() {
-    keyboardPageBtns.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    currentKeyboardId = idx;
-    updateKeyboardHeaderText();
-  // Update group labels when switching keyboard page
-  updateKeyboardGroupLabels();
-    fetch('/api/switch_state')
-      .then(response => response.json())
-      .then(data => {
-        if (data && data.switch_state) {
-          const keyboardBtns = document.querySelectorAll('.keyboard-btn');
-          for (let groupIdx = 0; groupIdx < 8; groupIdx++) {
-            const eventIdx = (currentKeyboardId * 8) + groupIdx;
-            const value = data.switch_state[eventIdx];
-            const btn1 = keyboardBtns[groupIdx * 2];
-            const btn2 = keyboardBtns[groupIdx * 2 + 1];
-            if (btn1 && btn2) {
-              updateSwitchUI(btn1, btn2, value);
+function wireKeyboardPageButtons() {
+  if (!keyboardPageBtns) return;
+  keyboardPageBtns.forEach((btn, idx) => {
+    btn.addEventListener('click', function() {
+      keyboardPageBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentKeyboardId = idx;
+      updateKeyboardHeaderText();
+      // Update group labels when switching keyboard page
+      updateKeyboardGroupLabels();
+      fetch('/api/switch_state')
+        .then(response => response.json())
+        .then(data => {
+          if (data && data.switch_state) {
+            const keyboardBtns = document.querySelectorAll('.keyboard-btn');
+            for (let groupIdx = 0; groupIdx < keyboardGroupCnt; groupIdx++) {
+              const eventIdx = (currentKeyboardId * keyboardGroupCnt) + groupIdx;
+              const value = data.switch_state[eventIdx];
+              const btn1 = keyboardBtns[groupIdx * 2];
+              const btn2 = keyboardBtns[groupIdx * 2 + 1];
+              if (btn1 && btn2) {
+                updateSwitchUI(btn1, btn2, value);
+              }
             }
           }
-        }
-      });
+        });
+    });
   });
-});
+}
+
+// Wire handlers after build and activate first page
+wireKeyboardPageButtons();
+activateKeyboardBtnById(0);
+updateKeyboardGroupLabels();
 
 /**
  * Initialise keyboard buttons based on the current switch state.
@@ -756,6 +836,7 @@ keyboardPageBtns.forEach((btn, idx) => {
  * @param {number[]} switchState – array of switch positions from the server
  */
 function initializeKeyboardButtons(switchState) {
+  const keyboardBtns = document.querySelectorAll('.keyboard-btn');
   keyboardBtns.forEach((btn, idx) => {
     // Style: No border, no filling
     btn.style.border = '2px solid #ccc';
@@ -771,7 +852,7 @@ function initializeKeyboardButtons(switchState) {
     const groupIdx = Math.floor(idx / 2);
     const btn1 = keyboardBtns[groupIdx * 2];
     const btn2 = keyboardBtns[groupIdx * 2 + 1];
-    const eventIdx = (currentKeyboardId * 8) + groupIdx;
+    const eventIdx = (currentKeyboardId * keyboardGroupCnt) + groupIdx;
     const valueNum = switchState && switchState.length > eventIdx ? switchState[eventIdx] : 0;
     if (btn1 && btn2) {
       updateSwitchUI(btn1, btn2, valueNum);
@@ -889,23 +970,27 @@ fetch('/api/loco_list')
 reverseBtn.addEventListener('click', () => setLocoDirection(Direction.REVERSE));
 forwardBtn.addEventListener('click', () => setLocoDirection(Direction.FORWARD));
 
-// UI logic for switch button pairs.
-// Each keyboard "switch" is represented by a pair of adjacent buttons.  Clicking either
-// button sends a keyboard_event to the backend with the appropriate index and value (0 for the
-// left/straight button, 1 for the right/diverging button).  The server updates the switch state
-// and broadcasts the result via SSE, which then updates the UI.
-keyboardBtns.forEach((btn, idx) => {
-  btn.addEventListener('click', function() {
-    // Pairs: 0+1, 2+3, 4+5, ...
-    const isOdd = idx % 2 === 1;
-  const groupIdx = Math.floor(idx / 2);
-  const eventIdx = (currentKeyboardId * 8) + groupIdx;
-    const value = isOdd ? 1 : 0;
+// UI logic for switch button pairs (delegated for dynamic content).
+// Each keyboard "switch" is represented by a pair of adjacent buttons. Clicking either
+// button sends a keyboard_event to the backend with the appropriate index and value (0 for
+// the left/straight button, 1 for the right/diverging button). We attach a single delegated
+// listener to the grid container so it works even after rebuilding the grid.
+const keyboardGrid = document.querySelector('.keyboard-grid-4x4');
+if (keyboardGrid) {
+  keyboardGrid.addEventListener('click', function(ev) {
+    const btn = ev.target instanceof Element ? ev.target.closest('.keyboard-btn') : null;
+    if (!btn || !keyboardGrid.contains(btn)) return;
+    const keyNum = Number(btn.getAttribute('data-key'));
+    if (!Number.isFinite(keyNum)) return;
+    // keyNum: 1-based within page; buttons are paired (1,2), (3,4), ...
+    const groupIdx = Math.floor((keyNum - 1) / 2);
+    const eventIdx = (currentKeyboardId * keyboardGroupCnt) + groupIdx;
+    const value = (keyNum % 2 === 0) ? 1 : 0; // even -> right/diverging, odd -> left/straight
     fetch('/api/keyboard_event', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idx: eventIdx, value: value })
+      body: JSON.stringify({ idx: eventIdx, value })
     });
   });
-});
+}
 
