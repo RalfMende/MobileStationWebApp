@@ -124,6 +124,47 @@ def sse_events():
         Returns:
             See implementation."""
         try:
+            # On first connect, send a snapshot of current server state to this subscriber only.
+            try:
+                # 1) System running state (1 running, 0 otherwise)
+                status = 1 if system_state == SystemState.RUNNING else 0
+                q.put_nowait(json.dumps({'type': 'system', 'status': status}, separators=(',', ':')))
+
+                # 2) Locomotive states: speed, direction, and active functions
+                for uid, st in loco_state.items():
+                    try:
+                        spd = int(st.get('speed', 0))
+                        dirv = int(st.get('direction', 1))
+                        q.put_nowait(json.dumps({'type': 'speed', 'loc_id': uid, 'value': spd}, separators=(',', ':')))
+                        q.put_nowait(json.dumps({'type': 'direction', 'loc_id': uid, 'value': dirv}, separators=(',', ':')))
+                        # Functions: emit only those that are truthy/defined
+                        fnmap = st.get('functions') or {}
+                        for fn_idx, active in fnmap.items():
+                            try:
+                                fn_i = int(fn_idx)
+                                fn_v = 1 if bool(active) else 0
+                                q.put_nowait(json.dumps({'type': 'function', 'loc_id': uid, 'fn': fn_i, 'value': fn_v}, separators=(',', ':')))
+                            except Exception:
+                                continue
+                    except Exception:
+                        continue
+
+                # 3) Switch states (0..63)
+                try:
+                    for idx, val in enumerate(switch_state):
+                        q.put_nowait(json.dumps({'type': 'switch', 'idx': idx, 'value': int(val)}, separators=(',', ':')))
+                except Exception:
+                    # If switch_state is a dict-like mapping (unlikely), fall back
+                    try:
+                        for idx in range(64):
+                            v = int(switch_state.get(idx, 0))
+                            q.put_nowait(json.dumps({'type': 'switch', 'idx': idx, 'value': v}, separators=(',', ':')))
+                    except Exception:
+                        pass
+            except Exception:
+                # Snapshot is best-effort; continue with live stream regardless
+                pass
+
             while True:
                 data = q.get()
                 yield f'data: {data}\n\n'
