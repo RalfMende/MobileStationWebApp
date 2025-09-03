@@ -7,7 +7,7 @@ buy me a beer in return.
 Ralf Mende
 """
 
-from flask import Flask, request, jsonify, render_template, Response, stream_with_context
+from flask import Flask, request, jsonify, render_template, Response, stream_with_context, send_from_directory
 import socket
 import os
 import threading
@@ -762,6 +762,14 @@ def index():
 def info():
     """Info page for the web interface."""
     return render_template('info.html')
+
+@app.route('/sw.js')
+def service_worker():
+    """Serve the Service Worker script from the app root path."""
+    try:
+        return send_from_directory(app.root_path, 'sw.js', mimetype='application/javascript')
+    except Exception:
+        return ("Not Found", 404)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='MobileStationWebApp Server')
