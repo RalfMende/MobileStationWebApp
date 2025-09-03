@@ -98,10 +98,10 @@ function activateContainer(container) {
   }
 }
 
-// Restore persisted UI state and initialise accessory data on page load.
+// Restore persisted UI state and initialize accessory data on page load.
 // When the DOM content is ready, read persisted selections from localStorage (the active
-// keyboard page and last active container) and apply them.  Then load the accessory (switch)
-// list and state from the backend so the keyboard view can be initialised correctly.
+// keyboard page and last active container) and apply them. Then load the accessory (switch)
+// list and state from the backend so the keyboard view can be initialized correctly.
 document.addEventListener('DOMContentLoaded', function() {
   let savedKeyboardId = localStorage.getItem('currentKeyboardId');
   let savedContainer = localStorage.getItem('currentActiveContainer');
@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', function() {
 //  INFO BUTTON SECTION
 // ==========================
 //
-// The functions in this section handle the behaviour of the global
+// The functions in this section handle the behavior of the global
 // "INFO" button. With this button you leave the current view and
 // navigate to the info page.
 
@@ -172,7 +172,7 @@ if (infoBtn) {
 // "STOP" button.  This button toggles the overall system state
 // (start/stop) and updates its own appearance based on that state.
 // Grouping these together makes it easier to reason about the
-// stop‑button behaviour independently of locomotive control or
+// stop‑button behavior independently of locomotive control or
 // keyboard logic.
 
 /**
@@ -719,9 +719,19 @@ function activateKeyboardBtnById(id) {
   }
 }
 
-// Dynamically build the keyboard bottom-bar pages based on keyboardGroupCnt.
-// If keyboardGroupCnt === 8  -> 8 pages: 1a,1b,2a,2b,3a,3b,4a,4b
-// If keyboardGroupCnt === 16 -> 4 pages: 1,2,3,4
+/**
+ * Build the keyboard bottom bar buttons according to keyboardGroupCnt.
+ *
+ * Creates page selector buttons inside the '.keyboard-bottom-bar' container and
+ * refreshes the global NodeList reference 'keyboardPageBtns'. When
+ * keyboardGroupCnt is 8, it renders pages 1a..4b; when 16, it renders pages
+ * 1..4. For other values, it derives a simple numeric pagination assuming 64
+ * total groups.
+ *
+ * Side effects:
+ * - Mutates the DOM under '.keyboard-bottom-bar'.
+ * - Updates the 'keyboardPageBtns' NodeList used by other helpers.
+ */
 function buildKeyboardBottomBar() {
   const bar = document.querySelector('.keyboard-bottom-bar');
   if (!bar) return;
@@ -750,7 +760,18 @@ function buildKeyboardBottomBar() {
 // Build pages immediately (HTML is already parsed since script is at end of body)
 buildKeyboardBottomBar();
 
-// Build the keyboard grid (groups with 2 buttons each) based on keyboardGroupCnt
+/**
+ * Build the keyboard grid (groups with 2 buttons each) based on keyboardGroupCnt.
+ *
+ * Renders 'keyboardGroupCnt' switch groups for the current page arranged in a
+ * 4-column layout. Each group consists of a text label and two adjacent
+ * buttons with a 1-based 'data-key' per page. Existing grid content is cleared
+ * before rebuilding.
+ *
+ * Side effects:
+ * - Mutates the DOM under '.keyboard-grid-4x4'.
+ */
+
 function buildKeyboardGrid() {
   const grid = document.querySelector('.keyboard-grid-4x4');
   if (!grid) return;
@@ -786,10 +807,18 @@ function buildKeyboardGrid() {
   // Build keyboard grid according to group count
   buildKeyboardGrid();
 
-// Keyboard bottom bar button logic.
-// These buttons allow the user to switch between keyboard pages (1a, 1b, etc.).
-// When a page button is clicked, update the active class, set the currentKeyboardId,
-// update the header text and group labels, and fetch the switch state to update the UI.
+/**
+ * Wire click handlers for keyboard page selector buttons.
+ *
+ * Attaches a click listener to each '.keyboard-page-btn'. On click it sets the
+ * active state, updates 'currentKeyboardId', refreshes the page header and
+ * group labels, and fetches '/api/switch_state' to hydrate the visible switch
+ * pairs on the newly selected page.
+ *
+ * Assumptions:
+ * - buildKeyboardBottomBar() has been called to (re)create page buttons.
+ * - buildKeyboardGrid() has created the grid elements for the page.
+ */
 function wireKeyboardPageButtons() {
   if (!keyboardPageBtns) return;
   keyboardPageBtns.forEach((btn, idx) => {

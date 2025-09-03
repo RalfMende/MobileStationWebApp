@@ -42,7 +42,7 @@
   margin-bottom: 0.1rem;
   text-align: center;
 }
-/* Keyboard area background and layout */
+  /* Keyboard area background and layout */
 .keyboard-area {
   background: rgb(217,217,217);
   flex: 1;
@@ -62,7 +62,7 @@
 
 #keyboardHeaderText {
   color: #000;
-  font-weight: bold;
+  /* Keyboard bottom bar: 1/10 screen height, 8 buttons fit, transparent, text color changes */
   font-size: clamp(0.9rem, calc(var(--top-btn-h) * 0.40), 1.6rem);
 }
 
@@ -387,12 +387,12 @@ html, body {
 }
 
 
-/* === Added by ChatGPT on 2025-08-12 ===
-   Oben & unten je ein Balken über volle Breite,
-   Höhe: 1/10 der sichtbaren Bildschirmhöhe,
-   Hintergrund: Verlauf von rgb(165,165,165) (oben) nach rgb(69,69,69) (unten).
-   Die Buttons oben und die Lokliste unten werden vertikal mittig ausgerichtet.
-   Nutzt --app-height falls vorhanden; sonst 100svh als Fallback.
+/* === Added 2025-08-12 ===
+  Top & bottom full-width bars,
+  Height: 1/10 of the visible screen height,
+  Background: gradient from rgb(165,165,165) (top) to rgb(69,69,69) (bottom).
+  The buttons on top and the loco list at the bottom are vertically centered.
+  Uses --app-height if present; otherwise 100svh as fallback.
 */
 :root {
   --vh: var(--app-height, 100svh);
@@ -405,8 +405,8 @@ html, body {
   background: var(--bar-gradient);
   padding: env(safe-area-inset-top) 0.8rem 0 0.8rem;
   display: flex;
-  align-items: center;            /* vertikal mittig */
-  justify-content: space-between; /* vorhandenes Layout beibehalten */
+  align-items: center;            /* vertically centered */
+  justify-content: space-between; /* keep existing layout */
 }
 
 /* UNTERER BALKEN (Hintergrund der Lokliste) */
@@ -414,12 +414,12 @@ html, body {
   height: calc(var(--vh) * 0.1);
   background: var(--bar-gradient);
   display: flex;
-  align-items: center;            /* Elemente in der Liste vertikal mittig */
-  overflow-x: auto;               /* horizontales Scrollen beibehalten */
+  align-items: center;            /* elements in the list vertically centered */
+  overflow-x: auto;               /* keep horizontal scrolling */
   padding: 0 0.4rem;
 }
 
-/* Mittelteil flexibel (nur falls vorhanden) */
+/* Flexible middle section (if present) */
 .main-content {
   flex: 1;
   min-height: 0;
@@ -457,16 +457,16 @@ html, body {
   height: var(--loco-item-h);
 }
 
-/* Feste Breite für Start/Stop basierend auf "STOP" (4 Zeichen) */
+/* Fixed width for Start/Stop based on "STOP" (4 characters) */
 :root {
-  /* Falls du später "START" o.ä. nutzt, einfach auf 5 erhöhen */
+  /* If you later use "START" etc., increase to 5 */
   --stop-label-chars: 4; /* "STOP" = 4 */
 }
 
-/* Falls dein Button eine Klasse statt ID hat, ersetze #stopBtn durch .stop */
+/* If your button uses a class instead of ID, replace #stopBtn with .stop */
 .top-bar #stopBtn,
 .top-bar .stop {
-  /* gleiche Paddings/Font-Scaling wie zuvor, Breite bleibt konstant */
+  /* same paddings/font-scaling as before, width remains constant */
   box-sizing: border-box;
   white-space: nowrap;
   width: calc(
@@ -565,8 +565,8 @@ html, body {
   overflow: hidden;
 }
 
-/* 1) Aktive Tabs schwarz statt blau */
+/* 1) Active tabs black instead of blue */
 .tab.active {
-  background: #000;      /* statt #0a84ff */
+  background: #000;      /* instead of #0a84ff */
   color: #fff;
 }

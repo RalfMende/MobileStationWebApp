@@ -31,8 +31,8 @@ class SystemState(str, Enum):
     HALTED  = 'halted'
 system_state = SystemState.STOPPED
 
-path_config_files = 'tmp'  # default, kann via CLI/Debug überschrieben werden
-UDP_IP = '192.168.20.42'   # default, kann via CLI/Debug überschrieben werden
+path_config_files = 'tmp'  # default; can be overridden via CLI/Debug
+UDP_IP = '192.168.20.42'   # default; can be overridden via CLI/Debug
 UDP_PORT_TX = 15731
 UDP_PORT_RX = 15730
 DEVICE_UID = 0
@@ -185,7 +185,7 @@ def sse_events():
 
     headers = {
         "Cache-Control": "no-cache",
-        "X-Accel-Buffering": "no"  # wichtig, falls hinter nginx
+        "X-Accel-Buffering": "no"  # important when behind nginx
     }
     return Response(stream_with_context(stream()),
                     mimetype='text/event-stream',
@@ -394,7 +394,7 @@ def set_switch_state(idx, value):
 
 @app.route('/api/keyboard_event', methods=['POST'])
 def keyboard_event():
-    """Empfängt Keyboard-Events von der UI, setzt den Wert im switch_state und sendet ein UDP-Frame gemäß CS2-Protokoll."""
+    """Receives keyboard events from the UI, updates switch_state, and sends a UDP frame per the CS2 protocol."""
     data = _require_json()
     idx = data.get('idx')
     value = data.get('value')
@@ -592,9 +592,9 @@ def listen_cs2_udp(host: str='', port: int=UDP_PORT_RX, stop_event: threading.Ev
                     fn_val = data[5] if dlc >= 6 else 1
                     set_loco_state_function(loc_id, fn_no, fn_val)
                 elif command == Command.SWITCH and dlc >= 6:
-                    #loc_id = int.from_bytes(data[0:4], 'big')
-                    #idx = loc_id & 0xFFFF
-                    #protocol = (loc_id >> 16) & 0xFFFF
+                    # loc_id = int.from_bytes(data[0:4], 'big')
+                    # idx = loc_id & 0xFFFF
+                    # protocol = (loc_id >> 16) & 0xFFFF
                     idx = int.from_bytes(data[3:4], 'big')
                     value = data[4]
                     set_switch_state(idx, value)
@@ -612,7 +612,7 @@ def listen_cs2_udp(host: str='', port: int=UDP_PORT_RX, stop_event: threading.Ev
 
 @app.route('/api/info_events', methods=['POST'])
 def srseii_commands():
-    """API-Endpunkt für Info-Seite: Führt beliebige Funktion für aktuelle Lok aus."""
+    """API endpoint for info page: executes an arbitrary function for the current locomotive."""
     data = _require_json()
     loco_id = data.get('loco_id')
     fn_no = data.get('function', 0)
@@ -637,11 +637,7 @@ def srseii_commands():
 #************************************************************************************
 
 def parse_value(val):
-    """Function `parse_value`.
-    Args:
-        val
-    Returns:
-        See implementation."""
+    """Try to parse CS2 values from strings like '0x..' or decimal digits; otherwise return as-is."""
     val = val.strip()
     if val.startswith('0x'):
         try:
@@ -664,11 +660,7 @@ def magnetartikel_uid(id_int, dectyp):
         return (id_int & 0x3FF)            # Fallback
     
 def parse_lokomotive_cs2(file_path):
-    """Function `parse_lokomotive_cs2`.
-    Args:
-        file_path
-    Returns:
-        See implementation."""
+    """Parse a CS2 lokomotive.cs2 file into a list of locomotive dictionaries."""
     locomotives = []
     current_locomotive = None
     current_functions = {}
@@ -707,11 +699,7 @@ def parse_lokomotive_cs2(file_path):
     return locomotives
 
 def parse_magnetartikel_cs2(file_path):
-    """Function `parse_magnetartikel_cs2`.
-    Args:
-        file_path
-    Returns:
-        See implementation."""
+    """Parse a CS2 magnetartikel.cs2 file into a structured dictionary containing 'artikel' entries."""
     articles = {}
     current_section = None
     current_entry = {}
@@ -760,51 +748,51 @@ def index():
 
 @app.route('/info')
 def info():
-    """Info-Seite für das Webinterface."""
+    """Info page for the web interface."""
     return render_template('info.html')
 
 def parse_args():
     parser = argparse.ArgumentParser(description='MobileStationWebApp Server')
-    parser.add_argument('--udp-ip', dest='udp_ip', default=UDP_IP, help='IP-Adresse des CS2-UDP-Ziels')
-    parser.add_argument('--config', dest='config_path', default=path_config_files, help='Pfad zu den CS2-Konfigurationsdateien')
-    parser.add_argument('--host', dest='host', default='0.0.0.0', help='Bind Host für Flask')
-    parser.add_argument('--port', dest='port', type=int, default=6020, help='Port für Flask')
+    parser.add_argument('--udp-ip', dest='udp_ip', default=UDP_IP, help='IP address of the CS2 UDP target')
+    parser.add_argument('--config', dest='config_path', default=path_config_files, help='Path to CS2 configuration files')
+    parser.add_argument('--host', dest='host', default='0.0.0.0', help='Bind host for Flask')
+    parser.add_argument('--port', dest='port', type=int, default=6020, help='Port for Flask')
     return parser.parse_args()
 
 def run_server(udp_ip: str = UDP_IP, config_path: str = path_config_files, host: str = '0.0.0.0', port: int = 6020):
-    """Startet den Server mit konfigurierbarer UDP-IP und Pfad zu den CS2-Konfigdateien."""
+    """Start the server with configurable UDP IP and path to CS2 configuration files."""
     global loc_list, switch_list
-    # App-Konfiguration setzen
+    # Set app configuration
     app.config['UDP_IP'] = udp_ip
     app.config['UDP_PORT_TX'] = UDP_PORT_TX
     app.config['UDP_PORT_RX'] = UDP_PORT_RX
     app.config['CONFIG_PATH'] = config_path
 
-    # CS2-Dateien laden
+    # Load CS2 files
     try:
         loc_list = parse_lokomotive_cs2(os.path.join(config_path, 'lokomotive.cs2'))
     except Exception as e:
         loc_list = []
-        print(f"Error loading lokomotive.cs2 file: {e}")
+    print(f"Error loading lokomotive.cs2 file: {e}")
 
     try:
         switch_list = parse_magnetartikel_cs2(os.path.join(config_path, 'magnetartikel.cs2'))
     except Exception as e:
         switch_list = []
-        print(f"Error loading magnetartikel.cs2 file: {e}")
+    print(f"Error loading magnetartikel.cs2 file: {e}")
 
-    # Loco-States initialisieren
+    # Initialize loco states
     try:
         for loco in loc_list:
             _ensure_loco_state(int(loco.get('uid') if isinstance(loco, dict) else loco['uid']))
     except Exception:
         pass
 
-    # UDP Listener starten
+    # Start UDP listener
     t = threading.Thread(target=listen_cs2_udp, args=('', UDP_PORT_RX, _stop_evt), daemon=True)
     t.start()
 
-    # Flask starten
+    # Start Flask
     app.run(host=host, port=port)
 
 if __name__ == '__main__':

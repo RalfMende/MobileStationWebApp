@@ -1,4 +1,13 @@
-// Info-Seite Button-Handler
+/*
+ THE BEER-WARE LICENSE (Revision 42)
+
+<mende.r@hotmail.de> wrote this file. As long as you retain this notice you can do whatever you want with this
+ stuff. If we meet someday, and you think this stuff is worth it, you can
+ buy me a beer in return.
+ Ralf Mende
+*/
+
+// Info Site Button-Handler
 // The 4 buttons are used to control the list of locomotives (Lokliste) handling of the SRSEII
 
 // According to documentation locoId must be set 1.
