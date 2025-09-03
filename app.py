@@ -592,9 +592,9 @@ def listen_cs2_udp(host: str='', port: int=UDP_PORT_RX, stop_event: threading.Ev
                     fn_val = data[5] if dlc >= 6 else 1
                     set_loco_state_function(loc_id, fn_no, fn_val)
                 elif command == Command.SWITCH and dlc >= 6:
-                    # loc_id = int.from_bytes(data[0:4], 'big')
-                    # idx = loc_id & 0xFFFF
-                    # protocol = (loc_id >> 16) & 0xFFFF
+                    #loc_id = int.from_bytes(data[0:4], 'big')
+                    #idx = loc_id & 0xFFFF
+                    #protocol = (loc_id >> 16) & 0xFFFF
                     idx = int.from_bytes(data[3:4], 'big')
                     value = data[4]
                     set_switch_state(idx, value)
@@ -637,7 +637,11 @@ def srseii_commands():
 #************************************************************************************
 
 def parse_value(val):
-    """Try to parse CS2 values from strings like '0x..' or decimal digits; otherwise return as-is."""
+    """Function `parse_value`.
+    Args:
+        val
+    Returns:
+        See implementation."""
     val = val.strip()
     if val.startswith('0x'):
         try:
@@ -660,7 +664,11 @@ def magnetartikel_uid(id_int, dectyp):
         return (id_int & 0x3FF)            # Fallback
     
 def parse_lokomotive_cs2(file_path):
-    """Parse a CS2 lokomotive.cs2 file into a list of locomotive dictionaries."""
+    """Function `parse_lokomotive_cs2`.
+    Args:
+        file_path
+    Returns:
+        See implementation."""
     locomotives = []
     current_locomotive = None
     current_functions = {}
@@ -699,7 +707,11 @@ def parse_lokomotive_cs2(file_path):
     return locomotives
 
 def parse_magnetartikel_cs2(file_path):
-    """Parse a CS2 magnetartikel.cs2 file into a structured dictionary containing 'artikel' entries."""
+    """Function `parse_magnetartikel_cs2`.
+    Args:
+        file_path
+    Returns:
+        See implementation."""
     articles = {}
     current_section = None
     current_entry = {}
@@ -773,13 +785,13 @@ def run_server(udp_ip: str = UDP_IP, config_path: str = path_config_files, host:
         loc_list = parse_lokomotive_cs2(os.path.join(config_path, 'lokomotive.cs2'))
     except Exception as e:
         loc_list = []
-    print(f"Error loading lokomotive.cs2 file: {e}")
+        print(f"Error loading lokomotive.cs2 file: {e}")
 
     try:
         switch_list = parse_magnetartikel_cs2(os.path.join(config_path, 'magnetartikel.cs2'))
     except Exception as e:
         switch_list = []
-    print(f"Error loading magnetartikel.cs2 file: {e}")
+        print(f"Error loading magnetartikel.cs2 file: {e}")
 
     # Initialize loco states
     try:
