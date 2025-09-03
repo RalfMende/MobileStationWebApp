@@ -610,8 +610,8 @@ def listen_cs2_udp(host: str='', port: int=UDP_PORT_RX, stop_event: threading.Ev
 # Custom Event API for Info-Site
 #************************************************************************************
 
-@app.route('/api/custom_function', methods=['POST'])
-def custom_function():
+@app.route('/api/info_events', methods=['POST'])
+def srseii_commands():
     """API-Endpunkt für Info-Seite: Führt beliebige Funktion für aktuelle Lok aus."""
     data = _require_json()
     loco_id = data.get('loco_id')
