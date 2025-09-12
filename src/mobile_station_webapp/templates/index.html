@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <link rel="apple-touch-icon" href="/static/grafics/apple-touch-icon-180.png">
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <meta name="apple-mobile-web-app-title" content="MobileStation WebApp">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>MobileStation WebApp</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="top-bar">
+    <button id="infoBtn" class="tab">info</button>
+    <div class="tabs">
+      <button id="controlTab" class="tab active">control</button>
+      <button id="keyboardTab" class="tab">keyboard</button>
+    </div>
+    <button id="stopBtn" class="stop">STOP</button>
+  </div>
+
+  <div id="controlPage" class="page">
+    <div class="main-content">
+      <div class="functions-side" id="leftFunctions"></div>
+
+      <div class="speed-block">
+        <div id="speedValue" class="speed-display">0 km/h</div>
+        <div class="speed-bar-wrapper">
+          <div class="speed-bar" id="speedBar">
+            <div id="speedFill" class="speed-fill"></div>
+            <input type="range" id="speedSlider" min="0" max="200" value="0" class="slider-vertical"/>
+          </div>
+        </div>
+        <div id="locoDesc" class="loco-desc">Select Locomotive</div>
+        <img id="locoImg" class="loco-img" src="/static/icons/leere Lok.png" alt="Lokbild">
+        <div class="direction-buttons">
+          <img id="reverseBtn" class="dir-btn" src="/static/grafics/dir_left_inactive.png" />
+          <img id="forwardBtn" class="dir-btn active" src="/static/grafics/dir_right_active.png" />
+        </div>
+      </div>
+
+      <div class="functions-side" id="rightFunctions"></div>
+    </div>
+
+    <div class="loco-list-wrapper">
+      <div id="locoList" class="loco-list"></div>
+    </div>
+  </div>
+
+  <div id="keyboardPage" class="page hidden">
+    <div class="keyboard-area">
+      <div class="keyboard-header">
+        <span id="keyboardHeaderText">Keyboard Seite 1a</span>
+      </div>
+      <div class="keyboard-grid-4x4">
+        <!-- Row 1: Demo labels above each button group -->
+        <div class="keyboard-row">
+          <div class="keyboard-btn-col">
+            <span class="keyboard-btn-group-label"></span>
+            <div class="keyboard-btn-group">
+              <button class="keyboard-btn" data-key="1"></button>
+              <button class="keyboard-btn" data-key="2"></button>
+            </div>
+          </div>
+          <div class="keyboard-btn-col">
+            <span class="keyboard-btn-group-label"></span>
+            <div class="keyboard-btn-group">
+              <button class="keyboard-btn" data-key="3"></button>
+              <button class="keyboard-btn" data-key="4"></button>
+            </div>
+          </div>
+          <div class="keyboard-btn-col">
+            <span class="keyboard-btn-group-label"></span>
+            <div class="keyboard-btn-group">
+              <button class="keyboard-btn" data-key="5"></button>
+              <button class="keyboard-btn" data-key="6"></button>
+            </div>
+          </div>
+          <div class="keyboard-btn-col">
+            <span class="keyboard-btn-group-label"></span>
+            <div class="keyboard-btn-group">
+              <button class="keyboard-btn" data-key="7"></button>
+              <button class="keyboard-btn" data-key="8"></button>
+            </div>
+          </div>
+        </div>
+        <!-- Row 2: Demo labels above each button group -->
+        <div class="keyboard-row">
+          <div class="keyboard-btn-col">
+            <span class="keyboard-btn-group-label"></span>
+            <div class="keyboard-btn-group">
+              <button class="keyboard-btn" data-key="9"></button>
+              <button class="keyboard-btn" data-key="10"></button>
+            </div>
+          </div>
+          <div class="keyboard-btn-col">
+            <span class="keyboard-btn-group-label"></span>
+            <div class="keyboard-btn-group">
+              <button class="keyboard-btn" data-key="11"></button>
+              <button class="keyboard-btn" data-key="12"></button>
+            </div>
+          </div>
+          <div class="keyboard-btn-col">
+            <span class="keyboard-btn-group-label"></span>
+            <div class="keyboard-btn-group">
+              <button class="keyboard-btn" data-key="13"></button>
+              <button class="keyboard-btn" data-key="14"></button>
+            </div>
+          </div>
+          <div class="keyboard-btn-col">
+            <span class="keyboard-btn-group-label"></span>
+            <div class="keyboard-btn-group">
+              <button class="keyboard-btn" data-key="15"></button>
+              <button class="keyboard-btn" data-key="16"></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="keyboard-bottom-bar">
+      <button class="keyboard-page-btn">1a</button>
+      <button class="keyboard-page-btn">1b</button>
+      <button class="keyboard-page-btn">2a</button>
+      <button class="keyboard-page-btn">2b</button>
+      <button class="keyboard-page-btn">3a</button>
+      <button class="keyboard-page-btn">3b</button>
+      <button class="keyboard-page-btn">4a</button>
+      <button class="keyboard-page-btn">4b</button>
+    </div>
+  </div>
+
+  <script src="/static/script.js"></script>
+
+<script>
+(function() {
+  function setAppHeight() {
+    var vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+    document.documentElement.style.setProperty('--app-height', vh + 'px');
+    var topbar = document.querySelector('.top-bar');
+    var th = topbar ? topbar.offsetHeight : 0;
+    document.documentElement.style.setProperty('--topbar-h', th + 'px');
+  }
+  window.addEventListener('resize', setAppHeight);
+  window.addEventListener('orientationchange', setAppHeight);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', setAppHeight);
+  }
+  document.addEventListener('DOMContentLoaded', setAppHeight);
+  setAppHeight();
+})();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js').catch(function(err){ console.warn('SW register failed', err); });
+  });
+}
+</script>
+</body>
+</html>

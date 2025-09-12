@@ -1,3 +1,25 @@
 .venv
 .vscode
 .DS_Store
+
+# Python cache / bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Packaging / build (future-proofing if you package later)
+build/
+dist/
+*.egg-info/
+
+# Test / tooling caches (in case added later)
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# OS / editor noise
+Thumbs.db
+ehthumbs.db
+*.swp
+*.swo
