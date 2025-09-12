@@ -280,11 +280,11 @@ evtSource.onmessage = function(event) {
  */
 function updateDirectionUI(dir) {
   if (dir === Direction.FORWARD) {
-  forwardBtn.src = asset('magicons_/dir_right_active.png');
-  reverseBtn.src = asset('magicons_/dir_left_inactive.png');
+    forwardBtn.src = '/static/grafics/dir_right_active.png';
+    reverseBtn.src = '/static/grafics/dir_left_inactive.png';
   } else {
-  forwardBtn.src = asset('magicons_/dir_right_inactive.png');
-  reverseBtn.src = asset('magicons_/dir_left_active.png');
+    forwardBtn.src = '/static/grafics/dir_right_inactive.png';
+    reverseBtn.src = '/static/grafics/dir_left_active.png';
   }
 }
 
