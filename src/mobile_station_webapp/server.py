@@ -13,8 +13,13 @@ import threading
 import queue
 import json
 import argparse
+import logging
 from enum import IntEnum, Enum
 from flask import Flask, request, jsonify, render_template, Response, stream_with_context, send_from_directory
+
+logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s %(message)s')
+logger = logging.getLogger('mswebapp')
+
 try:
     from . import __version__ as _MSW_VERSION  # type: ignore
 except Exception:
@@ -43,11 +48,12 @@ class SystemState(str, Enum):
 
 system_state = SystemState.STOPPED
 
-path_config_files = 'tmp'  # default; can be overridden via CLI/Debug
+path_config_files = 'var'  # default; can be overridden via CLI/Debug
 UDP_IP = '192.168.20.42'   # default; can be overridden via CLI/Debug
 UDP_PORT_TX = 15731
 UDP_PORT_RX = 15730
 DEVICE_UID = 0
+PUBLIC_CONFIG_BASE = '/cfg'
 
 K_STATE = 'state'
 K_LOCO_ID = 'loco_id'
@@ -600,15 +606,71 @@ def parse_magnetartikel_cs2(file_path):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # Provide CONFIG_PATH (HTTP base, e.g. '/cfg') to template for asset building.
+    # The real filesystem directory comes from CONFIG_FS_PATH and is exposed via
+    # the /cfg/<path:filename> route (see below). We NEVER leak the raw
+    # filesystem path to the browser.
+    cfg = app.config.get('CONFIG_PATH', PUBLIC_CONFIG_BASE).rstrip('/')
+    return render_template('index.html', config_path=cfg)
 
 @app.route('/info')
 def info():
-    return render_template('info.html')
+    cfg = app.config.get('CONFIG_PATH', PUBLIC_CONFIG_BASE).rstrip('/')
+    return render_template('info.html', config_path=cfg)
 
 @app.route('/sw.js')
 def service_worker():
     return send_from_directory(PKG_DIR, 'sw.js', mimetype='application/javascript')
+
+
+# --- Dynamic serving of user provided config/asset directory ---
+# The CLI option --config provides a LOCAL filesystem directory that contains
+# subfolders like icons/, fcticons/, config/ (with *.cs2 files), etc.
+# Browsers cannot access raw filesystem paths, so we expose that directory
+# read‑only under the fixed URL prefix /cfg/.  Templates/JS only ever see the
+# HTTP path (CONFIG_PATH) while server-side parsing uses CONFIG_FS_PATH.
+@app.route(f"{PUBLIC_CONFIG_BASE}/<path:filename>")
+def serve_config_assets(filename):
+    base = app.config.get('CONFIG_FS_PATH')
+    if not base:
+        from flask import abort
+        return abort(404)
+    fs_path = os.path.join(base, filename)
+    norm_base = os.path.abspath(base)
+    norm_file = os.path.abspath(fs_path)
+    if not norm_file.startswith(norm_base):
+        from flask import abort
+        logger.warning('[cfg] traversal attempt: %s', filename)
+        return abort(403)
+    if os.path.isdir(norm_file):
+        from flask import abort
+        logger.debug('[cfg] directory access blocked: %s', filename)
+        return abort(404)
+    if os.path.isfile(norm_file):
+        try:
+            from flask import send_file
+            return send_file(norm_file)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            logger.exception('[cfg] send error %s: %s', filename, e)
+            from flask import abort
+            return abort(500)
+    pkg_static = os.path.join(PKG_DIR, 'static')
+    fallback_path = os.path.join(pkg_static, filename)
+    if os.path.isfile(fallback_path):
+        try:
+            from flask import send_file
+            return send_file(fallback_path)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            logger.exception('[cfg] fallback send error %s: %s', filename, e)
+            from flask import abort
+            return abort(500)
+    logger.warning('[cfg] not found: %s (looked in %s)', filename, base)
+    from flask import abort
+    return abort(404)
 
 
 @app.get('/api/health')
@@ -648,19 +710,22 @@ def run_server(udp_ip: str = UDP_IP, config_path: str = path_config_files, host:
     app.config['UDP_IP'] = udp_ip
     app.config['UDP_PORT_TX'] = UDP_PORT_TX
     app.config['UDP_PORT_RX'] = UDP_PORT_RX
-    app.config['CONFIG_PATH'] = config_path
+    # Store the raw filesystem path separately (never exposed directly to client)
+    app.config['CONFIG_FS_PATH'] = config_path
+    # Public HTTP base path for those assets (mounted via /cfg/<path>)
+    app.config['CONFIG_PATH'] = PUBLIC_CONFIG_BASE
 
     try:
-        loc_list = parse_lokomotive_cs2(os.path.join(config_path, 'lokomotive.cs2'))
+        loc_list = parse_lokomotive_cs2(os.path.join(config_path, 'config', 'lokomotive.cs2'))
     except Exception as e:
         loc_list = []
-        print(f"Error loading lokomotive.cs2 file: {e}")
+        logger.warning("Error loading lokomotive.cs2 file: %s", e)
 
     try:
-        switch_list = parse_magnetartikel_cs2(os.path.join(config_path, 'magnetartikel.cs2'))
+        switch_list = parse_magnetartikel_cs2(os.path.join(config_path, 'config', 'magnetartikel.cs2'))
     except Exception as e:
         switch_list = []
-        print(f"Error loading magnetartikel.cs2 file: {e}")
+        logger.warning("Error loading magnetartikel.cs2 file: %s", e)
 
     try:
         for loco in loc_list:

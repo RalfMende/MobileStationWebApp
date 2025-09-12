@@ -48,6 +48,15 @@ const infoBtn = document.getElementById('infoBtn');
 // Keyboard buttons and page buttons are built dynamically; query as needed
 let keyboardPageBtns = null; // will be set after dynamic build
 
+if (!window.CONFIG_PATH) {
+  throw new Error('CONFIG_PATH not defined: backend must set window.CONFIG_PATH before loading script.js');
+}
+const STATIC_BASE = window.CONFIG_PATH.replace(/\/$/, '');
+function asset(rel) {
+  if (!rel.startsWith('/')) rel = '/' + rel;
+  return STATIC_BASE + rel;
+}
+
 // Tab navigation between control and keyboard panels.
 // The markup contains two tabs: one for the locomotive control view and one for the keyboard view.
 // Attach click listeners to each tab so that clicking a tab hides the inactive page, reveals the
@@ -271,11 +280,11 @@ evtSource.onmessage = function(event) {
  */
 function updateDirectionUI(dir) {
   if (dir === Direction.FORWARD) {
-    forwardBtn.src = '/static/grafics/dir_right_active.png';
-    reverseBtn.src = '/static/grafics/dir_left_inactive.png';
+  forwardBtn.src = asset('magicons_/dir_right_active.png');
+  reverseBtn.src = asset('magicons_/dir_left_inactive.png');
   } else {
-    forwardBtn.src = '/static/grafics/dir_right_inactive.png';
-    reverseBtn.src = '/static/grafics/dir_left_active.png';
+  forwardBtn.src = asset('magicons_/dir_right_inactive.png');
+  reverseBtn.src = asset('magicons_/dir_left_active.png');
   }
 }
 
@@ -450,8 +459,8 @@ function pad2(v) {
  * @returns {string} the URL of the primary image
  */
 function setFunctionIcon(img, iconPrefix, id, index) {
-  const primary  = `/static/fcticons/FktIcon_a_${iconPrefix}_${pad2(id)}.png`;
-  const fallback = `/static/fcticons/FktIcon_a_${iconPrefix}_${pad2(50 + index)}.png`;
+  const primary  = asset(`fcticons/FktIcon_a_${iconPrefix}_${pad2(id)}.png`);
+  const fallback = asset(`fcticons/FktIcon_a_${iconPrefix}_${pad2(50 + index)}.png`);
 
   const probe = new Image();
   probe.onload  = () => { img.src = primary; };
@@ -920,14 +929,14 @@ function updateSwitchUI(btn1, btn2, valueNum) {
     // btn1 active, btn2 inactive
     btn1.classList.add('active');
     btn2.classList.remove('active');
-    if (img1) img1.src = '/static/grafics/switch_re_active.png';
-    if (img2) img2.src = '/static/grafics/switch_gr_inactive.png';
+  if (img1) img1.src = asset('magicons_/switch_re_active.png');
+  if (img2) img2.src = asset('magicons_/switch_gr_inactive.png');
   } else {
     // btn1 inactive, btn2 active
     btn1.classList.remove('active');
     btn2.classList.add('active');
-    if (img1) img1.src = '/static/grafics/switch_re_inactive.png';
-    if (img2) img2.src = '/static/grafics/switch_gr_active.png';
+  if (img1) img1.src = asset('magicons_/switch_re_inactive.png');
+  if (img2) img2.src = asset('magicons_/switch_gr_active.png');
   }
 }
 
@@ -960,10 +969,10 @@ fetch('/api/loco_list')
       img.title = locList[uid].name;
       img.onerror = function() {
         img.onerror = null;
-        img.src = '/static/icons/leeres Gleis.png';
+  img.src = asset('icons/leeres Gleis.png');
       };
       const iconName = locList[uid].icon || locList[uid].bild || 'leeres Gleis';
-      img.src = `/static/icons/${iconName}.png`;
+  img.src = asset(`icons/${iconName}.png`);
       document.getElementById("locoList").appendChild(img);
       // Set locomotive icon event handler
       img.onclick = () => {
@@ -978,7 +987,7 @@ fetch('/api/loco_list')
     // After initialization: Apply state of the current locomotive and update function buttons
     if (currentLocoUid) {
       locoDesc.textContent = locList[currentLocoUid]?.name || '';
-      locoImg.src = `/static/icons/${locList[currentLocoUid]?.icon || locList[currentLocoUid]?.bild || 'leeres Gleis'}.png`;
+  locoImg.src = asset(`icons/${locList[currentLocoUid]?.icon || locList[currentLocoUid]?.bild || 'leeres Gleis'}.png`);
       fetch(`/api/loco_state?loco_id=${currentLocoUid}`)
         .then(r => r.json())
         .then(state => {
