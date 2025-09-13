@@ -218,6 +218,11 @@ stopBtn.addEventListener('click', () => {
 const evtSource = new EventSource('/api/events');
 evtSource.onmessage = function(event) {
   const data = JSON.parse(event.data);
+  if (data.type === 'loco_list_reloaded') {
+    // Backend indicates that lokomotive.cs2 changed. Reload list and UI using the shared path.
+    loadAndRenderLocoList({ preserveSelection: true });
+    return;
+  }
   if (data.type === 'system') {
       isRunning = data.status;
     updateStopButtonUI();
@@ -267,6 +272,78 @@ evtSource.onmessage = function(event) {
 // with "setLoco…" for actions that send commands to the server, and
 // "update…" for pure UI updates.  Fetch functions that only read
 // state are prefixed with "fetchAnd…".
+
+// Helper: select a locomotive by uid, update UI and fetch state
+function selectLoco(uid) {
+  currentLocoUid = Number(uid);
+  if (!isFinite(currentLocoUid)) return;
+  const loco = locList[String(currentLocoUid)] || locList[currentLocoUid];
+  locoDesc.textContent = loco ? (loco.name || '') : '';
+  const iconName = (loco && (loco.icon || loco.bild)) || 'leeres Gleis';
+  locoImg.src = asset(`icons/${iconName}.png`);
+  fetchAndApplyLocoState(currentLocoUid);
+  localStorage.setItem('currentLocoUid', String(currentLocoUid));
+}
+
+// Helper: rebuild the locomotive list icons and click handlers
+function renderLocoList() {
+  const listEl = document.getElementById('locoList');
+  if (listEl) listEl.innerHTML = '';
+  const uids = Object.keys(locList);
+  uids.forEach(uid => {
+    const loco = locList[uid];
+    const img = new Image();
+    img.alt = loco.name;
+    img.title = loco.name;
+    img.onerror = function() {
+      img.onerror = null;
+      img.src = asset('icons/leeres Gleis.png');
+    };
+    const iconName = loco.icon || loco.bild || 'leeres Gleis';
+    img.src = asset(`icons/${iconName}.png`);
+    if (listEl) listEl.appendChild(img);
+    img.onclick = () => selectLoco(loco.uid);
+  });
+  return uids;
+}
+
+// Unified loader: fetch loco_list (and optionally loco_state), render UI, and choose selection
+function loadAndRenderLocoList(options) {
+  const opts = Object.assign({ preserveSelection: false, alsoLoadStateMap: false }, options || {});
+  const prevUid = opts.preserveSelection ? currentLocoUid : null;
+  return fetch('/api/loco_list')
+    .then(r => r.json())
+    .then(newList => {
+      locList = newList || {};
+      const statePromise = opts.alsoLoadStateMap
+        ? fetch('/api/loco_state').then(r => r.json()).then(s => { locoState = s || {}; }).catch(() => { locoState = {}; })
+        : Promise.resolve();
+      return statePromise.then(() => {
+        const uids = renderLocoList();
+        let selected = null;
+        if (prevUid && (locList[String(prevUid)] || locList[prevUid])) {
+          selected = Number(prevUid);
+        } else {
+          // Try localStorage
+          const saved = localStorage.getItem('currentLocoUid');
+          if (saved && (locList[saved] || locList[Number(saved)])) selected = Number(saved);
+        }
+        if (selected == null) {
+          const firstUid = uids[0];
+          if (firstUid) selected = locList[firstUid]?.uid || Number(firstUid);
+        }
+        if (selected != null) selectLoco(selected);
+      });
+    })
+    .catch(err => console.warn('Failed to load loco list:', err));
+}
+
+// Load the list of available locomotives and initialise their UI elements.
+// This call retrieves the locomotive metadata, populates the locomotive list with icons and
+// names, restores the previously selected locomotive if present and applies its state to the
+// UI.  It also fetches the overall state once to mirror the authoritative state from the server.
+// Initial load using unified path
+loadAndRenderLocoList({ preserveSelection: true, alsoLoadStateMap: true });
 
 /**
  * Update the direction buttons in the UI.
@@ -939,69 +1016,6 @@ function updateSwitchUI(btn1, btn2, valueNum) {
     if (img2) img2.src = asset('magicons_/switch_gr_active.png');
   }
 }
-
-// Load the list of available locomotives and initialise their UI elements.
-// This call retrieves the locomotive metadata, populates the locomotive list with icons and
-// names, restores the previously selected locomotive if present and applies its state to the
-// UI.  It also fetches the overall state once to mirror the authoritative state from the server.
-fetch('/api/loco_list')
-  .then(response => response.json())
-  .then(data => {
-    locList = data;
-    // Mirror state from server (authoritative)
-    fetch('/api/loco_state').then(r=>r.json()).then(s => { locoState = s; }).catch(()=>{ locoState = {}; });
-
-    // Initialize currentLocoUid
-    let savedLocoUid = localStorage.getItem('currentLocoUid');
-    if (savedLocoUid && locList[savedLocoUid]) {
-      currentLocoUid = Number(savedLocoUid);
-    } else {
-      // Initialize with the first locomotive from locList
-      const firstUid = Object.keys(locList)[0];
-      currentLocoUid = locList[firstUid]?.uid || Number(firstUid);
-    }
-
-    Object.keys(locList).forEach(uid => {
-      // Create locomotive icon
-      console.log("Initializing locomotive:", uid, locList[uid]);
-      const img = new Image();
-      img.alt = locList[uid].name;
-      img.title = locList[uid].name;
-      img.onerror = function() {
-        img.onerror = null;
-  img.src = asset('icons/leeres Gleis.png');
-      };
-      const iconName = locList[uid].icon || locList[uid].bild || 'leeres Gleis';
-  img.src = asset(`icons/${iconName}.png`);
-      document.getElementById("locoList").appendChild(img);
-      // Set locomotive icon event handler
-      img.onclick = () => {
-        currentLocoUid = locList[uid].uid;
-        locoDesc.textContent = locList[uid].name;
-        locoImg.src = img.src;
-        fetchAndApplyLocoState(currentLocoUid);
-        localStorage.setItem('currentLocoUid', currentLocoUid);
-      };
-    });
-
-    // After initialization: Apply state of the current locomotive and update function buttons
-    if (currentLocoUid) {
-      locoDesc.textContent = locList[currentLocoUid]?.name || '';
-  locoImg.src = asset(`icons/${locList[currentLocoUid]?.icon || locList[currentLocoUid]?.bild || 'leeres Gleis'}.png`);
-      fetch(`/api/loco_state?loco_id=${currentLocoUid}`)
-        .then(r => r.json())
-        .then(state => {
-          updateAllLocoFunctionButtons(state.functions || {});
-          updateSpeedUI(state.speed || 0);
-          updateDirectionUI(
-            (state.direction === 'reverse' || state.direction === 2 || state.direction === '2')
-              ? Direction.REVERSE
-              : Direction.FORWARD
-          );
-        });
-    }
-  });
-
 
 // Attach direction change handlers: clicking the reverse/forward arrows
 // sends the appropriate command to the backend via setLocoDirection().

@@ -14,6 +14,7 @@ import queue
 import json
 import argparse
 import logging
+import time
 from enum import IntEnum, Enum
 from flask import Flask, request, jsonify, render_template, Response, stream_with_context, send_from_directory
 
@@ -37,6 +38,9 @@ app = Flask(
 
 subscribers = set()
 subs_lock = threading.Lock()
+loc_data_lock = threading.Lock()
+loc_list = []
+switch_list = {}
 
 loco_state = {}
 switch_state = [0] * 64  # 64 switches, default state 0
@@ -133,7 +137,10 @@ def sse_events():
             try:
                 status = 1 if system_state == SystemState.RUNNING else 0
                 q.put_nowait(json.dumps({'type': 'system', 'status': status}, separators=(',', ':')))
-                for uid, st in loco_state.items():
+                # Take a snapshot to avoid concurrent modification during iteration
+                with loc_data_lock:
+                    loco_items = list(loco_state.items())
+                for uid, st in loco_items:
                     try:
                         spd = int(st.get('speed', 0))
                         dirv = int(st.get('direction', 1))
@@ -235,31 +242,40 @@ def _get_first(data: dict, *keys):
     return None
 
 def set_loco_state_speed(loc_id, speed):
-    st = _ensure_loco_state(int(loc_id))
-    st['speed'] = int(speed)
+    with loc_data_lock:
+        st = _ensure_loco_state(int(loc_id))
+        st['speed'] = int(speed)
     publish_event({'type': 'speed', 'loc_id': loc_id, 'value': speed})
 
 def set_loco_state_direction(loc_id, direction):
-    st = _ensure_loco_state(int(loc_id))
-    st['direction'] = int(direction)
+    with loc_data_lock:
+        st = _ensure_loco_state(int(loc_id))
+        st['direction'] = int(direction)
     publish_event({'type': 'direction', 'loc_id': loc_id, 'value': direction})
 
 def set_loco_state_function(loc_id, fn_no, fn_val):
-    st = _ensure_loco_state(int(loc_id))
-    st['functions'][int(fn_no)] = bool(fn_val)
+    with loc_data_lock:
+        st = _ensure_loco_state(int(loc_id))
+        st['functions'][int(fn_no)] = bool(fn_val)
     publish_event({'type': 'function', 'loc_id': loc_id, 'fn': fn_no, 'value': fn_val})
 
 @app.route('/api/loco_list')
 def get_locs():
-    loc_dict = {str(loco['uid']): loco for loco in loc_list}
+    with loc_data_lock:
+        items = list(loc_list)
+    loc_dict = {str(loco['uid']): loco for loco in items}
     return jsonify(loc_dict)
 
 @app.route('/api/loco_state')
 def get_state():
     uid = request.args.get('loco_id', type=int)
     if uid is None:
-        return jsonify({str(k): v for k, v in loco_state.items()})
-    return jsonify(loco_state.get(uid, {}))
+        with loc_data_lock:
+            snapshot = {str(k): v for k, v in loco_state.items()}
+        return jsonify(snapshot)
+    with loc_data_lock:
+        st = dict(loco_state.get(uid, {}))
+    return jsonify(st)
 
 @app.route('/api/control_event', methods=['POST'])
 def control_event():
@@ -728,10 +744,74 @@ def run_server(udp_ip: str = UDP_IP, config_path: str = path_config_files, host:
         logger.warning("Error loading magnetartikel.cs2 file: %s", e)
 
     try:
-        for loco in loc_list:
-            _ensure_loco_state(int(loco.get('uid') if isinstance(loco, dict) else loco['uid']))
+        with loc_data_lock:
+            # reset and pre-initialize loco_state so keys exist for all locos
+            loco_state.clear()
+            for loco in loc_list:
+                _ensure_loco_state(int(loco.get('uid') if isinstance(loco, dict) else loco['uid']))
     except Exception:
         pass
+
+    # Background watcher for lokomotive.cs2 - reload on change and reinit state
+    def _watch_lokomotive(file_path: str, poll_sec: float = 1.0):
+        last_mtime = None
+        try:
+            if os.path.isfile(file_path):
+                last_mtime = os.path.getmtime(file_path)
+        except Exception:
+            last_mtime = None
+        while not _stop_evt.is_set():
+            try:
+                time.sleep(poll_sec)
+                if not os.path.isfile(file_path):
+                    continue
+                mtime = os.path.getmtime(file_path)
+                if last_mtime is None:
+                    last_mtime = mtime
+                    continue
+                if mtime != last_mtime:
+                    last_mtime = mtime
+                    try:
+                        new_list = parse_lokomotive_cs2(file_path)
+                        logger.info("lokomotive.cs2 changed, reloading %d locomotives", len(new_list))
+                    except Exception as e:
+                        logger.warning("Failed to reload lokomotive.cs2: %s", e)
+                        continue
+                    # Swap loc_list and reinitialize loco_state safely
+                    try:
+                        with loc_data_lock:
+                            # Update global loc_list
+                            globals()['loc_list'] = new_list
+                            # Rebuild loco_state preserving prior values when possible
+                            old_state = dict(loco_state)
+                            loco_state.clear()
+                            for loco in new_list:
+                                try:
+                                    uid = int(loco.get('uid') if isinstance(loco, dict) else loco['uid'])
+                                except Exception:
+                                    continue
+                                st = old_state.get(uid, {'speed': 0, 'direction': 1, 'functions': {}})
+                                loco_state[uid] = {
+                                    'speed': int(st.get('speed', 0)),
+                                    'direction': int(st.get('direction', 1)),
+                                    'functions': dict(st.get('functions') or {})
+                                }
+                    except Exception as e:
+                        logger.exception("Error applying new loco list: %s", e)
+                        continue
+                    # Inform clients about refreshed data (send a system 'refresh' via events)
+                    try:
+                        publish_event({'type': 'system', 'status': 1 if system_state == SystemState.RUNNING else 0})
+                        # also emit a synthetic info that locos reloaded; frontend will resubscribe/refresh naturally
+                        publish_event({'type': 'loco_list_reloaded'})
+                    except Exception:
+                        pass
+            except Exception:
+                # Never crash the watcher
+                continue
+
+    lok_file = os.path.join(config_path, 'config', 'lokomotive.cs2')
+    threading.Thread(target=_watch_lokomotive, args=(lok_file,), daemon=True).start()
 
     t = threading.Thread(target=listen_cs2_udp, args=('', UDP_PORT_RX, _stop_evt), daemon=True)
     t.start()
