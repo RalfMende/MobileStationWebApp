@@ -723,7 +723,11 @@ def parse_args():
 
 def run_server(udp_ip: str = UDP_IP, config_path: str = path_config_files, host: str = '0.0.0.0', port: int = 6020):
     global loc_list, switch_list
-    app.config['UDP_IP'] = udp_ip
+    try:
+        resolved_ip = socket.gethostbyname(udp_ip)
+    except Exception:
+        resolved_ip = udp_ip  # fallback to original value if resolution fails
+    app.config['UDP_IP'] = resolved_ip
     app.config['UDP_PORT_TX'] = UDP_PORT_TX
     app.config['UDP_PORT_RX'] = UDP_PORT_RX
     # Store the raw filesystem path separately (never exposed directly to client)
