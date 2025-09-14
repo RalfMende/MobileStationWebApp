@@ -1,0 +1,4 @@
+Y:/Documents/GitHub/MobileStationWebApp/src/backend_cpp/build-msvc/CMakeFiles/mswebapp_cpp.dir
+Y:/Documents/GitHub/MobileStationWebApp/src/backend_cpp/build-msvc/CMakeFiles/INSTALL.dir
+Y:/Documents/GitHub/MobileStationWebApp/src/backend_cpp/build-msvc/CMakeFiles/ALL_BUILD.dir
+Y:/Documents/GitHub/MobileStationWebApp/src/backend_cpp/build-msvc/CMakeFiles/ZERO_CHECK.dir

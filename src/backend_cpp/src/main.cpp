@@ -1,0 +1,742 @@
+// THE BEER-WARE LICENSE (Revision 42)
+// <mende.r@hotmail.de> wrote this file. As long as you retain this notice you can do whatever you want with this
+// stuff. If we meet someday, and you think this stuff is worth it, you can buy me a beer in return. Ralf Mende
+
+#include <cstdio>
+#include <cstdlib>
+#include <cstdint>
+#include <string>
+#include <vector>
+#include <map>
+#include <set>
+#include <mutex>
+#include <thread>
+#include <atomic>
+#include <fstream>
+#include <sstream>
+#include <algorithm>
+#include <chrono>
+#include <optional>
+#include <filesystem>
+#include <condition_variable>
+#include <cctype>
+
+#include "httplib.h" // yhirose/cpp-httplib single header (HTTP + SSE via chunked)
+
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#pragma comment(lib, "Ws2_32.lib")
+#else
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <unistd.h>
+#endif
+
+namespace fs = std::filesystem;
+
+// ---- Basic types/state ----
+struct Loco {
+    int uid = 0;
+    std::string name;
+    std::string icon; // or bild
+    int tachomax = 200;
+};
+
+static std::map<int, Loco> g_locos; // uid -> loco
+static std::map<int, int> g_switch_state; // idx -> value
+static std::vector<int> g_switch_uid; // idx -> computed uid (if available)
+static std::map<int, int> g_loco_speed; // uid -> 0..1023
+static std::map<int, int> g_loco_dir;   // uid -> 0/1/2
+static std::map<int, std::map<int,bool>> g_loco_fn; // uid -> fn->bool
+static std::atomic<bool> g_running{false};
+static std::string g_config_dir = "var";
+static std::string g_public_cfg = "/cfg";
+static std::string g_udp_ip = "Gleisbox";
+static int g_udp_tx = 15731;
+static int g_udp_rx = 15730;
+static int g_http_port = 6020;
+static std::string g_bind_host = "0.0.0.0";
+static int g_device_uid = 0; // sender uid for CAN id hash
+
+// ---- Utilities ----
+static std::string trim(const std::string &s) {
+    size_t a = s.find_first_not_of(" \t\r\n");
+    if (a == std::string::npos) return "";
+    size_t b = s.find_last_not_of(" \t\r\n");
+    return s.substr(a, b - a + 1);
+}
+
+static std::string json_escape(const std::string &in) {
+    std::string out; out.reserve(in.size()+8);
+    for (char c : in) {
+        switch (c) {
+        case '"': out += "\\\""; break;
+        case '\\': out += "\\\\"; break;
+        case '\n': out += "\\n"; break;
+        case '\r': out += "\\r"; break;
+        case '\t': out += "\\t"; break;
+        default:
+            if (static_cast<unsigned char>(c) < 0x20) {
+                char buf[7]; std::snprintf(buf, sizeof(buf), "\\u%04x", c);
+                out += buf;
+            } else {
+                out += c;
+            }
+        }
+    }
+    return out;
+}
+
+// Resolve a hostname (or numeric IP) to an IPv4 dotted string; on failure, return input unchanged
+static std::string resolve_hostname_to_ipv4(const std::string &host) {
+    if (host.empty()) return host;
+    addrinfo hints{}; hints.ai_family = AF_INET; // IPv4 only
+    addrinfo *res = nullptr;
+    int rc = getaddrinfo(host.c_str(), nullptr, &hints, &res);
+    if (rc != 0 || !res) {
+        return host; // leave as-is if resolution fails
+    }
+    char buf[INET_ADDRSTRLEN] = {0};
+    const sockaddr_in *sa = reinterpret_cast<const sockaddr_in*>(res->ai_addr);
+    const void *addr_ptr = &(sa->sin_addr);
+    const char *ntop = inet_ntop(AF_INET, addr_ptr, buf, sizeof(buf));
+    std::string out = ntop ? std::string(ntop) : host;
+    freeaddrinfo(res);
+    return out;
+}
+
+static std::string loco_list_json() {
+    std::ostringstream os; os << "{";
+    bool first = true;
+    for (auto &kv : g_locos) {
+        if (!first) os << ","; first = false;
+        const Loco &l = kv.second;
+        os << '"' << kv.first << '"' << ":{";
+        os << "\"uid\":" << l.uid << ",";
+        os << "\"name\":\"" << json_escape(l.name) << "\",";
+        os << "\"icon\":\"" << json_escape(l.icon) << "\",";
+        os << "\"tachomax\":" << l.tachomax;
+        os << "}";
+    }
+    os << "}";
+    return os.str();
+}
+
+static std::string loco_state_json() {
+    std::ostringstream os; os << "{";
+    bool first = true;
+    for (auto &kv : g_locos) {
+        int uid = kv.first;
+        if (!first) os << ","; first = false;
+        int spd = g_loco_speed[uid];
+        int dir = g_loco_dir[uid];
+        os << '"' << uid << '"' << ":{";
+        os << "\"speed\":" << spd << ",\"direction\":" << dir << ",\"functions\":{";
+        bool f2 = true;
+        for (auto &fk : g_loco_fn[uid]) {
+            if (!f2) os << ","; f2 = false;
+            os << '"' << fk.first << '"' << ":" << (fk.second ? 1 : 0);
+        }
+        os << "}}";
+    }
+    os << "}";
+    return os.str();
+}
+
+// ---- CS2 parsing (minimal, tolerant) ----
+static void parse_lokomotive_cs2(const fs::path &p) {
+    g_locos.clear();
+    std::ifstream f(p);
+    if (!f) return;
+    std::string line;
+    Loco cur; bool in = false;
+    while (std::getline(f, line)) {
+        line = trim(line);
+        if (line == "lokomotive") {
+            if (in && cur.uid) g_locos[cur.uid] = cur;
+            cur = Loco{}; in = true;
+        } else if (in) {
+            if (!line.empty() && line[0]=='.' && line.find('=')!=std::string::npos && (line.size()<2 || line[1] != '.')) {
+                auto pos = line.find('=');
+                std::string key = line.substr(1, pos-1);
+                std::string val = line.substr(pos+1);
+                key = trim(key); val = trim(val);
+                if (key == "uid" || key == "adresse") {
+                    try { cur.uid = std::stoi(val); } catch (...) {}
+                } else if (key == "name") {
+                    cur.name = val;
+                } else if (key == "bild" || key == "icon") {
+                    cur.icon = val;
+                } else if (key == "tachomax") {
+                    try { cur.tachomax = std::stoi(val); } catch (...) {}
+                }
+            }
+        }
+    }
+    if (in && cur.uid) g_locos[cur.uid] = cur;
+}
+
+static void parse_magnetartikel_cs2(const fs::path &p) {
+    g_switch_state.clear();
+    g_switch_uid.clear(); g_switch_uid.resize(64, -1);
+    std::ifstream f(p);
+    if (!f) return;
+    std::string line; bool in = false; int idx=0; int cur_id=0; std::string dectyp;
+    while (std::getline(f,line)) {
+        line = trim(line);
+        if (line == "artikel") { in = true; idx++; cur_id=0; dectyp.clear(); continue; }
+        if (in && !line.empty() && line[0]=='.' && line.find('=')!=std::string::npos) {
+            auto pos = line.find('=');
+            std::string key = trim(line.substr(1, pos-1));
+            std::string val = trim(line.substr(pos+1));
+            if (key == "id") {
+                try { cur_id = std::stoi(val); } catch (...) { cur_id = 0; }
+            } else if (key == "dectyp") {
+                std::transform(val.begin(), val.end(), val.begin(), [](unsigned char c){ return (char)std::tolower(c); });
+                dectyp = val;
+            }
+            if (idx <= 64) {
+                g_switch_state[idx-1] = 0;
+                // Compute UID once we see id (dectyp may come later; we recompute on each key)
+                int id_int = cur_id - 1;
+                int uid = -1;
+                if (dectyp == "mm2") uid = 0x3000 | (id_int & 0x3FF);
+                else if (dectyp == "dcc") uid = 0x3800 | (id_int & 0x3FF);
+                else if (dectyp == "sx1") uid = 0x2800 | (id_int & 0x3FF);
+                else uid = (id_int & 0x3FF);
+                g_switch_uid[idx-1] = uid;
+            }
+        }
+    }
+}
+
+// Forward declarations for SSE/event helpers used in UDP listener
+static void publish_event(const std::string &msg);
+static std::string system_event_json();
+static std::string speed_event_json(int uid, int spd);
+static std::string direction_event_json(int uid, int dir);
+static std::string function_event_json(int uid, int fn, bool val);
+static std::string switch_event_json(int idx, int val);
+
+// ---- UDP send/recv stubs ----
+// ---- UDP CS2 helpers ----
+enum Command {
+    CMD_SYSTEM = 0,
+    CMD_DISCOVERY = 1,
+    CMD_BIND = 2,
+    CMD_VERIFY = 3,
+    CMD_SPEED = 4,
+    CMD_DIRECTION = 5,
+    CMD_FUNCTION = 6,
+    CMD_READ_CONFIG = 7,
+    CMD_WRITE_CONFIG = 8,
+    CMD_SWITCH = 11
+};
+
+enum SystemSubCmd {
+    SYS_STOP = 0x00,
+    SYS_GO = 0x01,
+    SYS_HALT = 0x02
+};
+
+static uint16_t generate_hash(uint32_t uid) {
+    uint16_t hi = (uid >> 16) & 0xFFFF;
+    uint16_t lo = uid & 0xFFFF;
+    uint16_t h = hi ^ lo;
+    h = (uint16_t)(((h << 3) & 0xFF00) | 0x300 | (h & 0x7F));
+    return h & 0xFFFF;
+}
+
+static uint32_t build_can_id(uint32_t uid, int command, int prio = 0, int resp = 0) {
+    uint16_t hash16 = generate_hash(uid);
+    return (uint32_t(prio) << 25) | (uint32_t(((command << 1) | (resp & 1))) << 16) | hash16;
+}
+
+static std::vector<uint8_t> pad_to_8(const std::vector<uint8_t> &in) {
+    std::vector<uint8_t> b = in;
+    while (b.size() < 8) b.push_back(0);
+    if (b.size() > 8) b.resize(8);
+    return b;
+}
+
+static std::vector<uint8_t> payload_speed(uint32_t loco_uid, int speed) {
+    std::vector<uint8_t> b;
+    b.push_back((loco_uid >> 24) & 0xFF);
+    b.push_back((loco_uid >> 16) & 0xFF);
+    b.push_back((loco_uid >> 8) & 0xFF);
+    b.push_back(loco_uid & 0xFF);
+    int spd = std::max(0, std::min(1023, speed));
+    b.push_back((spd >> 8) & 0xFF);
+    b.push_back(spd & 0xFF);
+    return b;
+}
+
+static std::vector<uint8_t> payload_direction(uint32_t loco_uid, int dir) {
+    std::vector<uint8_t> b;
+    b.push_back((loco_uid >> 24) & 0xFF);
+    b.push_back((loco_uid >> 16) & 0xFF);
+    b.push_back((loco_uid >> 8) & 0xFF);
+    b.push_back(loco_uid & 0xFF);
+    b.push_back(dir & 0xFF);
+    return b;
+}
+
+static std::vector<uint8_t> payload_function(uint32_t loco_uid, int fn, int val) {
+    std::vector<uint8_t> b;
+    b.push_back((loco_uid >> 24) & 0xFF);
+    b.push_back((loco_uid >> 16) & 0xFF);
+    b.push_back((loco_uid >> 8) & 0xFF);
+    b.push_back(loco_uid & 0xFF);
+    b.push_back(fn & 0xFF);
+    b.push_back(val & 0xFF);
+    return b;
+}
+
+static std::vector<uint8_t> payload_switch(uint32_t uid, int val) {
+    std::vector<uint8_t> b;
+    b.push_back((uid >> 24) & 0xFF);
+    b.push_back((uid >> 16) & 0xFF);
+    b.push_back((uid >> 8) & 0xFF);
+    b.push_back(uid & 0xFF);
+    b.push_back(val & 0xFF);
+    b.push_back(0x01);
+    return b;
+}
+
+static std::vector<uint8_t> payload_system_state(uint32_t device_uid, bool running) {
+    std::vector<uint8_t> b;
+    b.push_back((device_uid >> 24) & 0xFF);
+    b.push_back((device_uid >> 16) & 0xFF);
+    b.push_back((device_uid >> 8) & 0xFF);
+    b.push_back(device_uid & 0xFF);
+    b.push_back(running ? 1 : 0);
+    return b;
+}
+
+static void udp_send_frame(uint32_t can_id, const std::vector<uint8_t> &payload, int dlc) {
+    auto data = pad_to_8(payload);
+#ifdef _WIN32
+    SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (sock == INVALID_SOCKET) return;
+    sockaddr_in addr{}; addr.sin_family = AF_INET; addr.sin_port = htons((u_short)g_udp_tx);
+    addr.sin_addr.s_addr = inet_addr(g_udp_ip.c_str());
+    if (addr.sin_addr.s_addr == INADDR_NONE) {
+        inet_pton(AF_INET, g_udp_ip.c_str(), &addr.sin_addr);
+    }
+#else
+    int sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sock < 0) return;
+    sockaddr_in addr{}; addr.sin_family = AF_INET; addr.sin_port = htons(g_udp_tx);
+    inet_pton(AF_INET, g_udp_ip.c_str(), &addr.sin_addr);
+#endif
+    std::vector<uint8_t> send_bytes;
+    send_bytes.reserve(4+1+8);
+    send_bytes.push_back((can_id >> 24) & 0xFF);
+    send_bytes.push_back((can_id >> 16) & 0xFF);
+    send_bytes.push_back((can_id >> 8) & 0xFF);
+    send_bytes.push_back(can_id & 0xFF);
+    send_bytes.push_back(dlc & 0xFF);
+    send_bytes.insert(send_bytes.end(), data.begin(), data.end());
+#ifdef _WIN32
+    sendto(sock, reinterpret_cast<const char*>(send_bytes.data()), (int)send_bytes.size(), 0, (sockaddr*)&addr, sizeof(addr));
+    closesocket(sock);
+#else
+    sendto(sock, send_bytes.data(), send_bytes.size(), 0, (sockaddr*)&addr, sizeof(addr));
+    close(sock);
+#endif
+}
+
+static void udp_listener_thread(std::atomic<bool>& stop_flag) {
+#ifdef _WIN32
+    SOCKET s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (s == INVALID_SOCKET) return;
+    BOOL yes = TRUE; setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(yes));
+    sockaddr_in addr{}; addr.sin_family = AF_INET; addr.sin_port = htons((u_short)g_udp_rx); addr.sin_addr.s_addr = INADDR_ANY;
+    if (bind(s, (sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR) { closesocket(s); return; }
+    DWORD timeout = 1000; setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
+#else
+    int s = socket(AF_INET, SOCK_DGRAM, 0);
+    if (s < 0) return;
+    int yes = 1; setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+    sockaddr_in addr{}; addr.sin_family = AF_INET; addr.sin_port = htons(g_udp_rx); addr.sin_addr.s_addr = INADDR_ANY;
+    if (bind(s, (sockaddr*)&addr, sizeof(addr)) < 0) { close(s); return; }
+    struct timeval tv; tv.tv_sec = 1; tv.tv_usec = 0; setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+#endif
+    while (!stop_flag.load()) {
+        uint8_t buf[64];
+#ifdef _WIN32
+        int recvd = recv(s, reinterpret_cast<char*>(buf), 64, 0);
+        if (recvd == SOCKET_ERROR) { continue; }
+#else
+        int recvd = recv(s, buf, sizeof(buf), 0);
+        if (recvd < 0) { continue; }
+#endif
+        if (recvd != 13) continue;
+        uint32_t can_id = (uint32_t(buf[0])<<24) | (uint32_t(buf[1])<<16) | (uint32_t(buf[2])<<8) | uint32_t(buf[3]);
+        uint8_t dlc = buf[4];
+        const uint8_t *data = buf + 5;
+        int cmd_resp = (can_id >> 16) & 0x1FF; // 9 bits
+        int command = (cmd_resp >> 1) & 0xFF;
+        int resp_bit = cmd_resp & 1;
+        if (resp_bit == 1) {
+            if (command == CMD_SYSTEM && dlc >= 5) {
+                uint8_t sub = data[4];
+                if (sub == SYS_GO) { g_running.store(true); publish_event(system_event_json()); }
+                else if (sub == SYS_STOP || sub == SYS_HALT) { g_running.store(false); publish_event(system_event_json()); }
+            } else if (command == CMD_SPEED && dlc >= 6) {
+                int uid = (int(data[0])<<24)|(int(data[1])<<16)|(int(data[2])<<8)|int(data[3]);
+                int spd = (int(data[4])<<8)|int(data[5]);
+                g_loco_speed[uid] = spd; publish_event(speed_event_json(uid, spd));
+            } else if (command == CMD_DIRECTION && dlc >= 5) {
+                int uid = (int(data[0])<<24)|(int(data[1])<<16)|(int(data[2])<<8)|int(data[3]);
+                int dir = int(data[4]); g_loco_dir[uid] = dir; publish_event(direction_event_json(uid, dir));
+            } else if (command == CMD_FUNCTION && dlc >= 5) {
+                int uid = (int(data[0])<<24)|(int(data[1])<<16)|(int(data[2])<<8)|int(data[3]);
+                int fn = int(data[4]); int val = (dlc >= 6) ? int(data[5]) : 1;
+                g_loco_fn[uid][fn] = (val != 0); publish_event(function_event_json(uid, fn, g_loco_fn[uid][fn]));
+            } else if (command == CMD_SWITCH && dlc >= 6) {
+                int idx = int(data[3]); int value = int(data[4]);
+                g_switch_state[idx] = value; publish_event(switch_event_json(idx, value));
+            }
+        }
+    }
+#ifdef _WIN32
+    closesocket(s);
+#else
+    close(s);
+#endif
+}
+// ---- SSE broker ----
+struct Subscriber {
+    std::mutex mtx;
+    std::condition_variable cv;
+    std::vector<std::string> queue;
+    bool closed = false;
+};
+static std::mutex g_subs_mtx;
+static std::set<Subscriber*> g_subscribers;
+
+static void publish_event(const std::string &msg) {
+    std::lock_guard<std::mutex> lk(g_subs_mtx);
+    for (auto *s : g_subscribers) {
+        std::unique_lock<std::mutex> lk2(s->mtx);
+        s->queue.push_back(msg);
+        lk2.unlock();
+        s->cv.notify_one();
+    }
+}
+
+static std::string system_event_json() {
+    std::ostringstream os;
+    os << "{\"type\":\"system\",\"status\":" << (g_running.load() ? 1 : 0) << "}";
+    return os.str();
+}
+
+static std::string speed_event_json(int uid, int spd) {
+    std::ostringstream os;
+    os << "{\"type\":\"speed\",\"loc_id\":" << uid << ",\"value\":" << spd << "}";
+    return os.str();
+}
+
+static std::string direction_event_json(int uid, int dir) {
+    std::ostringstream os;
+    os << "{\"type\":\"direction\",\"loc_id\":" << uid << ",\"value\":" << dir << "}";
+    return os.str();
+}
+
+static std::string function_event_json(int uid, int fn, bool val) {
+    std::ostringstream os;
+    os << "{\"type\":\"function\",\"loc_id\":" << uid << ",\"fn\":" << fn << ",\"value\":" << (val?1:0) << "}";
+    return os.str();
+}
+
+static std::string switch_event_json(int idx, int val) {
+    std::ostringstream os;
+    os << "{\"type\":\"switch\",\"idx\":" << idx << ",\"value\":" << val << "}";
+    return os.str();
+}
+
+int main(int argc, char** argv) {
+#ifdef _WIN32
+    WSADATA wsaData; WSAStartup(MAKEWORD(2,2), &wsaData);
+#endif
+    // Parse CLI (very light)
+    for (int i=1;i<argc;i++) {
+        std::string a = argv[i];
+        auto next = [&](int &i){ return (i+1<argc)? std::string(argv[++i]) : std::string(); };
+        if (a == "--config") g_config_dir = next(i);
+        else if (a == "--udp-ip") g_udp_ip = next(i);
+        else if (a == "--host") g_bind_host = next(i);
+        else if (a == "--port") g_http_port = std::stoi(next(i));
+    }
+
+    // Resolve UDP target (hostname or numeric) to IPv4 dotted string
+    g_udp_ip = resolve_hostname_to_ipv4(g_udp_ip);
+
+    // Load config files
+    parse_lokomotive_cs2(fs::path(g_config_dir)/"config"/"lokomotive.cs2");
+    parse_magnetartikel_cs2(fs::path(g_config_dir)/"config"/"magnetartikel.cs2");
+
+    // Initialize state maps
+    for (auto &kv : g_locos) {
+        g_loco_speed[kv.first] = 0;
+        g_loco_dir[kv.first] = 1;
+        g_loco_fn[kv.first] = {};
+    }
+
+    // Start UDP listener stub
+    std::atomic<bool> stop_flag{false};
+    std::thread rx(udp_listener_thread, std::ref(stop_flag));
+
+    httplib::Server svr;
+
+    // Static assets from src/frontend
+    // Executable is typically at src/backend_cpp/build-msvc/Release/mswebapp_cpp.exe
+    // We need src/frontend -> go up 4 levels to reach src
+    auto base_dir = fs::path(argv[0]).parent_path().parent_path().parent_path().parent_path();
+    fs::path frontend_dir = base_dir / "frontend";
+    fs::path static_dir = frontend_dir / "static";
+    fs::path templates_dir = frontend_dir / "templates";
+
+    // Root and info: serve templates directly (no templating, but inject CONFIG_PATH via a simple replacement)
+    auto serve_template = [&](const fs::path &p, httplib::Response &res){
+        std::ifstream f(p, std::ios::binary);
+        if (!f) { res.status = 404; return; }
+        std::ostringstream buf; buf << f.rdbuf();
+        std::string html = buf.str();
+        // Replace {{ config_path }} occurrences
+        const std::string needle = "{{ config_path }}";
+        size_t pos = 0;
+        while ((pos = html.find(needle, pos)) != std::string::npos) {
+            html.replace(pos, needle.size(), g_public_cfg);
+            pos += g_public_cfg.size();
+        }
+        res.set_content(html, "text/html; charset=utf-8");
+    };
+
+    svr.Get("/", [&](const httplib::Request&, httplib::Response &res){
+        serve_template(templates_dir/"index.html", res);
+    });
+    svr.Get("/info", [&](const httplib::Request&, httplib::Response &res){
+        serve_template(templates_dir/"info.html", res);
+    });
+
+    // Service worker
+    svr.Get("/sw.js", [&](const httplib::Request&, httplib::Response &res){
+        std::ifstream f(frontend_dir/"sw.js", std::ios::binary);
+        if (!f) { res.status = 404; return; }
+        std::ostringstream buf; buf << f.rdbuf();
+        res.set_content(buf.str(), "application/javascript");
+    });
+
+    // Static
+    svr.set_mount_point("/static", static_dir.string());
+
+    // Config assets under /cfg => map to g_config_dir
+    svr.Get((g_public_cfg + "/(.*)").c_str(), [&](const httplib::Request& req, httplib::Response &res){
+        auto rel = req.matches[1];
+        fs::path wanted = fs::path(g_config_dir)/rel.str();
+        if (fs::is_directory(wanted)) { res.status = 404; return; }
+        if (fs::exists(wanted)) {
+            std::ifstream f(wanted, std::ios::binary);
+            if (!f) { res.status = 500; return; }
+            std::ostringstream buf; buf << f.rdbuf();
+            // naive content-type
+            std::string ct = "application/octet-stream";
+            auto ext = wanted.extension().string();
+            if (ext == ".png") ct = "image/png"; else if (ext == ".jpg"||ext==".jpeg") ct = "image/jpeg"; else if (ext == ".css") ct = "text/css"; else if (ext==".js") ct = "application/javascript";
+            res.set_content(buf.str(), ct.c_str());
+        } else {
+            // fallback to packaged static
+            fs::path fallback = static_dir/rel.str();
+            if (fs::exists(fallback)) {
+                std::ifstream f(fallback, std::ios::binary);
+                std::ostringstream buf; buf << f.rdbuf();
+                res.set_content(buf.str(), "application/octet-stream");
+            } else {
+                res.status = 404;
+            }
+        }
+    });
+
+    // API: loco list
+    svr.Get("/api/loco_list", [&](const httplib::Request&, httplib::Response &res){
+        res.set_content(loco_list_json(), "application/json");
+    });
+
+    // API: loco state (all)
+    svr.Get("/api/loco_state", [&](const httplib::Request& req, httplib::Response &res){
+        // ignore single-uid for simplicity; return all like Python when no query
+        res.set_content(loco_state_json(), "application/json");
+    });
+
+    // API: control_event
+    svr.Post("/api/control_event", [&](const httplib::Request& req, httplib::Response &res){
+        // Minimal body parse: expect JSON with keys; to avoid JSON deps, accept form as well
+        // For simplicity, assume application/json and parse very naively
+        int uid=0; int speed=-1; int direction=-1; int fn=-1; int val=-1;
+        auto body = req.body;
+        auto find_num = [&](const char* key)->int{
+            auto pos = body.find(key);
+            if (pos==std::string::npos) return -1;
+            pos = body.find(':', pos);
+            if (pos==std::string::npos) return -1;
+            size_t j = pos+1; while (j<body.size() && (body[j]==' '||body[j]=='"')) j++;
+            size_t k=j; while (k<body.size() && (isdigit((unsigned char)body[k])||body[k]=='-')) k++;
+            if (k>j) return std::stoi(body.substr(j,k-j));
+            return -1;
+        };
+        uid = find_num("loco_id");
+        speed = find_num("speed");
+        direction = find_num("direction");
+        fn = find_num("function"); if (fn<0) fn = find_num("fn");
+        val = find_num("value"); if (val<0) val = find_num("val");
+        if (uid<=0) { res.status=400; res.set_content("{\"status\":\"error\",\"message\":\"loco_id required\"}","application/json"); return; }
+        if (speed>=0) {
+            int spd = std::max(0,std::min(1023,speed));
+            g_loco_speed[uid] = spd; publish_event(speed_event_json(uid, spd));
+            uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_SPEED, 0, 0);
+            udp_send_frame(can_id, payload_speed((uint32_t)uid, spd), 6);
+        } else if (direction>=0) {
+            g_loco_dir[uid] = direction; publish_event(direction_event_json(uid, g_loco_dir[uid]));
+            uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_DIRECTION, 0, 0);
+            udp_send_frame(can_id, payload_direction((uint32_t)uid, direction), 5);
+        } else if (fn>=0) {
+            bool on = (val!=0);
+            g_loco_fn[uid][fn] = on; publish_event(function_event_json(uid, fn, on));
+            uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_FUNCTION, 0, 0);
+            udp_send_frame(can_id, payload_function((uint32_t)uid, fn, on?1:0), 6);
+        }
+        res.set_content("{\"status\":\"ok\"}", "application/json");
+    });
+
+    // API: keyboard_event (switch)
+    svr.Post("/api/keyboard_event", [&](const httplib::Request& req, httplib::Response &res){
+        int idx=-1, value=-1;
+        auto body = req.body;
+        auto find_num = [&](const char* key)->int{
+            auto pos = body.find(key);
+            if (pos==std::string::npos) return -1;
+            pos = body.find(':', pos);
+            if (pos==std::string::npos) return -1;
+            size_t j = pos+1; while (j<body.size() && (body[j]==' '||body[j]=='"')) j++;
+            size_t k=j; while (k<body.size() && (isdigit((unsigned char)body[k])||body[k]=='-')) k++;
+            if (k>j) return std::stoi(body.substr(j,k-j));
+            return -1;
+        };
+        idx = find_num("idx"); value = find_num("value");
+        if (idx<0 || value<0) { res.status=400; res.set_content("{\"status\":\"error\",\"message\":\"idx and value required\"}","application/json"); return; }
+        g_switch_state[idx] = value;
+        publish_event(switch_event_json(idx, value));
+        {
+            // Map index to UID if available from parsed magnetartikel.cs2
+            int uid = idx;
+            if (idx >= 0 && idx < (int)g_switch_uid.size() && g_switch_uid[idx] >= 0) {
+                uid = g_switch_uid[idx];
+            }
+            uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_SWITCH, 0, 0);
+            udp_send_frame(can_id, payload_switch((uint32_t)uid, value), 6);
+        }
+        res.set_content("{\"status\":\"ok\"}", "application/json");
+    });
+
+    // API: stop_button
+    svr.Post("/api/stop_button", [&](const httplib::Request& req, httplib::Response &res){
+        // expects { state: true/false }
+        bool state = req.body.find("\"state\":true") != std::string::npos || req.body.find("\"state\":1") != std::string::npos;
+        g_running.store(state);
+        publish_event(system_event_json());
+        {
+            uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_SYSTEM, 0, 0);
+            udp_send_frame(can_id, payload_system_state((uint32_t)g_device_uid, state), 5);
+        }
+        res.set_content("{\"status\":\"ok\"}", "application/json");
+    });
+
+    // API: events (SSE)
+    svr.Get("/api/events", [&](const httplib::Request&, httplib::Response &res){
+        res.set_header("Cache-Control", "no-cache");
+        res.set_header("Content-Type", "text/event-stream");
+        res.set_header("Connection", "keep-alive");
+        auto *sub = new Subscriber();
+        {
+            std::lock_guard<std::mutex> lk(g_subs_mtx);
+            g_subscribers.insert(sub);
+        }
+        // initial snapshot
+        {
+            // Queue initial snapshot directly to this subscriber to avoid racing global queues
+            std::unique_lock<std::mutex> lk(sub->mtx);
+            sub->queue.push_back(system_event_json());
+            for (auto &kv : g_locos) {
+                int uid=kv.first;
+                sub->queue.push_back(speed_event_json(uid, g_loco_speed[uid]));
+                sub->queue.push_back(direction_event_json(uid, g_loco_dir[uid]));
+                for (auto &fkv : g_loco_fn[uid]) sub->queue.push_back(function_event_json(uid, fkv.first, fkv.second));
+            }
+            for (auto &skv : g_switch_state) sub->queue.push_back(switch_event_json(skv.first, skv.second));
+            lk.unlock();
+            sub->cv.notify_one();
+        }
+
+        res.set_chunked_content_provider("text/event-stream", [sub](size_t, httplib::DataSink &sink) {
+            std::unique_lock<std::mutex> lk(sub->mtx);
+            while (true) {
+                if (!sub->queue.empty()) {
+                    auto msg = sub->queue.front(); sub->queue.erase(sub->queue.begin());
+                    lk.unlock();
+                    std::string line = "data: " + msg + "\n\n";
+                    if (!sink.write(line.data(), line.size())) return false;
+                    lk.lock();
+                } else {
+                    sub->cv.wait_for(lk, std::chrono::seconds(15));
+                    if (sub->closed) return false;
+                }
+            }
+            return true;
+        }, [sub](bool /*success*/){ // done
+            {
+                std::lock_guard<std::mutex> lk(g_subs_mtx);
+                sub->closed = true; g_subscribers.erase(sub);
+            }
+            delete sub;
+        });
+    });
+
+    // API: health
+    svr.Get("/api/health", [&](const httplib::Request&, httplib::Response &res){
+        std::ostringstream os; os << "{"
+            << "\"status\":\"ok\"," 
+            << "\"system_state\":\"" << (g_running.load()?"running":"stopped") << "\"," 
+            << "\"loco_count\":" << g_locos.size() << ","
+            << "\"switch_count\":" << g_switch_state.size() << ","
+            << "\"udp_target\":\"" << g_udp_ip << ":" << g_udp_tx << "\"," 
+            << "\"version\":\"0.0.0\"}";
+        res.set_content(os.str(), "application/json");
+    });
+
+    // Bind and run
+    int http_port = svr.bind_to_port(g_bind_host.c_str(), g_http_port);
+    if (http_port <= 0) {
+    fprintf(stderr, "Failed to bind HTTP server on %s:%d\n", g_bind_host.c_str(), g_http_port);
+    stop_flag.store(true);
+    if (rx.joinable()) rx.join();
+#ifdef _WIN32
+    WSACleanup();
+#endif
+    return 1;
+    }
+    printf("Listening on %s:%d (config=%s)\n", g_bind_host.c_str(), g_http_port, g_config_dir.c_str());
+    svr.listen_after_bind();
+
+    stop_flag.store(true);
+    rx.join();
+
+#ifdef _WIN32
+    WSACleanup();
+#endif
+    return 0;
+}

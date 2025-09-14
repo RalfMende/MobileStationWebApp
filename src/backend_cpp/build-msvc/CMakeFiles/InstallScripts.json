@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"Y:/Documents/GitHub/MobileStationWebApp/src/backend_cpp/build-msvc/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

@@ -1,0 +1,10 @@
+^Y:\DOCUMENTS\GITHUB\MOBILESTATIONWEBAPP\SRC\BACKEND_CPP\BUILD-MSVC\CMAKEFILES\860252B9D7D6776EA2B455A200322F2F\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SY:/Documents/GitHub/MobileStationWebApp/src/backend_cpp -BY:/Documents/GitHub/MobileStationWebApp/src/backend_cpp/build-msvc --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file Y:/Documents/GitHub/MobileStationWebApp/src/backend_cpp/build-msvc/mswebapp_cpp.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
