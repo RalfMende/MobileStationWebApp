@@ -280,6 +280,10 @@ function selectLoco(uid) {
   const loco = locList[String(currentLocoUid)] || locList[currentLocoUid];
   locoDesc.textContent = loco ? (loco.name || '') : '';
   const iconName = (loco && (loco.icon || loco.bild)) || 'leeres Gleis';
+  locoImg.onerror = function() {
+    locoImg.onerror = null;
+    locoImg.src = asset('icons/leeres Gleis.png');
+  };
   locoImg.src = asset(`icons/${iconName}.png`);
   fetchAndApplyLocoState(currentLocoUid);
   localStorage.setItem('currentLocoUid', String(currentLocoUid));
