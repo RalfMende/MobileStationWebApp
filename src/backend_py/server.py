@@ -26,14 +26,14 @@ try:
 except Exception:
     _MSW_VERSION = "0.0.0"
 
-# Base directory for this package
-PKG_DIR = os.path.abspath(os.path.dirname(__file__))
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+FRONTEND_DIR = os.path.abspath(os.path.join(BASE_DIR, '..', 'frontend'))
 
-# Create Flask app with static/templates pointing to package folders
+# Create Flask app with static/templates pointing to frontend folders
 app = Flask(
     __name__,
-    static_folder=os.path.join(PKG_DIR, 'static'),
-    template_folder=os.path.join(PKG_DIR, 'templates')
+    static_folder=os.path.join(FRONTEND_DIR, 'static'),
+    template_folder=os.path.join(FRONTEND_DIR, 'templates')
 )
 
 subscribers = set()
@@ -636,14 +636,14 @@ def info():
 
 @app.route('/sw.js')
 def service_worker():
-    return send_from_directory(PKG_DIR, 'sw.js', mimetype='application/javascript')
+    return send_from_directory(os.path.join(FRONTEND_DIR), 'sw.js', mimetype='application/javascript')
 
 
 # --- Dynamic serving of user provided config/asset directory ---
 # The CLI option --config provides a LOCAL filesystem directory that contains
 # subfolders like icons/, fcticons/, config/ (with *.cs2 files), etc.
 # Browsers cannot access raw filesystem paths, so we expose that directory
-# read‑only under the fixed URL prefix /cfg/.  Templates/JS only ever see the
+# readonly under the fixed URL prefix /cfg/.  Templates/JS only ever see the
 # HTTP path (CONFIG_PATH) while server-side parsing uses CONFIG_FS_PATH.
 @app.route(f"{PUBLIC_CONFIG_BASE}/<path:filename>")
 def serve_config_assets(filename):
@@ -672,7 +672,7 @@ def serve_config_assets(filename):
             logger.exception('[cfg] send error %s: %s', filename, e)
             from flask import abort
             return abort(500)
-    pkg_static = os.path.join(PKG_DIR, 'static')
+    pkg_static = os.path.join(FRONTEND_DIR, 'static')
     fallback_path = os.path.join(pkg_static, filename)
     if os.path.isfile(fallback_path):
         try:
@@ -822,4 +822,5 @@ def run_server(udp_ip: str = UDP_IP, config_path: str = path_config_files, host:
 def main():  # console_script entry point
     args = parse_args()
     run_server(udp_ip=args.udp_ip, config_path=args.config_path, host=args.host, port=args.port)
+
 

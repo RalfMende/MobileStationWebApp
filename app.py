@@ -15,13 +15,14 @@ Keep using: python app.py --udp-ip 127.0.0.1 --config tmp --host 127.0.0.1 --por
 import os
 import sys
 
-# Ensure the in-repo 'src' is importable so 'mobile_station_webapp' can be found
-_HERE = os.path.dirname(__file__)
-_SRC = os.path.join(_HERE, 'src')
-if _SRC not in sys.path:
-    sys.path.insert(0, _SRC)
 
-from mobile_station_webapp import app, run_server, parse_args  # type: ignore
+# Ensure the in-repo 'src/backend_py' is importable so 'backend_py' can be found
+_HERE = os.path.dirname(__file__)
+_SRC_BACKEND = os.path.join(_HERE, 'src', 'backend_py')
+if _SRC_BACKEND not in sys.path:
+    sys.path.insert(0, _SRC_BACKEND)
+
+from server import app, run_server, parse_args  # type: ignore
 
 if __name__ == '__main__':
     args = parse_args()
