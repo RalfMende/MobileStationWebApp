@@ -13,6 +13,18 @@ build/
 dist/
 *.egg-info/
 
+# C++/CMake/Visual Studio build artefacts
+src/backend_cpp/build/
+src/backend_cpp/build-msvc/
+src/backend_cpp/Release/
+src/backend_cpp/x64/
+src/backend_cpp/*.vcxproj*
+src/backend_cpp/*.sln
+src/backend_cpp/*.user
+src/backend_cpp/*.opensdf
+src/backend_cpp/*.sdf
+src/backend_cpp/*.log
+
 # Test / tooling caches (in case added later)
 .pytest_cache/
 .mypy_cache/

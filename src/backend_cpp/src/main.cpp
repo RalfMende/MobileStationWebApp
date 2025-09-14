@@ -43,11 +43,13 @@ struct Loco {
     std::string name;
     std::string icon; // or bild
     int tachomax = 200;
+    std::map<int,int> fn_typ; // function index -> type id
 };
 
 static std::map<int, Loco> g_locos; // uid -> loco
 static std::map<int, int> g_switch_state; // idx -> value
 static std::vector<int> g_switch_uid; // idx -> computed uid (if available)
+static std::vector<std::string> g_switch_name; // idx -> name
 static std::map<int, int> g_loco_speed; // uid -> 0..1023
 static std::map<int, int> g_loco_dir;   // uid -> 0/1/2
 static std::map<int, std::map<int,bool>> g_loco_fn; // uid -> fn->bool
@@ -90,6 +92,15 @@ static std::string json_escape(const std::string &in) {
     return out;
 }
 
+// parse integer from string supporting decimal and 0x... hex
+static int parse_int_auto(const std::string &s) {
+    std::string v = trim(s);
+    if (v.size() > 2 && (v[0]=='0') && (v[1]=='x' || v[1]=='X')) {
+        try { return std::stoi(v, nullptr, 16); } catch (...) { return 0; }
+    }
+    try { return std::stoi(v); } catch(...) { return 0; }
+}
+
 // Resolve a hostname (or numeric IP) to an IPv4 dotted string; on failure, return input unchanged
 static std::string resolve_hostname_to_ipv4(const std::string &host) {
     if (host.empty()) return host;
@@ -119,6 +130,15 @@ static std::string loco_list_json() {
         os << "\"name\":\"" << json_escape(l.name) << "\",";
         os << "\"icon\":\"" << json_escape(l.icon) << "\",";
         os << "\"tachomax\":" << l.tachomax;
+        if (!l.fn_typ.empty()) {
+            os << ",\"funktionen\":{";
+            bool ffirst = true;
+            for (auto &fk : l.fn_typ) {
+                if (!ffirst) os << ","; ffirst=false;
+                os << '"' << fk.first << '"' << ":{\"typ\":" << fk.second << "}";
+            }
+            os << "}";
+        }
         os << "}";
     }
     os << "}";
@@ -153,25 +173,45 @@ static void parse_lokomotive_cs2(const fs::path &p) {
     if (!f) return;
     std::string line;
     Loco cur; bool in = false;
+    bool in_fn = false; int fn_nr = -1; int fn_typ = -1;
     while (std::getline(f, line)) {
         line = trim(line);
         if (line == "lokomotive") {
             if (in && cur.uid) g_locos[cur.uid] = cur;
-            cur = Loco{}; in = true;
+            cur = Loco{}; in = true; in_fn = false; fn_nr = -1; fn_typ = -1;
         } else if (in) {
+            if (!line.empty() && line.rfind(".funktionen", 0) == 0) {
+                // Start a function entry; next lines contain ..nr and ..typ
+                in_fn = true; fn_nr = -1; fn_typ = -1; continue;
+            }
+            if (in_fn && line.rfind("..", 0) == 0 && line.find('=')!=std::string::npos) {
+                auto pos = line.find('=');
+                std::string key = trim(line.substr(2, pos-2));
+                std::string val = trim(line.substr(pos+1));
+                if (key == "nr") {
+                    fn_nr = parse_int_auto(val);
+                } else if (key == "typ" || key == "type") {
+                    fn_typ = parse_int_auto(val);
+                }
+                if (fn_nr >= 0 && fn_typ >= 0) { cur.fn_typ[fn_nr] = fn_typ; fn_nr = -1; fn_typ = -1; in_fn = false; }
+                continue;
+            }
             if (!line.empty() && line[0]=='.' && line.find('=')!=std::string::npos && (line.size()<2 || line[1] != '.')) {
                 auto pos = line.find('=');
                 std::string key = line.substr(1, pos-1);
                 std::string val = line.substr(pos+1);
                 key = trim(key); val = trim(val);
                 if (key == "uid" || key == "adresse") {
-                    try { cur.uid = std::stoi(val); } catch (...) {}
+                    cur.uid = parse_int_auto(val);
                 } else if (key == "name") {
                     cur.name = val;
                 } else if (key == "bild" || key == "icon") {
                     cur.icon = val;
                 } else if (key == "tachomax") {
-                    try { cur.tachomax = std::stoi(val); } catch (...) {}
+                    cur.tachomax = parse_int_auto(val);
+                } else if (key == "vmax") {
+                    int vmax = parse_int_auto(val);
+                    if (cur.tachomax <= 0 && vmax > 0) cur.tachomax = vmax;
                 }
             }
         }
@@ -182,6 +222,7 @@ static void parse_lokomotive_cs2(const fs::path &p) {
 static void parse_magnetartikel_cs2(const fs::path &p) {
     g_switch_state.clear();
     g_switch_uid.clear(); g_switch_uid.resize(64, -1);
+    g_switch_name.clear(); g_switch_name.resize(64);
     std::ifstream f(p);
     if (!f) return;
     std::string line; bool in = false; int idx=0; int cur_id=0; std::string dectyp;
@@ -193,10 +234,12 @@ static void parse_magnetartikel_cs2(const fs::path &p) {
             std::string key = trim(line.substr(1, pos-1));
             std::string val = trim(line.substr(pos+1));
             if (key == "id") {
-                try { cur_id = std::stoi(val); } catch (...) { cur_id = 0; }
+                try { cur_id = parse_int_auto(val); } catch (...) { cur_id = 0; }
             } else if (key == "dectyp") {
                 std::transform(val.begin(), val.end(), val.begin(), [](unsigned char c){ return (char)std::tolower(c); });
                 dectyp = val;
+            } else if (key == "name") {
+                if (idx>=1 && idx<=64) g_switch_name[idx-1] = val;
             }
             if (idx <= 64) {
                 g_switch_state[idx-1] = 0;
@@ -366,13 +409,15 @@ static void udp_listener_thread(std::atomic<bool>& stop_flag) {
     struct timeval tv; tv.tv_sec = 1; tv.tv_usec = 0; setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 #endif
     while (!stop_flag.load()) {
-        uint8_t buf[64];
+    uint8_t buf[64];
 #ifdef _WIN32
-        int recvd = recv(s, reinterpret_cast<char*>(buf), 64, 0);
-        if (recvd == SOCKET_ERROR) { continue; }
+    sockaddr_in src{}; int srclen = sizeof(src);
+    int recvd = recvfrom(s, reinterpret_cast<char*>(buf), (int)sizeof(buf), 0, (sockaddr*)&src, &srclen);
+    if (recvd == SOCKET_ERROR) { continue; }
 #else
-        int recvd = recv(s, buf, sizeof(buf), 0);
-        if (recvd < 0) { continue; }
+    sockaddr_in src{}; socklen_t srclen = sizeof(src);
+    int recvd = recvfrom(s, buf, sizeof(buf), 0, (sockaddr*)&src, &srclen);
+    if (recvd < 0) { continue; }
 #endif
         if (recvd != 13) continue;
         uint32_t can_id = (uint32_t(buf[0])<<24) | (uint32_t(buf[1])<<16) | (uint32_t(buf[2])<<8) | uint32_t(buf[3]);
@@ -567,10 +612,49 @@ int main(int argc, char** argv) {
         res.set_content(loco_list_json(), "application/json");
     });
 
-    // API: loco state (all)
+    // API: loco state (single or all)
     svr.Get("/api/loco_state", [&](const httplib::Request& req, httplib::Response &res){
-        // ignore single-uid for simplicity; return all like Python when no query
-        res.set_content(loco_state_json(), "application/json");
+        auto it = req.params.find("loco_id");
+        if (it == req.params.end()) {
+            res.set_content(loco_state_json(), "application/json");
+            return;
+        }
+        int uid = 0; try { uid = std::stoi(it->second); } catch (...) { uid = 0; }
+        std::ostringstream os; os << "{";
+        int spd = g_loco_speed[uid]; int dir = g_loco_dir[uid];
+        os << "\"speed\":" << spd << ",\"direction\":" << dir << ",\"functions\":{";
+        bool first=true; for (auto &fk : g_loco_fn[uid]) { if (!first) os << ","; first=false; os << '"' << fk.first << '"' << ":" << (fk.second?1:0); }
+        os << "}}";
+        res.set_content(os.str(), "application/json");
+    });
+
+    // API: switch list (structure with artikel array of names)
+    svr.Get("/api/switch_list", [&](const httplib::Request&, httplib::Response &res){
+        // Build from parsed magnetartikel.cs2 if available
+        int maxIdx = 63; for (auto &kv : g_switch_state) { if (kv.first > maxIdx) maxIdx = kv.first; }
+        std::ostringstream os; os << "{\"artikel\":[";
+        for (int i=0;i<=maxIdx;i++) {
+            if (i>0) os << ",";
+            std::string name = (i < (int)g_switch_name.size()) ? g_switch_name[i] : std::string();
+            int uid = (i < (int)g_switch_uid.size() && g_switch_uid[i] >= 0) ? g_switch_uid[i] : i;
+            os << "{\"name\":\"" << json_escape(name) << "\",\"uid\":" << uid << "}";
+        }
+        os << "]}";
+        res.set_content(os.str(), "application/json");
+    });
+
+    // API: switch state array
+    svr.Get("/api/switch_state", [&](const httplib::Request&, httplib::Response &res){
+        std::ostringstream os; os << "{\"switch_state\":[";
+        int maxIdx = -1; for (auto &kv : g_switch_state) { if (kv.first > maxIdx) maxIdx = kv.first; }
+        if (maxIdx < 0) maxIdx = 63; // default
+        for (int i=0;i<=maxIdx;i++) {
+            if (i>0) os << ",";
+            int val = 0; auto it = g_switch_state.find(i); if (it != g_switch_state.end()) val = it->second;
+            os << val;
+        }
+        os << "]}";
+        res.set_content(os.str(), "application/json");
     });
 
     // API: control_event
@@ -656,6 +740,28 @@ int main(int argc, char** argv) {
         res.set_content("{\"status\":\"ok\"}", "application/json");
     });
 
+    // API: info_events (maps to a function trigger)
+    svr.Post("/api/info_events", [&](const httplib::Request& req, httplib::Response &res){
+        int loco_id = -1; int fn = 0; int value = 1;
+        auto body = req.body;
+        auto get_num = [&](const char* key, int defv)->int{
+            auto pos = body.find(key); if (pos==std::string::npos) return defv;
+            pos = body.find(':', pos); if (pos==std::string::npos) return defv;
+            size_t j=pos+1; while (j<body.size() && (body[j]==' '||body[j]=='"')) j++;
+            size_t k=j; while (k<body.size() && (isdigit((unsigned char)body[k])||body[k]=='-')) k++;
+            if (k>j) return std::stoi(body.substr(j,k-j)); return defv;
+        };
+        loco_id = get_num("loco_id", -1);
+        fn = get_num("function", 0);
+        value = get_num("value", 1);
+        if (loco_id < 0) { res.status=400; res.set_content("{\"status\":\"error\",\"message\":\"loco_id fehlt\"}", "application/json"); return; }
+        // Reuse control_event logic
+        g_loco_fn[loco_id][fn] = (value!=0); publish_event(function_event_json(loco_id, fn, g_loco_fn[loco_id][fn]));
+        uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_FUNCTION, 0, 0);
+        udp_send_frame(can_id, payload_function((uint32_t)loco_id, fn, (value!=0)?1:0), 6);
+        res.set_content("{\"status\":\"ok\"}", "application/json");
+    });
+
     // API: events (SSE)
     svr.Get("/api/events", [&](const httplib::Request&, httplib::Response &res){
         res.set_header("Cache-Control", "no-cache");
@@ -730,9 +836,43 @@ int main(int argc, char** argv) {
     return 1;
     }
     printf("Listening on %s:%d (config=%s)\n", g_bind_host.c_str(), g_http_port, g_config_dir.c_str());
+
+    // Watcher thread for lokomotive.cs2 reloads
+    std::thread watcher([&](){
+        fs::path lokfile = fs::path(g_config_dir)/"config"/"lokomotive.cs2";
+        std::error_code ec;
+        auto last_write = fs::exists(lokfile, ec) ? fs::last_write_time(lokfile, ec) : fs::file_time_type{};
+        while (!stop_flag.load()) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            auto cur = fs::exists(lokfile, ec) ? fs::last_write_time(lokfile, ec) : fs::file_time_type{};
+            if (ec) continue;
+            if (cur != last_write) {
+                last_write = cur;
+                try {
+                    parse_lokomotive_cs2(lokfile);
+                    // Reinit state maps for new/removed locos preserving values where possible
+                    std::map<int,int> new_speed; std::map<int,int> new_dir; std::map<int,std::map<int,bool>> new_fn;
+                    for (auto &kv : g_locos) {
+                        int uid = kv.first;
+                        new_speed[uid] = g_loco_speed.count(uid)? g_loco_speed[uid] : 0;
+                        new_dir[uid]   = g_loco_dir.count(uid)? g_loco_dir[uid] : 1;
+                        new_fn[uid]    = g_loco_fn.count(uid)? g_loco_fn[uid] : std::map<int,bool>{};
+                    }
+                    g_loco_speed.swap(new_speed);
+                    g_loco_dir.swap(new_dir);
+                    g_loco_fn.swap(new_fn);
+                    publish_event("{\"type\":\"loco_list_reloaded\"}");
+                } catch (...) {
+                }
+            }
+        }
+    });
+
     svr.listen_after_bind();
 
     stop_flag.store(true);
+    stop_flag.store(true);
+    if (watcher.joinable()) watcher.join();
     rx.join();
 
 #ifdef _WIN32
