@@ -53,7 +53,7 @@ class SystemState(str, Enum):
 system_state = SystemState.STOPPED
 
 path_config_files = 'var'  # default; can be overridden via CLI/Debug
-UDP_IP = '192.168.20.42'   # default; can be overridden via CLI/Debug
+UDP_IP = 'Gleisbox'   # default; can be overridden via CLI/Debug
 UDP_PORT_TX = 15731
 UDP_PORT_RX = 15730
 DEVICE_UID = 0
@@ -714,11 +714,17 @@ def health():
 
 def parse_args():
     parser = argparse.ArgumentParser(description='MobileStationWebApp Server')
-    parser.add_argument('--udp-ip', dest='udp_ip', default=UDP_IP, help='IP address of the CS2 UDP target')
+    parser.add_argument('--udp-ip', dest='udp_ip', default=UDP_IP, help='IP address or hostname of the CS2 UDP target')
     parser.add_argument('--config', dest='config_path', default=path_config_files, help='Path to CS2 configuration files')
     parser.add_argument('--host', dest='host', default='0.0.0.0', help='Bind host for Flask')
     parser.add_argument('--port', dest='port', type=int, default=6020, help='Port for Flask')
-    return parser.parse_args()
+    args = parser.parse_args()
+    # If udp_ip is a hostname, resolve it to IP
+    try:
+        args.udp_ip = socket.gethostbyname(args.udp_ip)
+    except Exception:
+        pass  # leave as-is if resolution fails
+    return args
 
 
 def run_server(udp_ip: str = UDP_IP, config_path: str = path_config_files, host: str = '0.0.0.0', port: int = 6020):
