@@ -62,6 +62,7 @@ static int g_udp_rx = 15730;
 static int g_http_port = 6020;
 static std::string g_bind_host = "0.0.0.0";
 static int g_device_uid = 0; // sender uid for CAN id hash
+static bool g_verbose = false;
 
 // ---- Utilities ----
 static std::string trim(const std::string &s) {
@@ -367,13 +368,18 @@ static void udp_send_frame(uint32_t can_id, const std::vector<uint8_t> &payload,
     sockaddr_in addr{}; addr.sin_family = AF_INET; addr.sin_port = htons((u_short)g_udp_tx);
     addr.sin_addr.s_addr = inet_addr(g_udp_ip.c_str());
     if (addr.sin_addr.s_addr == INADDR_NONE) {
+        // inet_addr returns INADDR_NONE both on error and for 255.255.255.255; try inet_pton
         inet_pton(AF_INET, g_udp_ip.c_str(), &addr.sin_addr);
     }
+    // Enable broadcast (safe for unicast too)
+    BOOL bc = TRUE; setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (const char*)&bc, sizeof(bc));
 #else
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) return;
     sockaddr_in addr{}; addr.sin_family = AF_INET; addr.sin_port = htons(g_udp_tx);
     inet_pton(AF_INET, g_udp_ip.c_str(), &addr.sin_addr);
+    // Enable broadcast (safe for unicast too)
+    int yes = 1; setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &yes, sizeof(yes));
 #endif
     std::vector<uint8_t> send_bytes;
     send_bytes.reserve(4+1+8);
@@ -383,11 +389,28 @@ static void udp_send_frame(uint32_t can_id, const std::vector<uint8_t> &payload,
     send_bytes.push_back(can_id & 0xFF);
     send_bytes.push_back(dlc & 0xFF);
     send_bytes.insert(send_bytes.end(), data.begin(), data.end());
+    if (g_verbose) {
+        auto print_hex = [](uint32_t v){ char b[16]; std::snprintf(b, sizeof(b), "0x%08X", v); return std::string(b); };
+        std::ostringstream dbg;
+        dbg << "UDP -> " << g_udp_ip << ":" << g_udp_tx << " CANID=" << print_hex(can_id) << " DLC=" << dlc << " DATA=";
+        for (size_t i=0;i<data.size();++i) { char b[4]; std::snprintf(b, sizeof(b), "%02X", data[i]); dbg << b; if (i+1<data.size()) dbg << ' '; }
+        dbg << "\n";
 #ifdef _WIN32
-    sendto(sock, reinterpret_cast<const char*>(send_bytes.data()), (int)send_bytes.size(), 0, (sockaddr*)&addr, sizeof(addr));
+        OutputDebugStringA(dbg.str().c_str());
+#endif
+        fprintf(stderr, "%s", dbg.str().c_str());
+    }
+#ifdef _WIN32
+    int rc = sendto(sock, reinterpret_cast<const char*>(send_bytes.data()), (int)send_bytes.size(), 0, (sockaddr*)&addr, sizeof(addr));
+    if (rc == SOCKET_ERROR && g_verbose) {
+        fprintf(stderr, "sendto() failed: %d\n", WSAGetLastError());
+    }
     closesocket(sock);
 #else
-    sendto(sock, send_bytes.data(), send_bytes.size(), 0, (sockaddr*)&addr, sizeof(addr));
+    ssize_t rc = sendto(sock, send_bytes.data(), send_bytes.size(), 0, (sockaddr*)&addr, sizeof(addr));
+    if (rc < 0 && g_verbose) {
+        perror("sendto failed");
+    }
     close(sock);
 #endif
 }
@@ -443,7 +466,18 @@ static void udp_listener_thread(std::atomic<bool>& stop_flag) {
                 int fn = int(data[4]); int val = (dlc >= 6) ? int(data[5]) : 1;
                 g_loco_fn[uid][fn] = (val != 0); publish_event(function_event_json(uid, fn, g_loco_fn[uid][fn]));
             } else if (command == CMD_SWITCH && dlc >= 6) {
-                int idx = int(data[3]); int value = int(data[4]);
+                // Data layout: [0..3]=UID (big-endian), [4]=value, [5]=0x01
+                int uid = (int(data[0])<<24)|(int(data[1])<<16)|(int(data[2])<<8)|int(data[3]);
+                int value = int(data[4]);
+                // Map UID back to index if known
+                int idx = -1;
+                for (size_t i = 0; i < g_switch_uid.size(); ++i) {
+                    if (g_switch_uid[i] == uid) { idx = int(i); break; }
+                }
+                if (idx < 0) {
+                    // Fallback: use low 10 bits as simple index if unknown mapping
+                    idx = uid & 0x3FF; if (idx >= 64) idx = idx % 64;
+                }
                 g_switch_state[idx] = value; publish_event(switch_event_json(idx, value));
             }
         }
@@ -514,8 +548,14 @@ int main(int argc, char** argv) {
         auto next = [&](int &i){ return (i+1<argc)? std::string(argv[++i]) : std::string(); };
         if (a == "--config") g_config_dir = next(i);
         else if (a == "--udp-ip") g_udp_ip = next(i);
+        else if (a == "--udp-tx") { try { g_udp_tx = std::stoi(next(i)); } catch(...) {} }
+        else if (a == "--udp-rx") { try { g_udp_rx = std::stoi(next(i)); } catch(...) {} }
         else if (a == "--host") g_bind_host = next(i);
         else if (a == "--port") g_http_port = std::stoi(next(i));
+        else if (a == "--device-uid") {
+            try { g_device_uid = std::stoi(next(i)); } catch(...) { g_device_uid = 0; }
+        }
+        else if (a == "--verbose" || a == "-v") { g_verbose = true; }
     }
 
     // Resolve UDP target (hostname or numeric) to IPv4 dotted string
@@ -836,6 +876,9 @@ int main(int argc, char** argv) {
     return 1;
     }
     printf("Listening on %s:%d (config=%s)\n", g_bind_host.c_str(), g_http_port, g_config_dir.c_str());
+    if (g_verbose) {
+        printf("UDP target %s tx=%d rx=%d device_uid=%d (hash=%04X)\n", g_udp_ip.c_str(), g_udp_tx, g_udp_rx, g_device_uid, generate_hash((uint32_t)g_device_uid));
+    }
 
     // Watcher thread for lokomotive.cs2 reloads
     std::thread watcher([&](){
