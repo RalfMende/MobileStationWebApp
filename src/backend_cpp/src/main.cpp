@@ -202,11 +202,11 @@ static void parse_lokomotive_cs2(const fs::path &p) {
                 std::string key = line.substr(1, pos-1);
                 std::string val = line.substr(pos+1);
                 key = trim(key); val = trim(val);
-                if (key == "uid" || key == "adresse") {
+                if (key == "uid") {
                     cur.uid = parse_int_auto(val);
                 } else if (key == "name") {
                     cur.name = val;
-                } else if (key == "bild" || key == "icon") {
+                } else if (key == "icon") {
                     cur.icon = val;
                 } else if (key == "tachomax") {
                     cur.tachomax = parse_int_auto(val);
