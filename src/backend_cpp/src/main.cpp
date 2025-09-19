@@ -63,6 +63,7 @@ static int g_http_port = 6020;
 static std::string g_bind_host = "0.0.0.0";
 static int g_device_uid = 0; // sender uid for CAN id hash
 static bool g_verbose = false;
+static std::string g_frontend_dir_override; // optional path to frontend dir (templates/static)
 
 // ---- Utilities ----
 static std::string trim(const std::string &s) {
@@ -548,13 +549,12 @@ int main(int argc, char** argv) {
         auto next = [&](int &i){ return (i+1<argc)? std::string(argv[++i]) : std::string(); };
         if (a == "--config") g_config_dir = next(i);
         else if (a == "--udp-ip") g_udp_ip = next(i);
-        else if (a == "--udp-tx") { try { g_udp_tx = std::stoi(next(i)); } catch(...) {} }
-        else if (a == "--udp-rx") { try { g_udp_rx = std::stoi(next(i)); } catch(...) {} }
         else if (a == "--host") g_bind_host = next(i);
         else if (a == "--port") g_http_port = std::stoi(next(i));
         else if (a == "--device-uid") {
             try { g_device_uid = std::stoi(next(i)); } catch(...) { g_device_uid = 0; }
         }
+        else if (a == "--frontend") { g_frontend_dir_override = next(i); }
         else if (a == "--verbose" || a == "-v") { g_verbose = true; }
     }
 
@@ -579,10 +579,16 @@ int main(int argc, char** argv) {
     httplib::Server svr;
 
     // Static assets from src/frontend
-    // Executable is typically at src/backend_cpp/build-msvc/Release/mswebapp_cpp.exe
-    // We need src/frontend -> go up 4 levels to reach src
-    auto base_dir = fs::path(argv[0]).parent_path().parent_path().parent_path().parent_path();
-    fs::path frontend_dir = base_dir / "frontend";
+    // If --frontend is provided, use it. Otherwise derive from executable path.
+    fs::path frontend_dir;
+    if (!g_frontend_dir_override.empty()) {
+        frontend_dir = fs::path(g_frontend_dir_override);
+    } else {
+        // Executable is typically at src/backend_cpp/build-*/.../mswebapp_cpp
+        // Go up 4 levels to reach src then append frontend
+        auto base_dir = fs::path(argv[0]).parent_path().parent_path().parent_path().parent_path();
+        frontend_dir = base_dir / "frontend";
+    }
     fs::path static_dir = frontend_dir / "static";
     fs::path templates_dir = frontend_dir / "templates";
 
