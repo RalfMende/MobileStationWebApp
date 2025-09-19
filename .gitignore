@@ -1,5 +1,4 @@
 .venv
-.vscode
 .DS_Store
 
 # Python cache / bytecode
@@ -25,6 +24,23 @@ src/backend_cpp/*.opensdf
 src/backend_cpp/*.sdf
 src/backend_cpp/*.log
 
+# Global binary artifacts (keep configs, drop compiled files)
+*.exe
+*.dll
+*.lib
+*.pdb
+*.ilk
+*.obj
+*.o
+*.a
+*.so
+*.dylib
+*.exp
+*.idb
+*.pch
+*.bin
+*.map
+
 # Test / tooling caches (in case added later)
 .pytest_cache/
 .mypy_cache/
@@ -35,3 +51,10 @@ Thumbs.db
 ehthumbs.db
 *.swp
 *.swo
+
+# VS Code: keep JSON configs (settings/tasks/launch/extensions), ignore caches/dbs
+# Do NOT ignore the entire .vscode folder so configs are committed
+.vscode/ipch/
+.vscode/**/*.db
+.vscode/**/.cache/
+.browse.VC.db

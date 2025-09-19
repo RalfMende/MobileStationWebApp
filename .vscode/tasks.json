@@ -1,0 +1,102 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "CMake: Configure (MSVC)",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--preset", "msvc-release"
+      ],
+      "options": { "cwd": "${workspaceFolder}/cpp-mswebapp" },
+      "problemMatcher": []
+    },
+    {
+      "label": "C++ backend: Configure (MSVC)",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "-S", "${workspaceFolder}/src/backend_cpp",
+        "-B", "${workspaceFolder}/src/backend_cpp/build-msvc",
+        "-G", "Visual Studio 17 2022",
+        "-A", "x64"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "C++ backend: Build Release (MSVC)",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build", "${workspaceFolder}/src/backend_cpp/build-msvc",
+        "--config", "Release"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "dependsOn": ["C++ backend: Configure (MSVC)"]
+    },
+    {
+      "label": "C++ backend: Build Debug (MSVC)",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build", "${workspaceFolder}/src/backend_cpp/build-msvc",
+        "--config", "Debug"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "dependsOn": ["C++ backend: Configure (MSVC)"]
+    },
+    {
+      "label": "C++ backend: Run",
+      "type": "shell",
+      "command": "${workspaceFolder}/src/backend_cpp/build-msvc/Release/mswebapp_cpp.exe",
+      "args": [
+        "--config", "${workspaceFolder}/var",
+        "--udp-ip", "Gleisbox",
+        "--host", "0.0.0.0",
+        "--port", "6020"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "powershell.exe",
+          "args": ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
+        }
+      },
+      "dependsOn": ["C++ backend: Build (MSVC)"],
+      "problemMatcher": []
+    },
+    {
+      "label": "CMake: Build (MSVC)",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build", "--preset", "msvc-release"
+      ],
+      "options": { "cwd": "${workspaceFolder}/cpp-mswebapp" },
+      "problemMatcher": []
+    },
+    {
+      "label": "CMake: Configure (Ninja)",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--preset", "ninja-release"
+      ],
+      "options": { "cwd": "${workspaceFolder}/cpp-mswebapp" },
+      "problemMatcher": []
+    },
+    {
+      "label": "CMake: Build (Ninja)",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build", "--preset", "ninja-release"
+      ],
+      "options": { "cwd": "${workspaceFolder}/cpp-mswebapp" },
+      "problemMatcher": []
+    }
+  ]
+}

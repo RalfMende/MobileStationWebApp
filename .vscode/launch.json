@@ -1,0 +1,57 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: Run app.py (Debug)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/app.py",
+      "args": [
+        "--config", "var",
+        "--host", "127.0.0.1",
+        "--port", "6020"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "FLASK_ENV": "development",
+        "PYTHONUNBUFFERED": "1"
+      },
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Python: Module mobile_station_webapp.server (Debug)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "mobile_station_webapp.server",
+      "args": [
+        "--config", "var",
+        "--udp-ip", "Gleisbox",
+        "--host", "127.0.0.1",
+        "--port", "6020"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "FLASK_ENV": "development",
+        "PYTHONUNBUFFERED": "1"
+      },
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Debug C++ Backend",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/backend_cpp/build-msvc/Debug/mswebapp_cpp.exe",
+      "args": [
+        "--config", "${workspaceFolder}/var",
+        "--udp-ip", "Gleisbox",
+        "--host", "0.0.0.0",
+        "--port", "6020"
+      ],
+      "cwd": "${workspaceFolder}",
+      "stopAtEntry": false,
+      "console": "externalTerminal"
+    }
+  ]
+}
