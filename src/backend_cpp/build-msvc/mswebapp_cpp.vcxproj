@@ -352,7 +352,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Y:\Documents\GitHub\MobileStationWebApp\src\backend_cpp\src\main.cpp" />
+    <ClCompile Include="Y:\Documents\GitHub\MobileStationWebApp\src\backend_cpp\main.cpp" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
