@@ -828,9 +828,6 @@ def run_server(udp_ip: str = UDP_IP, config_path: str = path_config_files, host:
 
     app.run(host=host, port=port, threaded=True, use_reloader=False)
 
-
-def main():  # console_script entry point
+if __name__ == '__main__':
     args = parse_args()
     run_server(udp_ip=args.udp_ip, config_path=args.config_path, host=args.host, port=args.port)
-
-

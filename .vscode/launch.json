@@ -2,32 +2,14 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Python: Run app.py (Debug)",
+      "name": "Python: Run server.py (Debug)",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/app.py",
-      "args": [
-        "--config", "var",
-        "--host", "127.0.0.1",
-        "--port", "6020"
-      ],
-      "console": "integratedTerminal",
-      "justMyCode": true,
-      "env": {
-        "FLASK_ENV": "development",
-        "PYTHONUNBUFFERED": "1"
-      },
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "name": "Python: Module mobile_station_webapp.server (Debug)",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "mobile_station_webapp.server",
+      "program": "${workspaceFolder}/src/backend_py/server.py",
       "args": [
         "--config", "var",
         "--udp-ip", "Gleisbox",
-        "--host", "127.0.0.1",
+        "--host", "0.0.0.0",
         "--port", "6020"
       ],
       "console": "integratedTerminal",
