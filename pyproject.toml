@@ -9,7 +9,8 @@ description = "Märklin Mobile Station WebApp (CS2/CS3 control via Flask Web UI)
 authors = [
   { name = "Ralf Mende", email = "mende.r@hotmail.de" }
 ]
-license = { text = "Beerware" }
+license = "Beerware"
+license-files = ["LICENSE"]
 readme = "README.md"
 requires-python = ">=3.10"
 keywords = ["maerklin", "cs2", "cs3", "model-railroad", "flask", "webapp"]
@@ -24,8 +25,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://example.com/"
-Source = "https://example.com/repo"
+Homepage = "https://github.com/RalfMende/MobileStationWebApp"
+Source = "https://github.com/RalfMende/MobileStationWebApp"
 
 [project.scripts]
 mswebapp = "mobile_station_webapp.server:main"

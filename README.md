@@ -16,8 +16,8 @@ git clone <this-repo-url>
 cd MobileStationWebApp
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt  # or: pip install Flask
-python app.py --udp-ip 192.168.1.100 --config tmp --host 0.0.0.0 --port 6020
+pip install -e .  # or: pip install Flask
+python src/mobile_station_webapp/server.py --udp-ip 192.168.1.100 --config tmp --host 0.0.0.0 --port 6020
 ```
 Then open: `http://<host>:6020`
 
