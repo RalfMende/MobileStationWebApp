@@ -11,6 +11,8 @@ add_executable(mswebapp_cpp
     main.cpp
 )
 
+target_link_libraries(mswebapp_cpp PRIVATE stdc++fs)
+
 target_include_directories(mswebapp_cpp PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
 
 if (MSWEBAPP_WITH_OPENSSL)
