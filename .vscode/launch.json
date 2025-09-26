@@ -7,10 +7,11 @@
       "request": "launch",
       "program": "${workspaceFolder}/src/backend_py/server.py",
       "args": [
-        "--config", "var",
+        "--config", "${workspaceFolder}/var",
         "--udp-ip", "Gleisbox",
         "--host", "0.0.0.0",
-        "--port", "6020"
+        "--port", "6020",
+        "--www", "${workspaceFolder}/src/frontend"
       ],
       "console": "integratedTerminal",
       "justMyCode": true,
@@ -29,7 +30,8 @@
         "--config", "${workspaceFolder}/var",
         "--udp-ip", "Gleisbox",
         "--host", "0.0.0.0",
-        "--port", "6020"
+        "--port", "6020",
+        "--www", "${workspaceFolder}/src/frontend"
       ],
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false,

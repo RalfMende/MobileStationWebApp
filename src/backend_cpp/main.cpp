@@ -555,7 +555,20 @@ int main(int argc, char** argv) {
             try { g_device_uid = std::stoi(next(i)); } catch(...) { g_device_uid = 0; }
         }
         else if (a == "--frontend") { g_frontend_dir_override = next(i); }
+        else if (a == "--www") { g_frontend_dir_override = next(i); }
         else if (a == "--verbose" || a == "-v") { g_verbose = true; }
+        else if (a == "--help" || a == "-h") {
+            printf("Usage: mswebapp_cpp [options]\n");
+            printf("  --config <dir>     Path to config directory (contains config/, icons/, fcticons/, ...)\n");
+            printf("  --udp-ip <ip|host> UDP target ip/host (default Gleisbox)\n");
+            printf("  --host <addr>      HTTP bind host (default 0.0.0.0)\n");
+            printf("  --port <port>      HTTP port (default 6020)\n");
+            printf("  --frontend <dir>   Path to frontend directory (with static/ and templates/)\n");
+            printf("  --www <dir>        Alias for --frontend\n");
+            printf("  --device-uid <id>  Device UID used for CAN ID hash (default 0)\n");
+            printf("  --verbose          Verbose logging\n");
+            return 0;
+        }
     }
 
     // Resolve UDP target (hostname or numeric) to IPv4 dotted string

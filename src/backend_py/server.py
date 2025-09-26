@@ -35,6 +35,8 @@ app = Flask(
     static_folder=os.path.join(FRONTEND_DIR, 'static'),
     template_folder=os.path.join(FRONTEND_DIR, 'templates')
 )
+# Keep effective frontend dir configurable at runtime (overridable via --www)
+app.config['FRONTEND_DIR'] = FRONTEND_DIR
 
 subscribers = set()
 subs_lock = threading.Lock()
@@ -636,7 +638,8 @@ def info():
 
 @app.route('/sw.js')
 def service_worker():
-    return send_from_directory(os.path.join(FRONTEND_DIR), 'sw.js', mimetype='application/javascript')
+    fe = app.config.get('FRONTEND_DIR', FRONTEND_DIR)
+    return send_from_directory(os.path.join(fe), 'sw.js', mimetype='application/javascript')
 
 
 # --- Dynamic serving of user provided config/asset directory ---
@@ -672,7 +675,8 @@ def serve_config_assets(filename):
             logger.exception('[cfg] send error %s: %s', filename, e)
             from flask import abort
             return abort(500)
-    pkg_static = os.path.join(FRONTEND_DIR, 'static')
+    fe = app.config.get('FRONTEND_DIR', FRONTEND_DIR)
+    pkg_static = os.path.join(fe, 'static')
     fallback_path = os.path.join(pkg_static, filename)
     if os.path.isfile(fallback_path):
         try:
@@ -718,6 +722,7 @@ def parse_args():
     parser.add_argument('--config', dest='config_path', default=path_config_files, help='Path to CS2 configuration files')
     parser.add_argument('--host', dest='host', default='0.0.0.0', help='Bind host for Flask')
     parser.add_argument('--port', dest='port', type=int, default=6020, help='Port for Flask')
+    parser.add_argument('--www', dest='www', default=None, help='Path to frontend directory (contains static/ and templates/)')
     args = parser.parse_args()
     # If udp_ip is a hostname, resolve it to IP
     try:
@@ -727,7 +732,7 @@ def parse_args():
     return args
 
 
-def run_server(udp_ip: str = UDP_IP, config_path: str = path_config_files, host: str = '0.0.0.0', port: int = 6020):
+def run_server(udp_ip: str = UDP_IP, config_path: str = path_config_files, host: str = '0.0.0.0', port: int = 6020, frontend_dir: str | None = None):
     global loc_list, switch_list
     try:
         resolved_ip = socket.gethostbyname(udp_ip)
@@ -740,6 +745,20 @@ def run_server(udp_ip: str = UDP_IP, config_path: str = path_config_files, host:
     app.config['CONFIG_FS_PATH'] = config_path
     # Public HTTP base path for those assets (mounted via /cfg/<path>)
     app.config['CONFIG_PATH'] = PUBLIC_CONFIG_BASE
+    # Frontend dir override
+    try:
+        effective_fe = str(frontend_dir) if frontend_dir else app.config.get('FRONTEND_DIR', FRONTEND_DIR)
+    except Exception:
+        effective_fe = FRONTEND_DIR
+    app.config['FRONTEND_DIR'] = effective_fe
+    # Update Flask static/template paths to the effective frontend dir
+    try:
+        from jinja2 import FileSystemLoader
+        app.static_folder = os.path.join(effective_fe, 'static')
+        app.template_folder = os.path.join(effective_fe, 'templates')
+        app.jinja_loader = FileSystemLoader(app.template_folder)
+    except Exception:
+        pass
 
     try:
         loc_list = parse_lokomotive_cs2(os.path.join(config_path, 'config', 'lokomotive.cs2'))
@@ -830,4 +849,4 @@ def run_server(udp_ip: str = UDP_IP, config_path: str = path_config_files, host:
 
 if __name__ == '__main__':
     args = parse_args()
-    run_server(udp_ip=args.udp_ip, config_path=args.config_path, host=args.host, port=args.port)
+    run_server(udp_ip=args.udp_ip, config_path=args.config_path, host=args.host, port=args.port, frontend_dir=args.www)
