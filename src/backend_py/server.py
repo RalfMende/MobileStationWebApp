@@ -54,12 +54,12 @@ class SystemState(str, Enum):
 
 system_state = SystemState.STOPPED
 
-path_config_files = 'var'  # default; can be overridden via CLI/Debug
-UDP_IP = 'Gleisbox'   # default; can be overridden via CLI/Debug
+path_config_files = 'var'
+PUBLIC_CONFIG_BASE = '/cfg'
+UDP_IP = '127.0.0.1'
 UDP_PORT_TX = 15731
 UDP_PORT_RX = 15730
 DEVICE_UID = 0
-PUBLIC_CONFIG_BASE = '/cfg'
 
 K_STATE = 'state'
 K_LOCO_ID = 'loco_id'
@@ -718,8 +718,8 @@ def health():
 
 def parse_args():
     parser = argparse.ArgumentParser(description='MobileStationWebApp Server')
-    parser.add_argument('--udp-ip', dest='udp_ip', default=UDP_IP, help='IP address or hostname of the CS2 UDP target')
     parser.add_argument('--config', dest='config_path', default=path_config_files, help='Path to CS2 configuration files')
+    parser.add_argument('--udp-ip', dest='udp_ip', default=UDP_IP, help='IP address or hostname of the CS2 UDP target')
     parser.add_argument('--host', dest='host', default='0.0.0.0', help='Bind host for Flask')
     parser.add_argument('--port', dest='port', type=int, default=6020, help='Port for Flask')
     parser.add_argument('--www', dest='www', default=None, help='Path to frontend directory (contains static/ and templates/)')

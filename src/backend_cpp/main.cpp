@@ -56,7 +56,7 @@ static std::map<int, std::map<int,bool>> g_loco_fn; // uid -> fn->bool
 static std::atomic<bool> g_running{false};
 static std::string g_config_dir = "var";
 static std::string g_public_cfg = "/cfg";
-static std::string g_udp_ip = "Gleisbox";
+static std::string g_udp_ip = "127.0.0.1";
 static int g_udp_tx = 15731;
 static int g_udp_rx = 15730;
 static int g_http_port = 6020;
@@ -551,10 +551,6 @@ int main(int argc, char** argv) {
         else if (a == "--udp-ip") g_udp_ip = next(i);
         else if (a == "--host") g_bind_host = next(i);
         else if (a == "--port") g_http_port = std::stoi(next(i));
-        else if (a == "--device-uid") {
-            try { g_device_uid = std::stoi(next(i)); } catch(...) { g_device_uid = 0; }
-        }
-        else if (a == "--frontend") { g_frontend_dir_override = next(i); }
         else if (a == "--www") { g_frontend_dir_override = next(i); }
         else if (a == "--verbose" || a == "-v") { g_verbose = true; }
         else if (a == "--help" || a == "-h") {
@@ -563,9 +559,7 @@ int main(int argc, char** argv) {
             printf("  --udp-ip <ip|host> UDP target ip/host (default Gleisbox)\n");
             printf("  --host <addr>      HTTP bind host (default 0.0.0.0)\n");
             printf("  --port <port>      HTTP port (default 6020)\n");
-            printf("  --frontend <dir>   Path to frontend directory (with static/ and templates/)\n");
-            printf("  --www <dir>        Alias for --frontend\n");
-            printf("  --device-uid <id>  Device UID used for CAN ID hash (default 0)\n");
+            printf("  --www <dir>        Frontend directory containing templates/ and static/\n");
             printf("  --verbose          Verbose logging\n");
             return 0;
         }
