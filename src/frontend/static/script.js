@@ -546,7 +546,7 @@ function pad2(v) {
  */
 function setFunctionIcon(img, iconPrefix, id, index) {
   const primary  = asset(`fcticons/FktIcon_a_${iconPrefix}_${pad2(id)}.png`);
-  const fallback = asset(`fcticons/FktIcon_a_${iconPrefix}_${pad2(50 + index)}.png`);
+  const fallback = `/static/grafics/FktIcon_a_${iconPrefix}_${pad2(50 + index)}.png`;
 
   const probe = new Image();
   probe.onload  = () => { img.src = primary; };
