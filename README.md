@@ -1,5 +1,15 @@
+<p align="center">
+    <img src="src/frontend/static/grafics/apple-touch-icon-180.png" alt="MobileStation Web App" width="128" height="128" />
+</p>
+
 Märklin Mobile Station inspired Web UI to control locomotives and accessories (CS2/CS3 style).
+Designed to run on the SRSEII Gleisbox and general Linux/OpenWrt environments.
 Provides a self-contained C++ backend (HTTP, API, SSE, UDP) and an optional Python backend for development.
+
+Backends available:
+- C++ backend: single binary (header-only HTTP server), recommended on SRSEII
+- Python backend: Flask-based, useful for development and quick prototyping
+
 
 ## Features
 - Locomotive speed, direction, and up to 32 functions
@@ -10,6 +20,18 @@ Provides a self-contained C++ backend (HTTP, API, SSE, UDP) and an optional Pyth
 - Service Worker + manifest for basic PWA behavior
 - Health endpoint (`/api/health`) for monitoring / watchdogs
 - Packaged `src/` layout; installable via `pyproject.toml`
+
+### Mobile Usage: Install as WebApp
+You can install the MobileStation Web App directly to your home screen for a native app-like experience:
+
+- **iOS:** Open the app in Safari, tap the Share icon, then select "Add to Home Screen".
+- **Android:** Open the app in Chrome (or most browsers), tap the menu (⋮), then choose "Install app" or "Add to Home screen".
+
+The app includes a manifest and touch icon, so it launches fullscreen and behaves like a native app.
+
+| Control View | Keyboard View |
+| --- | --- |
+| <img src="docs/mswebapp_control.jpeg" alt="Control" width="420" /> | <img src="docs/mswebapp_keyboard.jpeg" alt="Keyboard" width="420" /> |
 
 ## Quick Start (Development)
 - C++ Backend (Windows): Build and run the "Debug C++ Backend" launch config in VS Code, or build with CMake tasks provided.
@@ -27,62 +49,23 @@ Open: `http://<host>:6020`
 | `--port` | `6020` | HTTP listen port |
 | `--www` | `src/frontend` | Frontend directory (templates/, static/, sw.js) |
 
-## API Overview
-Base path: root of server (`/` serves UI)
-
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/api/events` | GET (SSE) | Stream of system, loco, function, switch events |
-| `/api/control_event` | POST | Loco speed / direction / function control |
-| `/api/loco_list` | GET | Parsed locomotives (map keyed by UID) |
-| `/api/loco_state` | GET | Full or single loco state (query `?loco_id=`) |
-| `/api/keyboard_event` | POST | Switch (accessory) on/off event |
-| `/api/switch_list` | GET | Raw parsed magnet article data |
-| `/api/switch_state` | GET | Current switch state array/map |
-| `/api/info_events` | POST | Function trigger for info page |
-| `/api/stop_button` | POST | Toggle system running/stopped |
-| `/api/health` | GET | Health/status JSON |
-
-### Control Event Payload Examples
-
-Speed:
-```json
-{ "loco_id": 123456, "speed": 400 }
-```
-Direction:
-```json
-{ "loco_id": 123456, "direction": "forward" }
-```
-Function:
-```json
-{ "loco_id": 123456, "function": 2, "value": 1 }
-```
-
-### Keyboard (Switch) Event
-```json
-{ "idx": 5, "value": 1 }
-```
-
-## Health Endpoint
-`GET /api/health` returns for example:
-```json
-{
-    "status": "ok",
-    "system_state": "stopped",
-    "loco_count": 12,
-    "switch_count": 64,
-    "udp_target": "127.0.0.1:15731",
-    "version": "0.1.0"
-}
-```
-
 ## Parsing CS2 Files
-Expected filenames in the config directory:
+The application expects a specific folder structure under the configuration directory provided via the `--config` argument (or default):
+
 ```
-lokomotive.cs2
-magnetartikel.cs2
+<config-dir>
+    /config
+        /lokomotive.cs2
+        /magnetartikel.cs2
+    /icons
+        /<locomotive pictures from CS2/3>
+    /fcticons
+        /<function pictures from CS2/3>
+    /magicons_
+        /<Magnetarticle pictures from CS2/3>
 ```
-The parser is intentionally tolerant; malformed lines are skipped.
+
+Both cs2-files must exist in the `config` subfolder of your configuration directory. They will be imported/parsed at startup and when changes occure to them.
 
 ## OpenWrt / Embedded Deployment
 - Prebuilt .ipk: download from GitHub Releases (Latest). Install and enable the init script to run on boot.
@@ -105,13 +88,6 @@ Recommendation:
 - Frontend in `src/frontend` (templates, static, sw.js)
 - SSE initial snapshot + incremental updates; the frontend JS keeps the UI in sync
 
-## Icons / Function Graphics
-CS3 function icons (example):
-```
-http://<CS3-IP>/app/assets/fct/fkticon_i_001.svg
-```
-Indexes reportedly up to 296 (gap 176–197). Not all shipped here—add only what you need to save space.
-
 ## Original Inspiration / Reference
 Original forum walkthrough (German):
 https://www.stummiforum.de/t56814f5-M-rklin-Mobile-Station-App-Schritt-f-r-Schritt.html
@@ -121,3 +97,6 @@ Beerware (see header in source files).
 
 ---
 Feel free to open issues or contribute enhancements (error handling, authentication, multi-user state, etc.).
+
+---
+Märklin, Trix, Gleisbox, Mobile Station, Central Station CS2, Central Station CS3, Central Station CS3+ sind Marken bzw. eingetragene Namen der Gebr. Märklin & Cie. GmbH.
