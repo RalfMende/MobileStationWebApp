@@ -49,7 +49,7 @@ Open: `http://<host>:6020`
 | `--port` | `6020` | HTTP listen port |
 | `--www` | `src/frontend` | Frontend directory (templates/, static/, sw.js) |
 
-## Parsing CS2 Files
+## Required Files on target System
 The application expects a specific folder structure under the configuration directory provided via the `--config` argument (or default):
 
 ```
@@ -69,7 +69,7 @@ Both cs2-files must exist in the `config` subfolder of your configuration direct
 
 ## OpenWrt / Embedded Deployment
 - Prebuilt .ipk: download from GitHub Releases (Latest). Install and enable the init script to run on boot.
-- Full guide: see `docs/INSTALL-openwrt.md`.
+- Full  for SRSEII Installation : see `docs/INSTALL-openwrt.md`.
 
 Init script (procd) is provided at `packaging/openwrt/init.d/mswebapp`. It prefers the C++ backend, falls back to Python if not present.
 

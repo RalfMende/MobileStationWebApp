@@ -8,22 +8,51 @@ Prerequisites: SSH access and opkg configured.
 
 1. Download the .ipk to the device (choose one):
     - Latest (requires keeping a consistent asset name across releases):
+      ```
        wget -O /tmp/mswebapp.ipk "https://github.com/RalfMende/MobileStationWebApp/releases/latest/download/mswebapp_1.0.0-1_mipsel_24kc.ipk"
+      ```
     - Or specific tag (more explicit; replace v1.0.0 with your release tag and use the exact asset file name as published):
+      ```
        wget -O /tmp/mswebapp.ipk "https://github.com/RalfMende/MobileStationWebApp/releases/download/v1.0.0/mswebapp_1.0.0-1_mipsel_24kc.ipk"
+      ```
 
 2. (Optional) Verify checksum:
    sha256sum /tmp/mswebapp.ipk
-   # Expected (for the asset above): D875348ED4848CE89BBECADBE3DD4D2BE0A383ED0AEC20C0E161063BD446342A
 
 3. Install:
+   ```
    opkg install /tmp/mswebapp.ipk
+   ```
 
-4. Enable and start the service:
+4. Make sure of all folders in config directory
+   ```
+   ls -d /www/*/
+   ```
+
+5. Replace Magnetartikel.cs2, which is required for the current Version
+   ```
+   wget https://raw.githubusercontent.com/RalfMende/MobileStationWebApp/main/var/config/magnetartikel.cs2 -O /www/config/magnetartikel.cs2
+   ```
+   (Optional) Download all icons etc, if missing on the SRSEII
+   ```
+   wget https://github.com/RalfMende/MobileStationWebApp/archive/refs/heads/main.zip -O /tmp/mswebapp.zip
+   unzip /tmp/mswebapp.zip -d /tmp/mswebapp/
+   cp -r /tmp/mswebapp/MobileStationWebApp-main/var/* /www/
+   ```
+
+6. Copy Init Script
+   ```
+   wget https://raw.githubusercontent.com/RalfMende/MobileStationWebApp/main/packaging/openwrt/init.d/mswebapp -O /etc/init.d/mswebapp
+   chmod +x /etc/init.d/mswebapp
+   ```
+
+7. Enable and start the service:
+   ```
    /etc/init.d/mswebapp enable
    /etc/init.d/mswebapp start
+   ```
 
-5. Open the UI:
+6. Open the UI in the Browser:
    http://<device-ip>:6020
 
 Default arguments (SRSEII target):
