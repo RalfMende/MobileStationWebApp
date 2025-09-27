@@ -1,4 +1,5 @@
-Märklin Mobile Station inspired Web UI to control locomotives and accessories (CS2/CS3 style) via a lightweight Flask backend. Provides a dynamic keyboard, locomotive function control, switch operations, state synchronization via Server-Sent Events (SSE), and a PWA-capable frontend.
+Märklin Mobile Station inspired Web UI to control locomotives and accessories (CS2/CS3 style).
+Provides a self-contained C++ backend (HTTP, API, SSE, UDP) and an optional Python backend for development.
 
 ## Features
 - Locomotive speed, direction, and up to 32 functions
@@ -11,34 +12,20 @@ Märklin Mobile Station inspired Web UI to control locomotives and accessories (
 - Packaged `src/` layout; installable via `pyproject.toml`
 
 ## Quick Start (Development)
-```bash
-git clone <this-repo-url>
-cd MobileStationWebApp
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt  # or: pip install Flask
-python app.py --udp-ip 192.168.1.100 --config tmp --host 0.0.0.0 --port 6020
-```
-Then open: `http://<host>:6020`
+- C++ Backend (Windows): Build and run the "Debug C++ Backend" launch config in VS Code, or build with CMake tasks provided.
+- C++ Backend (macOS/Linux): Configure with CMake; run resulting binary with flags below.
+- Python (optional): `python -m mobile_station_webapp.server --config var --www src/frontend`
 
-Minimal (module) start alternative:
-```bash
-python -m mobile_station_webapp.server --config tmp
-```
+Open: `http://<host>:6020`
 
-After packaging (see below):
-```bash
-pip install .
-mswebapp --config /path/to/config --udp-ip 192.168.1.50
-```
-
-## Command Line Options
+## Command Line Options (C++ and Python)
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--udp-ip` | `192.168.20.42` | Target CS2/bridge UDP IP for CAN frames |
-| `--config` | `tmp` | Directory containing `lokomotive.cs2`, `magnetartikel.cs2` |
+| `--udp-ip` | `127.0.0.1` | Target CS2/bridge UDP IPv4 or hostname |
+| `--config` | `var` | Base directory with `config/` (contains CS2 files and icons) |
 | `--host` | `0.0.0.0` | Bind host address |
 | `--port` | `6020` | HTTP listen port |
+| `--www` | `src/frontend` | Frontend directory (templates/, static/, sw.js) |
 
 ## API Overview
 Base path: root of server (`/` serves UI)
@@ -77,14 +64,14 @@ Function:
 ```
 
 ## Health Endpoint
-`GET /api/health` returns:
+`GET /api/health` returns for example:
 ```json
 {
     "status": "ok",
     "system_state": "stopped",
     "loco_count": 12,
     "switch_count": 64,
-    "udp_target": "192.168.20.42:15731",
+    "udp_target": "127.0.0.1:15731",
     "version": "0.1.0"
 }
 ```
@@ -98,42 +85,25 @@ magnetartikel.cs2
 The parser is intentionally tolerant; malformed lines are skipped.
 
 ## OpenWrt / Embedded Deployment
-1. Install Python + pip (size constraints: remove caches after install).
-2. Copy repo or install wheel (`pip install mobile-station-webapp-<ver>.whl`).
-3. Provide config dir (e.g. `/root/mswebapp/config`).
-4. Add init script (`/etc/init.d/mswebapp`) using `mswebapp --config /root/mswebapp/config --udp-ip <bridge-ip>`.
-5. Ensure firewall permits UDP ports 15730/15731 and HTTP port (e.g. 6020).
-6. (Optional) Reverse proxy via `uhttpd`.
+- Prebuilt .ipk: download from GitHub Releases (Latest). Install and enable the init script to run on boot.
+- Full guide: see `docs/INSTALL-openwrt.md`.
 
-Example procd script snippet:
-```sh
-#!/bin/sh /etc/rc.common
-START=95
-USE_PROCD=1
-start_service() {
-    procd_open_instance
-    procd_set_param command /usr/bin/python3 -m mobile_station_webapp.server --config /root/mswebapp/config --udp-ip 192.168.1.50 --port 6020
-    procd_set_param respawn
-    procd_close_instance
-}
-```
+Init script (procd) is provided at `packaging/openwrt/init.d/mswebapp`. It prefers the C++ backend, falls back to Python if not present.
 
-## Packaging
-`pyproject.toml` is provided (setuptools). Build and install locally:
-```bash
-python -m build  # requires: pip install build
-pip install dist/mobile_station_webapp-0.1.0-py3-none-any.whl
-```
-Run after install:
-```bash
-mswebapp --config /path/to/config
-```
+## Releases and Artifacts
+- GitHub Releases: prebuilt `.ipk` artifacts are published per version (preferred).
+- `packaging/`: packaging scripts and init files (do not install automatically).
+
+Recommendation:
+- Publish `.ipk` files under GitHub Releases and link from `docs/INSTALL-openwrt.md`.
+- Commit the OpenWrt init script (`packaging/openwrt/init.d/mswebapp`) so users can inspect and reuse it.
+- Place installation instructions under `docs/`, and link them from this README.
 
 ## Development Notes
-- Source under `src/mobile_station_webapp/`
-- Static + templates packaged; service worker at `/sw.js`
-- SSE initial snapshot + incremental updates; consumer JS keeps UI in sync
-- Threaded Flask server (no reloader) for embedded stability
+- C++ backend in `src/backend_cpp` (single binary, header-only HTTP server)
+- Optional Python backend in `src/backend_py` for development/testing
+- Frontend in `src/frontend` (templates, static, sw.js)
+- SSE initial snapshot + incremental updates; the frontend JS keeps the UI in sync
 
 ## Icons / Function Graphics
 CS3 function icons (example):
