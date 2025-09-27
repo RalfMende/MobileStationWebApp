@@ -1,28 +1,45 @@
-.venv
-.DS_Store
-
 # Python cache / bytecode
+.venv/
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
 
-# Packaging / build (future-proofing if you package later)
-build/
-dist/
-*.egg-info/
+# explicit for backend_py
+src/backend_py/__pycache__/
+src/backend_py/**/*.py[cod]
+
+# Build-/CMake-/MSVC artefacts ONLY in /src
+src/**/build/
+src/**/build-*/
+src/**/build_*/
+src/**/cmake-build-*/
+src/**/CMakeFiles/
+src/**/CMakeCache.txt
+src/**/CMakeScripts/
+src/**/CTestTestfile.cmake
+src/**/cmake_install.cmake
+src/**/install_manifest.txt
+src/**/Makefile
+src/**/compile_commands.json
+src/**/Testing/
+src/**/Debug/
+src/**/Release/
+src/**/RelWithDebInfo/
+src/**/MinSizeRel/
+src/**/x64/
+src/**/x86/
+src/**/out/
+src/**/bin/
+src/**/obj/
+src/**/.vs/
 
 # C++/CMake/Visual Studio build artefacts
+src/build-msvc/
 src/backend_cpp/build/
 src/backend_cpp/build-msvc/
-src/backend_cpp/Release/
-src/backend_cpp/x64/
-src/backend_cpp/*.vcxproj*
-src/backend_cpp/*.sln
-src/backend_cpp/*.user
-src/backend_cpp/*.opensdf
-src/backend_cpp/*.sdf
-src/backend_cpp/*.log
+src/backend_cpp/build-msvc-arm64/
+src/backend_cpp/build-macos-debug
 
 # Global binary artifacts (keep configs, drop compiled files)
 *.exe
@@ -47,6 +64,7 @@ src/backend_cpp/*.log
 .ruff_cache/
 
 # OS / editor noise
+.DS_Store
 Thumbs.db
 ehthumbs.db
 *.swp

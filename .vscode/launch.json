@@ -1,6 +1,7 @@
 {
   "version": "0.2.0",
   "configurations": [
+  
     {
       "name": "Python: Run server.py (Debug)",
       "type": "debugpy",
@@ -22,10 +23,10 @@
       "cwd": "${workspaceFolder}"
     },
     {
-      "name": "Debug C++ Backend",
+      "name": "C++ Backend (Windows ARM64)",
       "type": "cppvsdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/src/backend_cpp/build-msvc/Debug/mswebapp_cpp.exe",
+      "program": "${workspaceFolder}/src/backend_cpp/build-msvc-arm64/Debug/mswebapp_cpp.exe",
       "args": [
         "--config", "${workspaceFolder}/var",
         "--udp-ip", "Gleisbox",
@@ -35,7 +36,26 @@
       ],
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false,
-      "console": "externalTerminal"
+      "console": "integratedTerminal",
+      "preLaunchTask": "C++ backend: Build Debug (MSVC ARM64)"
+    },
+    {
+      "name": "C++ Backend (macOS)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/backend_cpp/build-macos-debug/mswebapp_cpp",
+      "args": [
+        "--config", "${workspaceFolder}/var",
+        "--udp-ip", "Gleisbox",
+        "--host", "0.0.0.0",
+        "--port", "6020",
+        "--www", "${workspaceFolder}/src/frontend"
+      ],
+      "cwd": "${workspaceFolder}",
+      "stopAtEntry": false,
+      "MIMode": "lldb",
+      "externalConsole": false,
+      "preLaunchTask": "C++ backend: Build Debug (macOS)"
     }
   ]
 }

@@ -11,9 +11,11 @@ add_executable(mswebapp_cpp
     main.cpp
 )
 
-# Link stdc++fs only on libstdc++ toolchains that still require it
-if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_link_libraries(mswebapp_cpp PRIVATE stdc++fs)
+# Link stdc++fs only for older GCC libstdc++ (not needed on AppleClang/libc++ or modern GCC)
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
+        target_link_libraries(mswebapp_cpp PRIVATE stdc++fs)
+    endif()
 endif()
 
 target_include_directories(mswebapp_cpp PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
