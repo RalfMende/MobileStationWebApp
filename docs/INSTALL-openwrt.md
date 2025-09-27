@@ -38,6 +38,8 @@ Prerequisites: SSH access and opkg configured.
    wget https://github.com/RalfMende/MobileStationWebApp/archive/refs/heads/main.zip -O /tmp/mswebapp.zip
    unzip /tmp/mswebapp.zip -d /tmp/mswebapp/
    cp -r /tmp/mswebapp/MobileStationWebApp-main/var/* /www/
+   rm -f /tmp/mswebapp.zip
+   rm -rf /tmp/mswebapp/
    ```
 
 6. Copy Init Script
