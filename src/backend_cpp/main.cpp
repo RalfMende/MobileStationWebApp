@@ -64,6 +64,7 @@ static std::string g_bind_host = "0.0.0.0";
 static int g_device_uid = 0; // sender uid for CAN id hash
 static bool g_verbose = false;
 static std::string g_frontend_dir_override; // optional path to frontend dir (templates/static)
+static std::map<int, std::string> g_icon_overrides; // uid -> icon name (stem)
 
 // ---- Utilities ----
 static std::string trim(const std::string &s) {
@@ -130,7 +131,10 @@ static std::string loco_list_json() {
         os << '"' << kv.first << '"' << ":{";
         os << "\"uid\":" << l.uid << ",";
         os << "\"name\":\"" << json_escape(l.name) << "\",";
-        os << "\"icon\":\"" << json_escape(l.icon) << "\",";
+        // Apply icon override if present
+        auto itov = g_icon_overrides.find(l.uid);
+        std::string icon_eff = (itov != g_icon_overrides.end()) ? itov->second : l.icon;
+        os << "\"icon\":\"" << json_escape(icon_eff) << "\",";
         os << "\"tachomax\":" << l.tachomax;
         if (!l.fn_typ.empty()) {
             os << ",\"funktionen\":{";
@@ -145,6 +149,45 @@ static std::string loco_list_json() {
     }
     os << "}";
     return os.str();
+}
+// Persistent overrides JSON path under config_dir/config
+static fs::path overrides_path() {
+    return fs::path(g_config_dir)/"config"/"mswebapp_overrides.json";
+}
+
+static void load_overrides() {
+    g_icon_overrides.clear();
+    std::ifstream f(overrides_path());
+    if (!f) return;
+    std::ostringstream buf; buf << f.rdbuf();
+    std::string s = buf.str();
+    // Very minimal JSON parse (expect {"icon_overrides": {"uid":"icon"}})
+    auto pos = s.find("\"icon_overrides\""); if (pos==std::string::npos) return;
+    pos = s.find('{', pos); if (pos==std::string::npos) return; size_t end = s.find('}', pos); if (end==std::string::npos) return;
+    std::string mapstr = s.substr(pos+1, end-pos-1);
+    size_t i=0; while (i<mapstr.size()) {
+        while (i<mapstr.size() && (mapstr[i]==','||isspace((unsigned char)mapstr[i]))) i++;
+        if (i>=mapstr.size() || mapstr[i]!='"') break; size_t j = mapstr.find('"', i+1); if (j==std::string::npos) break;
+        std::string key = mapstr.substr(i+1, j-(i+1)); i = j+1; size_t colon = mapstr.find(':', i); if (colon==std::string::npos) break; i = colon+1;
+        while (i<mapstr.size() && isspace((unsigned char)mapstr[i])) i++; if (i>=mapstr.size()) break;
+        std::string val;
+        if (mapstr[i]=='"') { size_t k = mapstr.find('"', i+1); if (k==std::string::npos) break; val = mapstr.substr(i+1, k-(i+1)); i = k+1; }
+        else { size_t k=i; while (k<mapstr.size() && mapstr[k]!=',' ) k++; val = trim(mapstr.substr(i, k-i)); i = k; }
+        int uid = 0; try { uid = std::stoi(key); } catch(...) { continue; }
+        g_icon_overrides[uid] = val;
+    }
+}
+
+static bool save_overrides() {
+    fs::path p = overrides_path();
+    std::error_code ec; fs::create_directories(p.parent_path(), ec);
+    std::ostringstream os; os << "{\"icon_overrides\":{";
+    bool first=true; for (auto &kv : g_icon_overrides) { if (!first) os << ","; first=false; os << '"' << kv.first << '"' << ":\"" << json_escape(kv.second) << "\""; }
+    os << "}}";
+    std::string data = os.str();
+    fs::path tmp = p; tmp += ".tmp";
+    std::ofstream f(tmp, std::ios::binary|std::ios::trunc); if (!f) return false; f.write(data.data(), data.size()); f.close();
+    std::error_code ec2; fs::rename(tmp, p, ec2); if (ec2) return false; return true;
 }
 
 static std::string loco_state_json() {
@@ -647,6 +690,7 @@ int main(int argc, char** argv) {
     // Load config files
     parse_lokomotive_cs2(fs::path(g_config_dir)/"config"/"lokomotive.cs2");
     parse_magnetartikel_cs2(fs::path(g_config_dir)/"config"/"magnetartikel.cs2");
+    load_overrides();
 
     // Initialize state maps
     for (auto &kv : g_locos) {
@@ -802,16 +846,11 @@ int main(int argc, char** argv) {
             auto pos = body.find(key); if (pos==std::string::npos) return std::string(); pos = body.find(':', pos); if (pos==std::string::npos) return std::string(); size_t j=pos+1; while (j<body.size() && (body[j]==' ')) j++; if (j<body.size() && body[j]=='"') { j++; size_t k=j; while (k<body.size() && body[k] != '"') k++; if (k>j) return body.substr(j,k-j); } else { size_t k=j; while (k<body.size() && (isalnum((unsigned char)body[k]) || body[k]=='_' || body[k]=='-' || body[k]==' ')) k++; if (k>j) return body.substr(j,k-j); } return std::string(); };
         uid = find_num("loco_id"); icon = find_str("icon");
         if (uid <= 0 || icon.empty()) { res.status=400; res.set_content("{\"status\":\"error\",\"message\":\"loco_id and icon required\"}", "application/json"); return; }
-        fs::path lokfile = fs::path(g_config_dir)/"config"/"lokomotive.cs2";
-        bool ok = update_lok_icon_file(lokfile, uid, icon);
-        if (ok) {
-            // Re-parse loco list and publish reload event
-            try { parse_lokomotive_cs2(lokfile); } catch (...) {}
-            publish_event("{\"type\":\"loco_list_reloaded\"}");
-            res.set_content("{\"status\":\"ok\"}", "application/json");
-        } else {
-            res.status=500; res.set_content("{\"status\":\"error\",\"message\":\"update failed\"}", "application/json");
-        }
+        // Persist override and notify clients; do not change lokomotive.cs2
+        g_icon_overrides[uid] = icon;
+        if (!save_overrides()) { res.status=500; res.set_content("{\"status\":\"error\",\"message\":\"failed to save override\"}", "application/json"); return; }
+        publish_event("{\"type\":\"loco_list_reloaded\"}");
+        res.set_content("{\"status\":\"ok\"}", "application/json");
     });
 
     // API: control_event

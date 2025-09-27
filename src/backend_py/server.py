@@ -46,6 +46,7 @@ switch_list = {}
 
 loco_state = {}
 switch_state = [0] * 64  # 64 switches, default state 0
+icon_overrides: dict[str, str] = {}
 
 class SystemState(str, Enum):
     STOPPED = 'stopped'
@@ -265,8 +266,18 @@ def set_loco_state_function(loc_id, fn_no, fn_val):
 def get_locs():
     with loc_data_lock:
         items = list(loc_list)
-    loc_dict = {str(loco['uid']): loco for loco in items}
-    return jsonify(loc_dict)
+    result: dict[str, dict] = {}
+    for loco in items:
+        try:
+            uid_s = str(loco['uid'])
+            entry = dict(loco)
+            ov = icon_overrides.get(uid_s)
+            if ov:
+                entry['icon'] = ov
+            result[uid_s] = entry
+        except Exception:
+            continue
+    return jsonify(result)
 
 @app.route('/api/loco_state')
 def get_state():
@@ -793,6 +804,36 @@ def _update_lokomotive_icon_file(file_path: str, uid: int, icon_name: str) -> bo
     return changed
 
 
+def _overrides_path() -> str:
+    base = app.config.get('CONFIG_FS_PATH') or ''
+    return os.path.join(base, 'config', 'mswebapp_overrides.json')
+
+def _load_overrides() -> None:
+    global icon_overrides
+    try:
+        with open(_overrides_path(), 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        d = data.get('icon_overrides') if isinstance(data, dict) else None
+        if isinstance(d, dict):
+            icon_overrides = {str(k): str(v) for k, v in d.items() if isinstance(k, (str, int))}
+        else:
+            icon_overrides = {}
+    except Exception:
+        icon_overrides = {}
+
+def _save_overrides() -> bool:
+    path = _overrides_path()
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        tmp = path + '.tmp'
+        data = {'icon_overrides': icon_overrides}
+        with open(tmp, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, separators=(',', ':'))
+        os.replace(tmp, path)
+        return True
+    except Exception:
+        return False
+
 @app.post('/api/loco_icon')
 def api_set_loco_icon():
     data = _require_json()
@@ -804,26 +845,14 @@ def api_set_loco_icon():
         uid = int(uid)
     except Exception:
         return jsonify({'status': 'error', 'message': 'invalid loco_id'}), 400
-    base = app.config.get('CONFIG_FS_PATH')
-    if not base:
-        return jsonify({'status': 'error', 'message': 'no config path'}), 500
-    lokfile = os.path.join(base, 'config', 'lokomotive.cs2')
-    ok = _update_lokomotive_icon_file(lokfile, uid, str(icon_name))
-    if ok:
-        # Attempt to refresh in-memory list quickly
-        try:
-            new_list = parse_lokomotive_cs2(lokfile)
-            with loc_data_lock:
-                globals()['loc_list'] = new_list
-        except Exception:
-            pass
-        try:
-            publish_event({'type': 'loco_list_reloaded'})
-        except Exception:
-            pass
-        return jsonify({'status': 'ok'})
-    else:
-        return jsonify({'status': 'error', 'message': 'update failed'}), 500
+    icon_overrides[str(uid)] = str(icon_name)
+    if not _save_overrides():
+        return jsonify({'status': 'error', 'message': 'failed to save override'}), 500
+    try:
+        publish_event({'type': 'loco_list_reloaded'})
+    except Exception:
+        pass
+    return jsonify({'status': 'ok'})
 
 
 @app.get('/api/health')
@@ -898,6 +927,12 @@ def run_server(udp_ip: str = UDP_IP, config_path: str = path_config_files, host:
     except Exception as e:
         loc_list = []
         logger.warning("Error loading lokomotive.cs2 file: %s", e)
+
+    # Load persistent overrides (icon overrides, etc.)
+    try:
+        _load_overrides()
+    except Exception:
+        pass
 
     try:
         switch_list = parse_magnetartikel_cs2(os.path.join(config_path, 'config', 'magnetartikel.cs2'))
