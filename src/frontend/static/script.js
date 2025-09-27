@@ -1015,14 +1015,14 @@ function updateSwitchUI(btn1, btn2, valueNum) {
     // btn1 active, btn2 inactive
     btn1.classList.add('active');
     btn2.classList.remove('active');
-    if (img1) img1.src = asset('magicons_/MagIcon_00_00_a.png');
-    if (img2) img2.src = asset('magicons_/MagIcon_00_01_i.png');
+    if (img1) img1.src = '/static/grafics/MagIcon_00_00_a.png';
+    if (img2) img2.src = '/static/grafics/MagIcon_00_01_i.png';
   } else {
     // btn1 inactive, btn2 active
     btn1.classList.remove('active');
     btn2.classList.add('active');
-    if (img1) img1.src = asset('magicons_/MagIcon_00_00_i.png');
-    if (img2) img2.src = asset('magicons_/MagIcon_00_01_a.png');
+    if (img1) img1.src = '/static/grafics/MagIcon_00_00_i.png';
+    if (img2) img2.src = '/static/grafics/MagIcon_00_01_a.png';
   }
 }
 
