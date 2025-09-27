@@ -693,6 +693,139 @@ def serve_config_assets(filename):
     return abort(404)
 
 
+# --- Icon listing and assignment ---
+def _list_icon_files(base_dir: str):
+    icons_dir = os.path.join(base_dir or '', 'icons')
+    out = []
+    try:
+        for fn in os.listdir(icons_dir):
+            if not isinstance(fn, str):
+                continue
+            lower = fn.lower()
+            if lower.endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                name, _ = os.path.splitext(fn)
+                out.append({'name': name, 'file': fn})
+    except Exception:
+        pass
+    # stable sort
+    out.sort(key=lambda x: x['file'].lower())
+    return out
+
+
+@app.get('/api/icons')
+def api_list_icons():
+    base = app.config.get('CONFIG_FS_PATH')
+    if not base:
+        return jsonify([])
+    return jsonify(_list_icon_files(base))
+
+
+def _update_lokomotive_icon_file(file_path: str, uid: int, icon_name: str) -> bool:
+    try:
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            lines = f.readlines()
+    except Exception:
+        return False
+    out_lines = list(lines)
+    n = len(lines)
+    i = 0
+    changed = False
+    while i < n:
+        line = lines[i].strip()
+        if line == 'lokomotive':
+            # scan block
+            blk_start = i
+            blk_end = i + 1
+            cur_uid = None
+            icon_idx = None
+            name_idx = None
+            uid_idx = None
+            j = i + 1
+            while j < n and lines[j].strip() != 'lokomotive':
+                s = lines[j].strip()
+                if s.startswith('.') and '=' in s and not s.startswith('..'):
+                    key, val = s[1:].split('=', 1)
+                    key = key.strip(); val = val.strip()
+                    if key == 'uid':
+                        try:
+                            cur_uid = parse_value(val)
+                            uid_idx = j
+                        except Exception:
+                            cur_uid = cur_uid
+                    elif key == 'icon':
+                        icon_idx = j
+                    elif key == 'name':
+                        name_idx = j
+                j += 1
+            blk_end = j
+            if cur_uid is not None and int(cur_uid) == int(uid):
+                # apply change within out_lines
+                new_line = f" .icon={icon_name}\n"
+                if icon_idx is not None:
+                    if out_lines[icon_idx] != new_line:
+                        out_lines[icon_idx] = new_line
+                        changed = True
+                else:
+                    # insert after name, else after uid, else right after blk_start
+                    insert_at = None
+                    for idx in (name_idx, uid_idx):
+                        if idx is not None:
+                            insert_at = idx + 1
+                            break
+                    if insert_at is None:
+                        insert_at = blk_start + 1
+                    out_lines.insert(insert_at, new_line)
+                    # adjust counters
+                    delta = 1
+                    n += delta
+                    i += delta
+                    changed = True
+                # don't break; continue scanning to allow multiple same uids (unlikely)
+            i = blk_end
+            continue
+        i += 1
+    if changed:
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.writelines(out_lines)
+        except Exception:
+            return False
+    return changed
+
+
+@app.post('/api/loco_icon')
+def api_set_loco_icon():
+    data = _require_json()
+    uid = data.get('loco_id')
+    icon_name = data.get('icon')
+    if uid is None or not icon_name:
+        return jsonify({'status': 'error', 'message': 'loco_id and icon required'}), 400
+    try:
+        uid = int(uid)
+    except Exception:
+        return jsonify({'status': 'error', 'message': 'invalid loco_id'}), 400
+    base = app.config.get('CONFIG_FS_PATH')
+    if not base:
+        return jsonify({'status': 'error', 'message': 'no config path'}), 500
+    lokfile = os.path.join(base, 'config', 'lokomotive.cs2')
+    ok = _update_lokomotive_icon_file(lokfile, uid, str(icon_name))
+    if ok:
+        # Attempt to refresh in-memory list quickly
+        try:
+            new_list = parse_lokomotive_cs2(lokfile)
+            with loc_data_lock:
+                globals()['loc_list'] = new_list
+        except Exception:
+            pass
+        try:
+            publish_event({'type': 'loco_list_reloaded'})
+        except Exception:
+            pass
+        return jsonify({'status': 'ok'})
+    else:
+        return jsonify({'status': 'error', 'message': 'update failed'}), 500
+
+
 @app.get('/api/health')
 def health():
     """Lightweight health/status endpoint for monitoring."""

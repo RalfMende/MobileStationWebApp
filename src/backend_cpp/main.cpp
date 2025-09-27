@@ -168,7 +168,83 @@ static std::string loco_state_json() {
     return os.str();
 }
 
-// ---- CS2 parsing (minimal, tolerant) ----
+// List icons in icons/ directory under g_config_dir
+static std::string icons_list_json() {
+    std::vector<std::pair<std::string,std::string>> items; // {name, file}
+    fs::path dir = fs::path(g_config_dir) / "icons";
+    std::error_code ec;
+    if (fs::exists(dir, ec) && fs::is_directory(dir, ec)) {
+        for (auto &e : fs::directory_iterator(dir, ec)) {
+            if (ec) break;
+            if (!e.is_regular_file(ec)) continue;
+            auto p = e.path();
+            auto ext = p.extension().string();
+            std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c){ return (char)std::tolower(c); });
+            if (ext==".png" || ext==".jpg" || ext==".jpeg" || ext==".gif" || ext==".webp") {
+                auto file = p.filename().string();
+                auto stem = p.stem().string();
+                items.emplace_back(stem, file);
+            }
+        }
+    }
+    std::sort(items.begin(), items.end(), [](auto &a, auto &b){
+        std::string af=a.second, bf=b.second; std::transform(af.begin(),af.end(),af.begin(),::tolower); std::transform(bf.begin(),bf.end(),bf.begin(),::tolower); return af<bf;
+    });
+    std::ostringstream os; os << "[";
+    for (size_t i=0;i<items.size();++i) {
+        if (i) os << ",";
+        os << "{\"name\":\"" << json_escape(items[i].first) << "\",\"file\":\"" << json_escape(items[i].second) << "\"}";
+    }
+    os << "]";
+    return os.str();
+}
+
+static bool update_lok_icon_file(const fs::path &file, int uid, const std::string &iconName) {
+    std::ifstream in(file);
+    if (!in) return false;
+    std::vector<std::string> lines; std::string line;
+    while (std::getline(in, line)) lines.push_back(line + (line.size() && line.back()=='\n' ? "" : "\n"));
+    in.close();
+    bool changed = false; size_t n = lines.size();
+    for (size_t i=0; i<n; ) {
+        std::string s = trim(lines[i]);
+        if (s == "lokomotive") {
+            size_t blk_start = i, j = i + 1; int cur_uid = -1; int icon_idx = -1; int name_idx = -1; int uid_idx = -1;
+            for (; j<n && trim(lines[j]) != "lokomotive"; ++j) {
+                std::string t = trim(lines[j]);
+                if (!t.empty() && t[0]=='.' && t.size()>=2 && t[1] != '.' && t.find('=')!=std::string::npos) {
+                    auto pos = t.find('=');
+                    std::string key = trim(t.substr(1, pos-1));
+                    std::string val = trim(t.substr(pos+1));
+                    if (key == "uid") { cur_uid = parse_int_auto(val); uid_idx = (int)j; }
+                    else if (key == "icon") { icon_idx = (int)j; }
+                    else if (key == "name") { name_idx = (int)j; }
+                }
+            }
+            if (cur_uid == uid) {
+                std::string new_line = " .icon=" + iconName + "\n";
+                if (icon_idx >= 0) {
+                    if (lines[(size_t)icon_idx] != new_line) { lines[(size_t)icon_idx] = new_line; changed = true; }
+                } else {
+                    size_t insert_at = (name_idx >= 0 ? (size_t)name_idx + 1 : (uid_idx >= 0 ? (size_t)uid_idx + 1 : blk_start + 1));
+                    if (insert_at > lines.size()) insert_at = lines.size();
+                    lines.insert(lines.begin() + insert_at, new_line);
+                    changed = true; n = lines.size(); j++; // advance end
+                }
+            }
+            i = j; continue;
+        }
+        ++i;
+    }
+    if (changed) {
+        std::ofstream out(file, std::ios::binary | std::ios::trunc);
+        if (!out) return false;
+        for (auto &l : lines) out << l;
+        out.close();
+    }
+    return changed;
+}
+
 static void parse_lokomotive_cs2(const fs::path &p) {
     g_locos.clear();
     std::ifstream f(p);
@@ -708,6 +784,34 @@ int main(int argc, char** argv) {
         }
         os << "]}";
         res.set_content(os.str(), "application/json");
+    });
+
+    // API: icons list
+    svr.Get("/api/icons", [&](const httplib::Request&, httplib::Response &res){
+        res.set_content(icons_list_json(), "application/json");
+    });
+
+    // API: set loco icon
+    svr.Post("/api/loco_icon", [&](const httplib::Request& req, httplib::Response &res){
+        // Expect JSON with loco_id and icon
+        int uid = -1; std::string icon;
+        auto body = req.body;
+        auto find_num = [&](const char* key)->int{
+            auto pos = body.find(key); if (pos==std::string::npos) return -1; pos = body.find(':', pos); if (pos==std::string::npos) return -1; size_t j=pos+1; while (j<body.size() && (body[j]==' '||body[j]=='"')) j++; size_t k=j; while (k<body.size() && (isdigit((unsigned char)body[k])||body[k]=='-')) k++; if (k>j) return std::stoi(body.substr(j,k-j)); return -1; };
+        auto find_str = [&](const char* key)->std::string{
+            auto pos = body.find(key); if (pos==std::string::npos) return std::string(); pos = body.find(':', pos); if (pos==std::string::npos) return std::string(); size_t j=pos+1; while (j<body.size() && (body[j]==' ')) j++; if (j<body.size() && body[j]=='"') { j++; size_t k=j; while (k<body.size() && body[k] != '"') k++; if (k>j) return body.substr(j,k-j); } else { size_t k=j; while (k<body.size() && (isalnum((unsigned char)body[k]) || body[k]=='_' || body[k]=='-' || body[k]==' ')) k++; if (k>j) return body.substr(j,k-j); } return std::string(); };
+        uid = find_num("loco_id"); icon = find_str("icon");
+        if (uid <= 0 || icon.empty()) { res.status=400; res.set_content("{\"status\":\"error\",\"message\":\"loco_id and icon required\"}", "application/json"); return; }
+        fs::path lokfile = fs::path(g_config_dir)/"config"/"lokomotive.cs2";
+        bool ok = update_lok_icon_file(lokfile, uid, icon);
+        if (ok) {
+            // Re-parse loco list and publish reload event
+            try { parse_lokomotive_cs2(lokfile); } catch (...) {}
+            publish_event("{\"type\":\"loco_list_reloaded\"}");
+            res.set_content("{\"status\":\"ok\"}", "application/json");
+        } else {
+            res.status=500; res.set_content("{\"status\":\"error\",\"message\":\"update failed\"}", "application/json");
+        }
     });
 
     // API: control_event

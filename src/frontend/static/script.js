@@ -1050,3 +1050,134 @@ if (keyboardGrid) {
   });
 }
 
+
+// ==========================
+// ICON PICKER MODAL SECTION
+// ==========================
+// This section implements the icon picker dialog that opens when the central
+// locomotive image is clicked. It fetches all available icons from the backend
+// (GET /api/icons), displays them in a filterable grid along with their file
+// names, and lets the user either cancel or pick one. Selecting an icon sends
+// the choice to the backend (POST /api/loco_icon), which persists the icon
+// name (without file extension) into lokomotive.cs2 for the currently selected
+// locomotive. The modal can be dismissed via the close button, the Cancel
+// button, or by clicking on the backdrop.
+
+const iconPickerModal = document.getElementById('iconPickerModal');
+const iconPickerGrid = document.getElementById('iconPickerGrid');
+const iconPickerClose = document.getElementById('iconPickerClose');
+const iconPickerCancel = document.getElementById('iconPickerCancel');
+const iconFilter = document.getElementById('iconFilter');
+
+/**
+ * Open the icon picker modal and load icons from the backend.
+ *
+ * - Reveals the modal and disables background scrolling.
+ * - Requests the icon list via GET /api/icons.
+ * - Renders the grid and wires the filter input for client-side filtering.
+ */
+function openIconPicker() {
+  if (!currentLocoUid) return;
+  if (!iconPickerModal) return;
+  iconPickerModal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  // Fetch icon list
+  fetch('/api/icons')
+    .then(r => r.json())
+    .then(list => {
+      renderIconGrid(list || []);
+      iconFilter.value = '';
+      iconFilter.oninput = function() {
+        const q = iconFilter.value.trim().toLowerCase();
+        const filtered = (list || []).filter(it => it.name.toLowerCase().includes(q));
+        renderIconGrid(filtered);
+      };
+    })
+    .catch(() => {
+      renderIconGrid([]);
+    });
+}
+
+/**
+ * Close the icon picker modal and restore page scrolling.
+ */
+function closeIconPicker() {
+  if (!iconPickerModal) return;
+  iconPickerModal.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+/**
+ * Render the icon grid inside the modal.
+ *
+ * Each item shows a preview image and its original filename (with extension).
+ * Clicking a card triggers chooseIconForCurrentLoco() with the filename stem.
+ *
+ * @param {{name:string, file:string}[]} items - icons returned by /api/icons
+ */
+function renderIconGrid(items) {
+  if (!iconPickerGrid) return;
+  iconPickerGrid.innerHTML = '';
+  if (!Array.isArray(items)) return;
+  items.forEach(it => {
+    const card = document.createElement('div');
+    card.className = 'icon-card';
+    const img = new Image();
+    img.alt = it.name;
+    img.src = asset(`icons/${it.name}.png`);
+    img.onerror = function() {
+      img.onerror = null; img.src = asset('icons/leeres Gleis.png');
+    };
+    const cap = document.createElement('div');
+    cap.className = 'caption';
+    cap.textContent = it.file; // show original filename with extension
+    card.appendChild(img);
+    card.appendChild(cap);
+    card.onclick = function() { chooseIconForCurrentLoco(it.name); };
+    iconPickerGrid.appendChild(card);
+  });
+}
+
+/**
+ * Persist the selected icon for the current locomotive and update the UI.
+ *
+ * Sends POST /api/loco_icon with { loco_id, icon }, then updates the in-memory
+ * loco list and central image, re-renders the locomotive list, and closes the
+ * modal. The icon parameter must be the filename stem (without extension).
+ *
+ * @param {string} iconNameNoExt - chosen icon name without file extension
+ */
+function chooseIconForCurrentLoco(iconNameNoExt) {
+  if (!currentLocoUid) return;
+  fetch('/api/loco_icon', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ loco_id: currentLocoUid, icon: iconNameNoExt })
+  })
+  .then(r => r.json())
+  .then(_ => {
+    // Update local locList and UI
+    if (locList[currentLocoUid]) locList[currentLocoUid].icon = iconNameNoExt;
+    else if (locList[String(currentLocoUid)]) locList[String(currentLocoUid)].icon = iconNameNoExt;
+    locoImg.src = asset(`icons/${iconNameNoExt}.png`);
+    closeIconPicker();
+    // Re-render loco list to reflect icon change
+    renderLocoList();
+  })
+  .catch(() => {
+    closeIconPicker();
+  });
+}
+
+// Wire modal interactions: open on central loco image, close via X/Cancel/backdrop.
+if (locoImg) {
+  locoImg.style.cursor = 'pointer';
+  locoImg.addEventListener('click', openIconPicker);
+}
+if (iconPickerClose) iconPickerClose.onclick = closeIconPicker;
+if (iconPickerCancel) iconPickerCancel.onclick = closeIconPicker;
+if (iconPickerModal) {
+  iconPickerModal.addEventListener('click', function(e){
+    if (e.target === iconPickerModal || e.target.classList.contains('modal-backdrop')) closeIconPicker();
+  });
+}

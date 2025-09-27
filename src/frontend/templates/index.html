@@ -51,6 +51,24 @@
     </div>
   </div>
 
+  <!-- Icon picker modal -->
+  <div id="iconPickerModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="iconPickerTitle">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="iconPickerTitle">Icon auswählen</h2>
+        <button id="iconPickerClose" class="modal-close" aria-label="Schließen">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="iconFilter" placeholder="Filtern…" class="modal-filter" />
+        <div id="iconPickerGrid" class="icon-grid" aria-live="polite"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="iconPickerCancel" class="tab">Abbrechen</button>
+      </div>
+    </div>
+  </div>
+
   <div id="keyboardPage" class="page hidden">
     <div class="keyboard-area">
       <div class="keyboard-header">
