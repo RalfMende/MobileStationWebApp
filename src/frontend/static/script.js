@@ -279,12 +279,16 @@ function selectLoco(uid) {
   if (!isFinite(currentLocoUid)) return;
   const loco = locList[String(currentLocoUid)] || locList[currentLocoUid];
   locoDesc.textContent = loco ? (loco.name || '') : '';
-  const iconName = (loco && (loco.icon || loco.bild)) || 'leeres Gleis';
+  const iconName = (loco && (loco.icon || loco.bild)) || null;
   locoImg.onerror = function() {
     locoImg.onerror = null;
-    locoImg.src = asset('icons/leeres Gleis.png');
+    locoImg.src = '/static/grafics/unknown_loco.png';
   };
-  locoImg.src = asset(`icons/${iconName}.png`);
+  if (iconName) {
+    locoImg.src = asset(`icons/${iconName}.png`);
+  } else {
+    locoImg.src = '/static/grafics/unknown_loco.png';
+  }
   fetchAndApplyLocoState(currentLocoUid);
   localStorage.setItem('currentLocoUid', String(currentLocoUid));
 }
@@ -301,10 +305,11 @@ function renderLocoList() {
     img.title = loco.name;
     img.onerror = function() {
       img.onerror = null;
-      img.src = asset('icons/leeres Gleis.png');
+      img.src = '/static/grafics/unknown_loco.png';
     };
-    const iconName = loco.icon || loco.bild || 'leeres Gleis';
-    img.src = asset(`icons/${iconName}.png`);
+    const iconName = loco.icon || loco.bild;
+    if (iconName) img.src = asset(`icons/${iconName}.png`);
+    else img.src = '/static/grafics/unknown_loco.png';
     if (listEl) listEl.appendChild(img);
     img.onclick = () => selectLoco(loco.uid);
   });
@@ -1126,7 +1131,7 @@ function renderIconGrid(items) {
     img.alt = it.name;
     img.src = asset(`icons/${it.name}.png`);
     img.onerror = function() {
-      img.onerror = null; img.src = asset('icons/leeres Gleis.png');
+      img.onerror = null; img.src = '/static/grafics/unknown_loco.png';
     };
     const cap = document.createElement('div');
     cap.className = 'caption';
