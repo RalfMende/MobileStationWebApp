@@ -53,3 +53,24 @@ document.getElementById('backBtn').onclick = function() {
   window.location.href = '/';
 };
 
+// Dynamically fetch and display version/backend information
+(async function loadHealth() {
+  try {
+    const res = await fetch('/api/health', { cache: 'no-store' });
+    if (!res.ok) throw new Error('health fetch failed');
+    const data = await res.json();
+    const ver = (data && (data.version || data.Version)) || 'unknown';
+    const dv = document.getElementById('appVersion');
+    if (dv) dv.textContent = ver;
+    // Heuristic backend type: Python returns system_state as an enum/str; C++ returns plain string too; we can add hint by checking headers in future
+    const backend = data && typeof data.system_state !== 'undefined' ? 'active' : 'unknown';
+    const db = document.getElementById('backendType');
+    if (db) db.textContent = `HTTP OK (${backend})`;
+  } catch (e) {
+    const dv = document.getElementById('appVersion');
+    if (dv) dv.textContent = 'unavailable';
+    const db = document.getElementById('backendType');
+    if (db) db.textContent = 'unavailable';
+  }
+})();
+

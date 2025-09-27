@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mobile-station-webapp"
-version = "0.1.0"
-description = "Märklin Mobile Station WebApp (CS2/CS3 control via Flask Web UI)"
+version = "1.1.0"
+description = "Mobile Station WebApp (SRSEII control via Flask Web UI)"
 authors = [
   { name = "Ralf Mende", email = "mende.r@hotmail.de" }
 ]
