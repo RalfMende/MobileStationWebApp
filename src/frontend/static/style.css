@@ -30,8 +30,10 @@
 }
 .dir-btn {
   font-size: 1.5rem;
-  height: 3rem;
-  width: 3rem;
+  aspect-ratio: 1 / 1;
+  height: calc(var(--vh) * 0.1);
+  width: calc(var(--vh) * 0.1);
+  border: none;
 }
 .direction-buttons {
   display: flex;
@@ -88,7 +90,7 @@
 .keyboard-btn {
   aspect-ratio: 1 / 1;
   background: #222;
-  border: 2px solid #888;
+  border: none;
   border-radius: 10px;
   box-sizing: border-box;
   color: #fff;
@@ -96,11 +98,11 @@
   flex: 1 1 0;
   font-size: calc(var(--top-btn-h) * 2);
   font-weight: bold;
-  height: 3.5rem;
+  height: calc(var(--vh) * 0.1);
   margin: 0;
   min-width: 0;
   transition: background 0.2s, border 0.2s;
-  width: 3.5rem;
+  width: calc(var(--vh) * 0.1);
 }
 .keyboard-btn-col {
   align-items: center;
