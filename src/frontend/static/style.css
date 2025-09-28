@@ -1,6 +1,6 @@
 #keyboardHeaderText {
   color: #000;
-  font-size: clamp(0.9rem, calc(var(--top-btn-h) * 0.40), 1.6rem);
+  font-size: var(--control-font);
 }
 #locoImg.loco-img {
   background: var(--bar-gradient);
@@ -135,6 +135,7 @@
 }
 .keyboard-btn-group-label {
   color: #000;
+  font-size: var(--control-font);
 }
 .keyboard-btn.active {
   background: rgba(255,255,255,0.3);
@@ -179,7 +180,7 @@
   color: #fff;
   cursor: pointer;
   display: flex;
-  font-size: calc(clamp(0.9rem, calc(var(--top-btn-h) * 0.40), 1.6rem) * 2);
+  font-size: calc(var(--control-font) * 2);
   font-weight: bold;
   justify-content: center;
   margin: 0 0.05rem;
@@ -202,6 +203,7 @@
 .loco-desc {
   font-weight: 700;
   margin: 0.3rem;
+  font-size: var(--control-font);
 }
 .loco-img {
   height: 80px;
@@ -278,7 +280,7 @@
 }
 .speed-display {
   color: var(--go-green) !important;
-  font-size: 1.3rem;
+  font-size: calc(var(--control-font) * 2);
   font-weight: 700;
 }
 .speed-fill {
@@ -324,7 +326,7 @@
   align-items: center;
   border-radius: calc(var(--top-btn-h) * 0.20);
   display: inline-flex;
-  font-size: clamp(0.9rem, calc(var(--top-btn-h) * 0.40), 1.6rem);
+  font-size: var(--control-font);
   height: var(--top-btn-h);
   justify-content: center;
   line-height: 1;
@@ -360,6 +362,7 @@
   --top-btn-h: calc(var(--bar-h) * 0.5);
   --topbar-h: 0px;
   --vh: var(--app-height, 100svh);
+  --control-font: clamp(0.9rem, calc(var(--top-btn-h) * 0.40), 1.6rem);
 }
 html, body {
   background: black;
