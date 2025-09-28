@@ -282,12 +282,12 @@ function selectLoco(uid) {
   const iconName = (loco && (loco.icon || loco.bild)) || null;
   locoImg.onerror = function() {
     locoImg.onerror = null;
-    locoImg.src = '/static/grafics/unknown_loco.png';
+    locoImg.src = '/static/grafics/unknown_loco_txt.png';
   };
   if (iconName) {
     locoImg.src = asset(`icons/${iconName}.png`);
   } else {
-    locoImg.src = '/static/grafics/unknown_loco.png';
+    locoImg.src = '/static/grafics/unknown_loco_txt.png';
   }
   fetchAndApplyLocoState(currentLocoUid);
   localStorage.setItem('currentLocoUid', String(currentLocoUid));
