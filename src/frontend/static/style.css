@@ -99,11 +99,11 @@
   flex: 1 1 0;
   font-size: calc(var(--top-btn-h) * 2);
   font-weight: bold;
-  height: calc(var(--vh) * 0.1);
+  height: calc(var(--vh) * 0.12);
   margin: 0;
   min-width: 0;
   transition: background 0.2s, border 0.2s;
-  width: calc(var(--vh) * 0.1);
+  width: calc(var(--vh) * 0.12);
 }
 .keyboard-btn-col {
   align-items: center;
@@ -126,7 +126,7 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 5rem;
+  gap: 3rem;
   justify-content: center;
   margin-top: 0.2rem;
   max-width: 20vw;
