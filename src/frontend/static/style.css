@@ -1,6 +1,7 @@
 #keyboardHeaderText {
   color: #000;
   font-size: var(--control-font);
+  font-weight: 700;
 }
 #locoImg.loco-img {
   background: var(--bar-gradient);
@@ -136,6 +137,8 @@
 .keyboard-btn-group-label {
   color: #000;
   font-size: var(--control-font);
+  display: block;
+  margin-bottom: 0.6rem;
 }
 .keyboard-btn.active {
   background: rgba(255,255,255,0.3);
@@ -168,7 +171,7 @@
 }
 .keyboard-header {
   margin-bottom: 0.5rem;
-  margin-top: 0.5rem;
+  margin-top: 1.1rem;
   text-align: center;
   width: 100%;
 }
