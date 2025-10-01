@@ -91,8 +91,10 @@
 .keyboard-btn {
   aspect-ratio: 1 / 1;
   background: #222;
-  border: none;
-  border-radius: 10px;
+  border: none !important;
+  border-radius:  1.5rem;
+  box-shadow: none !important;
+  outline: none !important;
   box-sizing: border-box;
   color: #fff;
   cursor: pointer;
@@ -122,7 +124,8 @@
   align-items: center;
   background: #fff;
   border-radius: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  box-shadow: none;
+  border: none;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
