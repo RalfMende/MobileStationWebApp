@@ -147,6 +147,18 @@ document.addEventListener('DOMContentLoaded', function() {
     .catch(() => {
       initializeKeyboardButtons([]);
     });
+
+  // Hint browser to lazy load and decode loco list images asynchronously (initial paint faster)
+  const locoListEl = document.getElementById('locoList');
+  if (locoListEl) {
+    // apply after render loop
+    requestAnimationFrame(function(){
+      locoListEl.querySelectorAll('img').forEach(function(img){
+        img.loading = 'lazy';
+        img.decoding = 'async';
+      });
+    });
+  }
 });
 
 //

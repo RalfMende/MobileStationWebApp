@@ -155,20 +155,21 @@
 
 <script>
 (function() {
-  function setAppHeight() {
+  function setAppHeightOnce() {
     var vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
     document.documentElement.style.setProperty('--app-height', vh + 'px');
-    var topbar = document.querySelector('.top-bar');
-    var th = topbar ? topbar.offsetHeight : 0;
-    document.documentElement.style.setProperty('--topbar-h', th + 'px');
+    // Measure topbar after layout to get an accurate value
+    requestAnimationFrame(function(){
+      var topbar = document.querySelector('.top-bar');
+      var th = topbar ? Math.round(topbar.offsetHeight) : 0;
+      document.documentElement.style.setProperty('--topbar-h', th + 'px');
+    });
   }
-  window.addEventListener('resize', setAppHeight);
-  window.addEventListener('orientationchange', setAppHeight);
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', setAppHeight);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setAppHeightOnce, { once: true });
+  } else {
+    setAppHeightOnce();
   }
-  document.addEventListener('DOMContentLoaded', setAppHeight);
-  setAppHeight();
 })();
 </script>
 

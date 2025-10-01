@@ -241,7 +241,7 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  height: calc(100dvh - var(--topbar-h));
+  height: calc(var(--vh) - var(--topbar-h));
   overflow: hidden;
   padding-bottom: env(safe-area-inset-bottom);
 }
