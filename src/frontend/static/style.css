@@ -129,7 +129,7 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 3rem;
+  gap: calc(var(--vh) * 0.04);
   justify-content: center;
   margin-top: 0.2rem;
   max-width: 20vw;
