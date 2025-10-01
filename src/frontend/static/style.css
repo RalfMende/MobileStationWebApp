@@ -38,7 +38,7 @@
 }
 .direction-buttons {
   display: flex;
-  gap: 4rem;
+  gap: calc(var(--slider-w) * 0.2);;
 }
 .functions-side {
   align-items: stretch;
