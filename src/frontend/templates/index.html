@@ -154,10 +154,13 @@
   <script src="/static/script.js"></script>
 
 <script>
+// Set viewport height and width once at load
 (function() {
-  function setAppHeightOnce() {
+  function setAppSizeOnce() {
     var vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+    var vw = (window.visualViewport && window.visualViewport.width) || window.innerWidth;
     document.documentElement.style.setProperty('--app-height', vh + 'px');
+    document.documentElement.style.setProperty('--app-width', vw + 'px');
     // Measure topbar after layout to get an accurate value
     requestAnimationFrame(function(){
       var topbar = document.querySelector('.top-bar');
@@ -166,9 +169,9 @@
     });
   }
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', setAppHeightOnce, { once: true });
+    document.addEventListener('DOMContentLoaded', setAppSizeOnce, { once: true });
   } else {
-    setAppHeightOnce();
+    setAppSizeOnce();
   }
 })();
 </script>

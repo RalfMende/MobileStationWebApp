@@ -340,7 +340,7 @@
 .modal.hidden { display: none !important; }
 .modal { position: fixed; inset: 0; z-index: 1000; }
 .modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.6); }
-.modal-content { position: relative; background: #111; color: #fff; width: min(900px, 95vw); max-height: 90vh; margin: 5vh auto; border-radius: 8px; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+.modal-content { position: relative; background: #111; color: #fff; width: min(900px, calc(var(--app-width, 100vw) * 0.95)); max-height: 90vh; margin: 5vh auto; border-radius: 8px; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
 .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 0.3rem 0.8rem; background: var(--bar-gradient); border-top-left-radius: 8px; border-top-right-radius: 8px; }
 .modal-header h2 { margin: 0; font-size: clamp(0.9rem, calc(var(--top-btn-h) * 0.40), 1.2rem); }
 .modal-body { padding: 0.8rem; overflow: auto; }
@@ -354,13 +354,14 @@
 .icon-card .caption { font-size: 0.8rem; color: #ddd; text-align: center; word-break: break-word; }
 :root {
   --app-height: 100svh;
+  --app-width: 100vw;
   --bar-gradient: linear-gradient(to bottom, rgb(165, 165, 165), rgb(69, 69, 69));
   --bar-h: calc(var(--vh) * 0.1);
   --func-btn-size: calc(var(--vh) * 0.1);
   --go-green: green;
   --loco-item-h: calc(var(--bar-h) * 0.5);
   --slider-h: calc(var(--vh) * 0.45);
-  --slider-w: 40vw;
+  --slider-w: calc(var(--app-width) * 0.4);
   --stop-label-chars: 4;
   --top-btn-h: calc(var(--bar-h) * 0.5);
   --topbar-h: 0px;
@@ -369,7 +370,7 @@
   --kb-header-h: clamp(24px, calc(var(--vh) * 0.06), 64px);
   --kb-gap: clamp(6px, calc(var(--vh) * 0.02), 16px);
   --kb-inner-gap: clamp(6px, calc(var(--vh) * 0.03), 20px);
-  --kb-btn-size: calc(var(--vh) * 0.12);
+  --kb-btn-size: calc(var(--vh) * 0.13);
   --kb-col-gap: clamp(8px, calc(var(--slider-w) * 0.03), 24px);
 }
 html, body {
