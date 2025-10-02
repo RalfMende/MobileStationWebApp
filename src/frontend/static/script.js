@@ -876,11 +876,11 @@ buildKeyboardBottomBar();
  * before rebuilding.
  *
  * Side effects:
- * - Mutates the DOM under '.keyboard-grid-4x4'.
+ * - Mutates the DOM under '.keyboard-grid'.
  */
 
 function buildKeyboardGrid() {
-  const grid = document.querySelector('.keyboard-grid-4x4');
+  const grid = document.querySelector('.keyboard-grid');
   if (!grid) return;
   grid.innerHTML = '';
   const colsPerRow = 4;
@@ -1048,7 +1048,7 @@ forwardBtn.addEventListener('click', () => setLocoDirection(Direction.FORWARD));
 // button sends a keyboard_event to the backend with the appropriate index and value (0 for
 // the left/straight button, 1 for the right/diverging button). We attach a single delegated
 // listener to the grid container so it works even after rebuilding the grid.
-const keyboardGrid = document.querySelector('.keyboard-grid-4x4');
+const keyboardGrid = document.querySelector('.keyboard-grid');
 if (keyboardGrid) {
   keyboardGrid.addEventListener('click', function(ev) {
     const btn = ev.target instanceof Element ? ev.target.closest('.keyboard-btn') : null;
