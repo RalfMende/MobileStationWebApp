@@ -101,16 +101,17 @@
   flex: 1 1 0;
   font-size: calc(var(--top-btn-h) * 2);
   font-weight: bold;
-  height: calc(var(--vh) * 0.12);
+  height: var(--kb-btn-size);
   margin: 0;
   min-width: 0;
   transition: background 0.2s, border 0.2s;
-  width: calc(var(--vh) * 0.12);
+  width: var(--kb-btn-size);
 }
 .keyboard-btn-col {
   align-items: center;
   display: flex;
-  flex: 1;
+  flex: 0 0 var(--kb-btn-size);
+  max-width: var(--kb-btn-size);
   flex-direction: column;
   justify-content: flex-start;
   min-width: 0;
@@ -132,10 +133,10 @@
   gap: var(--kb-inner-gap);
   justify-content: center;
   margin-top: 0;
-  max-width: 20vw;
+  max-width: var(--kb-btn-size);
   min-width: 0;
-  padding: calc(var(--kb-gap) * 0.6) var(--kb-gap);
-  width: 20vw;
+  padding: calc(var(--kb-gap) * 0.6) 0;
+  width: var(--kb-btn-size);
 }
 .keyboard-btn-group-label {
   color: #000;
@@ -192,12 +193,15 @@
 .keyboard-row {
   display: flex;
   flex-direction: row;
-  gap: 1rem;
-  justify-content: center;
+  gap: var(--kb-col-gap);
+  justify-content: flex-start;
   margin: 0;
   flex: 1;
   align-items: center;
   width: 100%;
+  box-sizing: border-box;
+  padding-left: calc(var(--kb-col-gap) / 2);
+  padding-right: calc(var(--kb-col-gap) / 2);
 }
 .loco-desc {
   font-weight: 700;
@@ -362,10 +366,11 @@
   --topbar-h: 0px;
   --vh: var(--app-height, 100svh);
   --control-font: clamp(0.9rem, calc(var(--top-btn-h) * 0.40), 1.6rem);
-  /* Keyboard layout scaling */
   --kb-header-h: clamp(24px, calc(var(--vh) * 0.06), 64px);
   --kb-gap: clamp(6px, calc(var(--vh) * 0.02), 16px);
   --kb-inner-gap: clamp(6px, calc(var(--vh) * 0.03), 20px);
+  --kb-btn-size: calc(var(--vh) * 0.12);
+  --kb-col-gap: clamp(8px, calc(var(--slider-w) * 0.03), 24px);
 }
 html, body {
   background: black;
