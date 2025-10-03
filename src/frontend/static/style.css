@@ -196,7 +196,6 @@
 .keyboard-row {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  column-gap: var(--kb-col-gap);
   align-items: center;
   justify-items: center;
   margin: 0;
@@ -372,7 +371,6 @@
   --kb-group-inner-gap: clamp(6px, calc(var(--vh) * 0.03), 20px);
   --kb-header-h: clamp(24px, calc(var(--vh) * 0.06), 64px);
   --kb-gap: clamp(6px, calc(var(--vh) * 0.02), 16px);
-  --kb-col-gap: clamp(8px, calc(var(--slider-w) * 0.03), 24px);
 }
 html, body {
   background: black;
