@@ -38,7 +38,7 @@
 namespace fs = std::filesystem;
 
 // Application version (keep in sync with Python package version)
-static const char* kMsWebAppVersion = "1.1.0";
+static const char* kMsWebAppVersion = "1.1.1";
 
 // ---- Basic types/state ----
 struct Loco {
