@@ -99,7 +99,7 @@
   color: #fff;
   cursor: pointer;
   flex: 1 1 0;
-  font-size: calc(var(--top-btn-h) * 2);
+  font-size: var(--control-font);
   font-weight: bold;
   height: var(--kb-btn-size);
   margin: 0;
@@ -110,11 +110,13 @@
 .keyboard-btn-col {
   align-items: center;
   display: flex;
-  flex: 0 0 var(--kb-btn-size);
-  max-width: var(--kb-btn-size);
   flex-direction: column;
   justify-content: flex-start;
   min-width: 0;
+  flex: 0 0 var(--kb-btn-size);
+  width: var(--kb-btn-size);
+  max-width: var(--kb-btn-size);
+  justify-self: center;
 }
 .keyboard-btn-debug {
   color: #222;
@@ -130,13 +132,13 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: var(--kb-inner-gap);
+  gap: var(--kb-group-inner-gap);
   justify-content: center;
   margin-top: 0;
-  max-width: var(--kb-btn-size);
   min-width: 0;
   padding: calc(var(--kb-gap) * 0.6) 0;
   width: var(--kb-btn-size);
+  max-width: var(--kb-btn-size);
 }
 .keyboard-btn-group-label {
   color: #000;
@@ -153,13 +155,14 @@
   border-color: #0a84ff;
 }
 .keyboard-grid {
-  align-items: center;
+  align-items: stretch;
   display: flex;
   flex: 1;
   flex-direction: column;
   justify-content: space-evenly;
   gap: var(--kb-gap);
   margin: 0;
+  width: 100%;
 }
 .keyboard-header {
   height: var(--kb-header-h);
@@ -191,17 +194,15 @@
   color: #000;
 }
 .keyboard-row {
-  display: flex;
-  flex-direction: row;
-  gap: var(--kb-col-gap);
-  justify-content: flex-start;
-  margin: 0;
-  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  column-gap: var(--kb-col-gap);
   align-items: center;
+  justify-items: center;
+  margin: 0;
   width: 100%;
   box-sizing: border-box;
-  padding-left: calc(var(--kb-col-gap) / 2);
-  padding-right: calc(var(--kb-col-gap) / 2);
+  padding: 0;
 }
 .loco-desc {
   font-weight: 700;
@@ -367,10 +368,10 @@
   --topbar-h: 0px;
   --vh: var(--app-height, 100svh);
   --control-font: clamp(0.9rem, calc(var(--top-btn-h) * 0.40), 1.6rem);
+  --kb-btn-size: calc(var(--app-width) * 0.2);
+  --kb-group-inner-gap: clamp(6px, calc(var(--vh) * 0.03), 20px);
   --kb-header-h: clamp(24px, calc(var(--vh) * 0.06), 64px);
   --kb-gap: clamp(6px, calc(var(--vh) * 0.02), 16px);
-  --kb-inner-gap: clamp(6px, calc(var(--vh) * 0.03), 20px);
-  --kb-btn-size: calc(var(--vh) * 0.13);
   --kb-col-gap: clamp(8px, calc(var(--slider-w) * 0.03), 24px);
 }
 html, body {
