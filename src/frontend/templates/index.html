@@ -3,7 +3,6 @@
 <head>
   <link rel="apple-touch-icon" href="/static/grafics/apple-touch-icon-180.png">
   <link rel="manifest" href="/static/manifest.webmanifest">
-  <link rel="preload" as="image" href="/static/grafics/apple-touch-icon-180.png">
   <meta name="apple-mobile-web-app-title" content="MobileStation WebApp">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -12,45 +11,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>MobileStation WebApp</title>
   <link rel="stylesheet" href="/static/style.css" />
-  <style>
-    /* Show loader immediately; keep app rendered but invisible for correct layout measurements */
-    html:not(.app-ready) #app { opacity: 0; }
-    .app-loader {
-      position: fixed; inset: 0;
-      display: flex; align-items: center; justify-content: center;
-      background: #111; color: #fff;
-      font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      z-index: 2147483647; /* above everything */
-    }
-    .app-loader .stack { display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center; }
-    .app-loader img { width: 96px; height:96px; margin-bottom: 32px;}
-    html.app-ready .app-loader { display: none; }
-  </style>
   <script>window.CONFIG_PATH = "{{ config_path }}"; // HTTP-Basis für benutzer Daten (Icons etc.)</script>
 </head>
 <body>
-  <!-- Lightweight loader shown until DOM is ready -->
-  <div class="app-loader" role="status" aria-live="polite">
-    <div class="stack">
-      <img src="/static/grafics/apple-touch-icon-180.png" width="128" height="128" decoding="async" fetchpriority="high" alt="">
-      <div>Loading MSWebApp ...</div>
-    </div>
-  </div>
-  <script>
-    (function(){
-      function ready(){
-        // Loader bleibt mindestens 2 Sekunden sichtbar
-        setTimeout(function(){
-          document.documentElement.classList.add('app-ready');
-        }, 2000);
-      }
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', ready, { once: true });
-      } else { ready(); }
-    })();
-  </script>
-
-  <div id="app">
   <div class="top-bar">
     <button id="infoBtn" class="tab">info</button>
     <div class="tabs">
@@ -188,9 +151,7 @@
     </div>
   </div>
 
-  </div><!-- /#app -->
-
-  <script src="/static/script.js" defer></script>
+  <script src="/static/script.js"></script>
 
 <script>
 // Set viewport height and width once at load
