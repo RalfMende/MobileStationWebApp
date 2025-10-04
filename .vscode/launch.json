@@ -32,7 +32,8 @@
         "--udp-ip", "Gleisbox",
         "--host", "0.0.0.0",
         "--port", "6020",
-        "--www", "${workspaceFolder}/src/frontend"
+        "--www", "${workspaceFolder}/src/frontend",
+        "--bind"
       ],
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false,

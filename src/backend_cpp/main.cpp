@@ -68,6 +68,7 @@ static int g_device_uid = 0; // sender uid for CAN id hash
 static bool g_verbose = false;
 static std::string g_frontend_dir_override; // optional path to frontend dir (templates/static)
 static std::map<int, std::string> g_icon_overrides; // uid -> icon name (stem)
+static bool g_enable_bind_timer = false; // enable CMD_BIND timer only when --bind is passed
 
 // ---- Utilities ----
 static std::string trim(const std::string &s) {
@@ -539,6 +540,10 @@ static void udp_send_frame(uint32_t can_id, const std::vector<uint8_t> &payload,
 }
 
 static void udp_listener_thread(std::atomic<bool>& stop_flag) {
+    using Clock = std::chrono::steady_clock;
+    bool mfx_bind_pending = false;
+    Clock::time_point mfx_bind_deadline{};
+
 #ifdef _WIN32
     SOCKET s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (s == INVALID_SOCKET) return;
@@ -554,24 +559,45 @@ static void udp_listener_thread(std::atomic<bool>& stop_flag) {
     if (bind(s, (sockaddr*)&addr, sizeof(addr)) < 0) { close(s); return; }
     struct timeval tv; tv.tv_sec = 1; tv.tv_usec = 0; setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 #endif
+
     while (!stop_flag.load()) {
-    uint8_t buf[64];
+        // Optional MFX-BIND timer only active if --bind flag set
+        if (g_enable_bind_timer && mfx_bind_pending && Clock::now() >= mfx_bind_deadline) {
+            mfx_bind_pending = false;
+            int loco_id = 16385; int fn = 1; int value = 1;
+            g_loco_fn[loco_id][fn] = (value!=0);
+            publish_event(function_event_json(loco_id, fn, g_loco_fn[loco_id][fn]));
+            uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_FUNCTION, 0, 0);
+            udp_send_frame(can_id, payload_function((uint32_t)loco_id, fn, (value!=0)?1:0), 6);
+            if (g_verbose) fprintf(stderr, "[MFX-BIND] Timer expired -> Requesting update of Lokomotive.cs2\n");
+        }
+
+        uint8_t buf[64];
 #ifdef _WIN32
-    sockaddr_in src{}; int srclen = sizeof(src);
-    int recvd = recvfrom(s, reinterpret_cast<char*>(buf), (int)sizeof(buf), 0, (sockaddr*)&src, &srclen);
-    if (recvd == SOCKET_ERROR) { continue; }
+        sockaddr_in src{}; int srclen = sizeof(src);
+        int recvd = recvfrom(s, reinterpret_cast<char*>(buf), (int)sizeof(buf), 0, (sockaddr*)&src, &srclen);
+        if (recvd == SOCKET_ERROR) { continue; }
 #else
-    sockaddr_in src{}; socklen_t srclen = sizeof(src);
-    int recvd = recvfrom(s, buf, sizeof(buf), 0, (sockaddr*)&src, &srclen);
-    if (recvd < 0) { continue; }
+        sockaddr_in src{}; socklen_t srclen = sizeof(src);
+        int recvd = recvfrom(s, buf, sizeof(buf), 0, (sockaddr*)&src, &srclen);
+        if (recvd < 0) { continue; }
 #endif
-        if (recvd != 13) continue;
+        if (recvd != 13) continue; //Only 13-Byte Frames
+
         uint32_t can_id = (uint32_t(buf[0])<<24) | (uint32_t(buf[1])<<16) | (uint32_t(buf[2])<<8) | uint32_t(buf[3]);
         uint8_t dlc = buf[4];
         const uint8_t *data = buf + 5;
-        int cmd_resp = (can_id >> 16) & 0x1FF; // 9 bits
+        int cmd_resp = (can_id >> 16) & 0x1FF; // 9 bits (command + resp bit)
         int command = (cmd_resp >> 1) & 0xFF;
         int resp_bit = cmd_resp & 1;
+
+        if (command == CMD_BIND && g_enable_bind_timer) {
+            // (Re)start 4s timer on each CMD_BIND
+            mfx_bind_deadline = Clock::now() + std::chrono::seconds(4);
+            mfx_bind_pending = true;
+            if (g_verbose) fprintf(stderr, "[MFX-BIND] Received -> restart 4s timer\n");
+        }
+
         if (resp_bit == 1) {
             if (command == CMD_SYSTEM && dlc >= 5) {
                 uint8_t sub = data[4];
@@ -605,6 +631,7 @@ static void udp_listener_thread(std::atomic<bool>& stop_flag) {
             }
         }
     }
+
 #ifdef _WIN32
     closesocket(s);
 #else
@@ -675,6 +702,7 @@ int main(int argc, char** argv) {
         else if (a == "--port") g_http_port = std::stoi(next(i));
         else if (a == "--www") { g_frontend_dir_override = next(i); }
         else if (a == "--verbose" || a == "-v") { g_verbose = true; }
+        else if (a == "--bind") { g_enable_bind_timer = true; }
         else if (a == "--help" || a == "-h") {
             printf("Usage: mswebapp_cpp [options]\n");
             printf("  --config <dir>     Path to config directory (contains config/, icons/, fcticons/, ...)\n");
@@ -683,6 +711,7 @@ int main(int argc, char** argv) {
             printf("  --port <port>      HTTP port (default 6020)\n");
             printf("  --www <dir>        Frontend directory containing templates/ and static/\n");
             printf("  --verbose          Verbose logging\n");
+            printf("  --bind             Enable CMD_BIND 4s timer (send FUNCTION loco 0x4001 fn1 on expiry)\n");
             return 0;
         }
     }
