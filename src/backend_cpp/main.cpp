@@ -592,7 +592,7 @@ static void udp_listener_thread(std::atomic<bool>& stop_flag) {
         int resp_bit = cmd_resp & 1;
 
         if (command == CMD_BIND && g_enable_bind_timer) {
-            // (Re)start 4s timer on each CMD_BIND
+            // (Re)start MFX-Bind timer on each CMD_BIND
             mfx_bind_deadline = Clock::now() + std::chrono::seconds(4);
             mfx_bind_pending = true;
             if (g_verbose) fprintf(stderr, "[MFX-BIND] Received -> restart 4s timer\n");
@@ -701,8 +701,8 @@ int main(int argc, char** argv) {
         else if (a == "--host") g_bind_host = next(i);
         else if (a == "--port") g_http_port = std::stoi(next(i));
         else if (a == "--www") { g_frontend_dir_override = next(i); }
-        else if (a == "--verbose" || a == "-v") { g_verbose = true; }
         else if (a == "--bind") { g_enable_bind_timer = true; }
+        else if (a == "--verbose" || a == "-v") { g_verbose = true; }
         else if (a == "--help" || a == "-h") {
             printf("Usage: mswebapp_cpp [options]\n");
             printf("  --config <dir>     Path to config directory (contains config/, icons/, fcticons/, ...)\n");
@@ -710,8 +710,8 @@ int main(int argc, char** argv) {
             printf("  --host <addr>      HTTP bind host (default 0.0.0.0)\n");
             printf("  --port <port>      HTTP port (default 6020)\n");
             printf("  --www <dir>        Frontend directory containing templates/ and static/\n");
+            printf("  --bind             Enable requesting new loco config after MFX-BIND command automatically\n");
             printf("  --verbose          Verbose logging\n");
-            printf("  --bind             Enable CMD_BIND 4s timer (send FUNCTION loco 0x4001 fn1 on expiry)\n");
             return 0;
         }
     }
