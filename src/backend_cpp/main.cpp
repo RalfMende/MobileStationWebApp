@@ -564,7 +564,7 @@ static void udp_listener_thread(std::atomic<bool>& stop_flag) {
         // Optional MFX-BIND timer only active if --bind flag set
         if (g_enable_bind_timer && mfx_bind_pending && Clock::now() >= mfx_bind_deadline) {
             mfx_bind_pending = false;
-            int loco_id = 16385; int fn = 1; int value = 1;
+            int loco_id = 1; int fn = 1; int value = 1;
             g_loco_fn[loco_id][fn] = (value!=0);
             publish_event(function_event_json(loco_id, fn, g_loco_fn[loco_id][fn]));
             uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_FUNCTION, 0, 0);
