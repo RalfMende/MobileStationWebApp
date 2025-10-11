@@ -69,6 +69,7 @@ static bool g_verbose = false;
 static std::string g_frontend_dir_override; // optional path to frontend dir (templates/static)
 static std::map<int, std::string> g_icon_overrides; // uid -> icon name (stem)
 static bool g_enable_bind_timer = false; // enable CMD_BIND timer only when --bind is passed
+static int g_bind_timeout_ms = 1000;     // timeout for MFX-BIND timer in milliseconds (default 1s)
 
 // ---- Utilities ----
 static std::string trim(const std::string &s) {
@@ -106,6 +107,19 @@ static int parse_int_auto(const std::string &s) {
         try { return std::stoi(v, nullptr, 16); } catch (...) { return 0; }
     }
     try { return std::stoi(v); } catch(...) { return 0; }
+}
+
+// Handle --bind flag with optional numeric timeout argument
+static void handle_bind_flag(int &i, int argc, char** argv) {
+    g_enable_bind_timer = true;
+    if (i + 1 < argc) {
+        std::string nv = argv[i + 1];
+        if (!nv.empty() && (std::isdigit((unsigned char)nv[0]) || (nv.size() > 2 && nv[0] == '0' && (nv[1] == 'x' || nv[1] == 'X')))) {
+            ++i;
+            int v = parse_int_auto(nv);
+            if (v > 0) g_bind_timeout_ms = v;
+        }
+    }
 }
 
 // Resolve a hostname (or numeric IP) to an IPv4 dotted string; on failure, return input unchanged
@@ -591,11 +605,12 @@ static void udp_listener_thread(std::atomic<bool>& stop_flag) {
         int command = (cmd_resp >> 1) & 0xFF;
         int resp_bit = cmd_resp & 1;
 
-        if (command == CMD_BIND && g_enable_bind_timer) {
-            // (Re)start MFX-Bind timer on each CMD_BIND
-            mfx_bind_deadline = Clock::now() + std::chrono::seconds(4);
+        if ((command == CMD_BIND || command == CMD_READ_CONFIG) && g_enable_bind_timer) {
+            // (Re)start MFX-Bind timer on each BIND or READ_CONFIG
+            int ms = (g_bind_timeout_ms > 0) ? g_bind_timeout_ms : 1000;
+            mfx_bind_deadline = Clock::now() + std::chrono::milliseconds(ms);
             mfx_bind_pending = true;
-            if (g_verbose) fprintf(stderr, "[MFX-BIND] Received -> restart 4s timer\n");
+            if (g_verbose) fprintf(stderr, "[MFX-BIND] Received -> restart %d ms timer\n", ms);
         }
 
         if (resp_bit == 1) {
@@ -701,7 +716,12 @@ int main(int argc, char** argv) {
         else if (a == "--host") g_bind_host = next(i);
         else if (a == "--port") g_http_port = std::stoi(next(i));
         else if (a == "--www") { g_frontend_dir_override = next(i); }
-        else if (a == "--bind") { g_enable_bind_timer = true; }
+        else if (a == "--bind") { handle_bind_flag(i, argc, argv); }
+        else if (a.rfind("--bind=", 0) == 0) {
+            g_enable_bind_timer = true;
+            std::string nv = a.substr(7);
+            int v = parse_int_auto(nv); if (v > 0) g_bind_timeout_ms = v;
+        }
         else if (a == "--verbose" || a == "-v") { g_verbose = true; }
         else if (a == "--help" || a == "-h") {
             printf("Usage: mswebapp_cpp [options]\n");
@@ -710,7 +730,7 @@ int main(int argc, char** argv) {
             printf("  --host <addr>      HTTP bind host (default 0.0.0.0)\n");
             printf("  --port <port>      HTTP port (default 6020)\n");
             printf("  --www <dir>        Frontend directory containing templates/ and static/\n");
-            printf("  --bind             Enable requesting new loco config after MFX-BIND command automatically\n");
+            printf("  --bind[=<ms>]      Enable requesting new loco config after MFX-BIND command automatically; optional timeout in ms (default %d)\n", g_bind_timeout_ms);
             printf("  --verbose          Verbose logging\n");
             return 0;
         }
