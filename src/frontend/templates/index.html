@@ -11,6 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>MobileStation WebApp</title>
   <link rel="stylesheet" href="/static/style.css" />
+  <link rel="preload" as="image" href="/static/grafics/apple-touch-icon-180.png" />
   <script>window.CONFIG_PATH = "{{ config_path }}"; // HTTP-Basis für benutzer Daten (Icons etc.)</script>
   <style>
     #infoModal a, #infoModal a:visited, #infoModal a:hover {
@@ -183,7 +184,7 @@
     </div>
   </div>
 
-  <script src="/static/script.js"></script>
+  <script src="/static/script.js" defer></script>
 
 <script>
 // Set viewport height and width once at load

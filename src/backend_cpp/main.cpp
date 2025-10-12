@@ -769,7 +769,7 @@ int main(int argc, char** argv) {
     fs::path static_dir = frontend_dir / "static";
     fs::path templates_dir = frontend_dir / "templates";
 
-    // Root and info: serve templates directly (no templating, but inject CONFIG_PATH via a simple replacement)
+    // Root: serve template with simple replacement and explicit no-cache
     auto serve_template = [&](const fs::path &p, httplib::Response &res){
         std::ifstream f(p, std::ios::binary);
         if (!f) { res.status = 404; return; }
@@ -783,25 +783,72 @@ int main(int argc, char** argv) {
             pos += g_public_cfg.size();
         }
         res.set_content(html, "text/html; charset=utf-8");
+        res.set_header("Cache-Control", "no-cache");
     };
 
     svr.Get("/", [&](const httplib::Request&, httplib::Response &res){
         serve_template(templates_dir/"index.html", res);
     });
-    svr.Get("/info", [&](const httplib::Request&, httplib::Response &res){
-        serve_template(templates_dir/"info.html", res);
-    });
+    // Info page removed: info is now shown via in-page modal
 
-    // Service worker
+    // Service worker (no-cache to ensure updates roll out)
     svr.Get("/sw.js", [&](const httplib::Request&, httplib::Response &res){
         std::ifstream f(frontend_dir/"sw.js", std::ios::binary);
         if (!f) { res.status = 404; return; }
         std::ostringstream buf; buf << f.rdbuf();
         res.set_content(buf.str(), "application/javascript");
+        res.set_header("Cache-Control", "no-cache");
     });
 
-    // Static
-    svr.set_mount_point("/static", static_dir.string());
+    // Static: custom handler with ETag, long cache, and optional precompressed .gz delivery
+    auto mime_of = [](const std::string& ext)->const char*{
+        if (ext==".css") return "text/css";
+        if (ext==".js")  return "application/javascript";
+        if (ext==".png") return "image/png";
+        if (ext==".jpg"||ext==".jpeg") return "image/jpeg";
+        if (ext==".webp") return "image/webp";
+        if (ext==".svg") return "image/svg+xml";
+        if (ext==".ico") return "image/x-icon";
+        if (ext==".json") return "application/json";
+        return "application/octet-stream";
+    };
+    auto compute_etag = [](const fs::path& p)->std::string{
+        std::error_code ec;
+        uintmax_t sz = fs::file_size(p, ec);
+        auto mt = fs::last_write_time(p, ec).time_since_epoch().count();
+        return "\"" + std::to_string(sz) + "-" + std::to_string(mt) + "\"";
+    };
+    svr.Get(R"(/static/(.*))", [&](const httplib::Request& req, httplib::Response &res){
+        std::string rel = req.matches[1].str();
+        fs::path wanted = static_dir / rel;
+        // Prefer precompressed .gz if client accepts gzip
+        bool accept_gzip = req.has_header("Accept-Encoding") && req.get_header_value("Accept-Encoding").find("gzip") != std::string::npos;
+        fs::path gz = wanted; gz += ".gz";
+        bool use_gz = accept_gzip && fs::exists(gz);
+        fs::path file = use_gz ? gz : wanted;
+        std::error_code ec;
+        if (!fs::exists(file, ec) || fs::is_directory(file, ec)) { res.status = 404; return; }
+
+        std::string etag = compute_etag(file);
+        auto inm = req.get_header_value("If-None-Match");
+        if (!inm.empty() && inm == etag) {
+            res.status = 304;
+            res.set_header("ETag", etag.c_str());
+            res.set_header("Cache-Control", "public, max-age=31536000, immutable");
+            res.set_header("Vary", "Accept-Encoding");
+            return;
+        }
+
+        std::ifstream f(file, std::ios::binary);
+        if (!f) { res.status = 500; return; }
+        std::ostringstream buf; buf << f.rdbuf();
+        std::string ext = wanted.extension().string();
+        res.set_content(buf.str(), mime_of(ext));
+        res.set_header("ETag", etag.c_str());
+        res.set_header("Cache-Control", "public, max-age=31536000, immutable");
+        res.set_header("Vary", "Accept-Encoding");
+        if (use_gz) res.set_header("Content-Encoding", "gzip");
+    });
 
     // Config assets under /cfg => map to g_config_dir
     svr.Get((g_public_cfg + "/(.*)").c_str(), [&](const httplib::Request& req, httplib::Response &res){
@@ -817,6 +864,7 @@ int main(int argc, char** argv) {
             auto ext = wanted.extension().string();
             if (ext == ".png") ct = "image/png"; else if (ext == ".jpg"||ext==".jpeg") ct = "image/jpeg"; else if (ext == ".css") ct = "text/css"; else if (ext==".js") ct = "application/javascript";
             res.set_content(buf.str(), ct.c_str());
+            res.set_header("Cache-Control", "no-cache");
         } else {
             // fallback to packaged static
             fs::path fallback = static_dir/rel.str();
@@ -824,6 +872,7 @@ int main(int argc, char** argv) {
                 std::ifstream f(fallback, std::ios::binary);
                 std::ostringstream buf; buf << f.rdbuf();
                 res.set_content(buf.str(), "application/octet-stream");
+                res.set_header("Cache-Control", "public, max-age=31536000, immutable");
             } else {
                 res.status = 404;
             }
