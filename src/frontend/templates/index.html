@@ -23,6 +23,35 @@
     <button id="stopBtn" class="stop">STOP</button>
   </div>
 
+  <div id="infoModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="infoModalTitle">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content" style="max-width:480px;">
+      <div class="modal-header">
+        <h2 id="infoModalTitle">Info</h2>
+        <button id="infoModalClose" class="modal-close" aria-label="Schließen">×</button>
+      </div>
+      <div class="modal-body" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.2rem;">
+        <div style="font-size:clamp(1rem,calc(var(--top-btn-h)*0.40),1.3rem); font-weight:normal; text-align:center;">
+          Der Code dieser WebApp ist öffentlich verfügbar auf <a href="https://github.com/RalfMende/MobileStationWebApp" target="_blank">GitHub</a>.<br>
+          Dort findest du auch die Lizenzbedingungen (siehe Datei LICENSE) und die jeweils aktuelle Version.<br>
+          <br>
+          <b>Version:</b> <span id="appVersion">loading…</span><br>
+          <b>Backend:</b> <span id="backendType">loading…</span><br>
+          <br>
+          Autor: Ralf Mende<br>
+          Für Fragen, Bug-Reports oder Feature-Wünsche bitte ein Issue auf GitHub eröffnen.<br>
+        </div>
+        <div style="font-size:clamp(1rem,calc(var(--top-btn-h)*0.40),1.3rem); font-weight:normal; text-align:center;">
+          Steuerung der SRSEII-Lokliste:
+        </div>
+        <button class="event-btn" id="eventBtn1" style="height:var(--top-btn-h); min-height:0; font-size:clamp(0.8rem,calc(var(--top-btn-h)*0.30),1.1rem); padding-inline:clamp(0.7rem,calc(var(--top-btn-h)*0.40),2rem); width:50vw; max-width:320px; display:block; margin:0 auto;">Lokliste aktualisieren</button>
+        <button class="event-btn" id="eventBtn2" style="height:var(--top-btn-h); min-height:0; font-size:clamp(0.8rem,calc(var(--top-btn-h)*0.30),1.1rem); padding-inline:clamp(0.7rem,calc(var(--top-btn-h)*0.40),2rem); width:50vw; max-width:320px; display:block; margin:0 auto;">Loklistenimport Railcontrol</button>
+        <button class="event-btn" id="eventBtn3" style="height:var(--top-btn-h); min-height:0; font-size:clamp(0.8rem,calc(var(--top-btn-h)*0.30),1.1rem); padding-inline:clamp(0.7rem,calc(var(--top-btn-h)*0.40),2rem); width:50vw; max-width:320px; display:block; margin:0 auto;">Railcontrol neu starten</button>
+        <button class="event-btn" id="eventBtn4" style="height:var(--top-btn-h); min-height:0; font-size:clamp(0.8rem,calc(var(--top-btn-h)*0.30),1.1rem); padding-inline:clamp(0.7rem,calc(var(--top-btn-h)*0.40),2rem); width:50vw; max-width:320px; display:block; margin:0 auto;">Lokliste neu einlesen</button>
+      </div>
+    </div>
+  </div>
+
   <div id="controlPage" class="page">
     <div class="main-content">
       <div class="functions-side" id="leftFunctions"></div>
@@ -51,7 +80,6 @@
     </div>
   </div>
 
-  <!-- Icon picker modal -->
   <div id="iconPickerModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="iconPickerTitle">
     <div class="modal-backdrop"></div>
     <div class="modal-content">

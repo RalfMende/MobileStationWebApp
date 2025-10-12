@@ -45,6 +45,8 @@ const controlTab = document.getElementById('controlTab');
 const controlPage = document.getElementById('controlPage');
 const keyboardPage = document.getElementById('keyboardPage');
 const infoBtn = document.getElementById('infoBtn');
+const infoModal = document.getElementById('infoModal');
+const infoModalClose = document.getElementById('infoModalClose');
 // Keyboard buttons and page buttons are built dynamically; query as needed
 let keyboardPageBtns = null; // will be set after dynamic build
 
@@ -170,17 +172,83 @@ document.addEventListener('DOMContentLoaded', function() {
 // "INFO" button. With this button you leave the current view and
 // navigate to the info page.
 
-// When the user clicks the info button, persist the current UI state and navigate to /info.
-// This persists the active container, selected locomotive and keyboard page so the UI can
-// be restored when returning from the info page.
+// When the user clicks the info button, persist the current UI state and open the in-page
+// info modal if available. Fall back to navigating to /info if the modal markup is not present.
+function initInfoUI() {
+  if (!infoModal) return;
+  const byId = (id) => document.getElementById(id);
+  // Close handlers
+  if (infoModalClose && !infoModalClose._wired) {
+    infoModalClose.addEventListener('click', () => infoModal.classList.add('hidden'));
+    infoModalClose._wired = true;
+  }
+  if (!infoModal._wiredBackdrop) {
+    infoModal.addEventListener('click', (e) => {
+      if (e.target.classList && e.target.classList.contains('modal-backdrop')) {
+        infoModal.classList.add('hidden');
+      }
+    });
+    document.addEventListener('keydown', (e) => {
+      if (!infoModal.classList.contains('hidden') && (e.key === 'Escape' || e.key === 'Esc')) {
+        infoModal.classList.add('hidden');
+      }
+    });
+    infoModal._wiredBackdrop = true;
+  }
+  // Wire event buttons
+  const locoId = 1;
+  [
+    { id: 'eventBtn1', fn: 0 },
+    { id: 'eventBtn2', fn: 1 },
+    { id: 'eventBtn3', fn: 2 },
+    { id: 'eventBtn4', fn: 4 },
+  ].forEach(({ id, fn }) => {
+    const el = byId(id);
+    if (el && !el._wired) {
+      el.addEventListener('click', function() {
+        fetch('/api/info_events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ loco_id: locoId, function: fn, value: 1 })
+        });
+      });
+      el._wired = true;
+    }
+  });
+}
+
+async function refreshHealthInfo() {
+  try {
+    const res = await fetch('/api/health', { cache: 'no-store' });
+    if (!res.ok) throw new Error('health fetch failed');
+    const data = await res.json();
+    const ver = (data && (data.version || data.Version)) || 'unknown';
+    const dv = document.getElementById('appVersion'); if (dv) dv.textContent = ver;
+    const backend = data && typeof data.system_state !== 'undefined' ? 'active' : 'unknown';
+    const db = document.getElementById('backendType'); if (db) db.textContent = `HTTP OK (${backend})`;
+  } catch (e) {
+    const dv = document.getElementById('appVersion'); if (dv) dv.textContent = 'unavailable';
+    const db = document.getElementById('backendType'); if (db) db.textContent = 'unavailable';
+  }
+}
+
 if (infoBtn) {
   infoBtn.onclick = function() {
     localStorage.setItem('currentActiveContainer', currentActiveContainer);
+    
     if (currentLocoUid != null) {
       localStorage.setItem('currentLocoUid', currentLocoUid);
     }
     localStorage.setItem('currentKeyboardId', currentKeyboardId);
-    window.location.href = '/info';
+
+    if (infoModal) {
+      initInfoUI();
+      infoModal.classList.remove('hidden');
+      refreshHealthInfo();
+    } else {
+      // Backward-compatible behavior
+      window.location.href = '/info';
+    }
   };
 }
 
