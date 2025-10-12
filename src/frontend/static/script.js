@@ -77,6 +77,7 @@ const I18N = {
     info: {
       title: 'Info',
       aboutHtml: 'The source code of this WebApp is publicly available on <a href="https://github.com/RalfMende/MobileStationWebApp" target="_blank">GitHub</a>.<br>There you\'ll also find the license terms (see LICENSE) and the latest release.',
+      docsHtml: '<a href="https://ralfmende.github.io/MobileStationWebApp/index.html" target="_blank">Online documentation & FAQ</a>',
       version: 'Version:',
       backend: 'Backend:',
       author: 'Author: Ralf Mende',
@@ -105,6 +106,7 @@ const I18N = {
     info: {
       title: 'Info',
       aboutHtml: 'Der Code dieser WebApp ist öffentlich verfügbar auf <a href="https://github.com/RalfMende/MobileStationWebApp" target="_blank">GitHub</a>.<br>Dort findest du auch die Lizenzbedingungen (siehe Datei LICENSE) und die jeweils aktuelle Version.',
+      docsHtml: '<a href="https://ralfmende.github.io/MobileStationWebApp/index.html" target="_blank">Online-Dokumentation & FAQ</a>',
       version: 'Version:',
       backend: 'Backend:',
       author: 'Autor: Ralf Mende',

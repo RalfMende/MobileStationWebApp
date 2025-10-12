@@ -12,6 +12,12 @@
   <title>MobileStation WebApp</title>
   <link rel="stylesheet" href="/static/style.css" />
   <script>window.CONFIG_PATH = "{{ config_path }}"; // HTTP-Basis für benutzer Daten (Icons etc.)</script>
+  <style>
+    #infoModal a, #infoModal a:visited, #infoModal a:hover {
+      color: #66ccff;
+      text-decoration: underline;
+    }
+  </style>
 </head>
 <body>
   <div class="top-bar">
@@ -33,6 +39,7 @@
       <div class="modal-body" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.2rem;">
         <div style="font-size:clamp(1rem,calc(var(--top-btn-h)*0.40),1.3rem); font-weight:normal; text-align:center;">
           <span data-i18n="info.aboutHtml">The source code of this WebApp is publicly available on <a href="https://github.com/RalfMende/MobileStationWebApp" target="_blank">GitHub</a>.<br>There you'll also find the license terms (see LICENSE) and the latest release.</span><br>
+          <span data-i18n="info.docsHtml"><a href="https://ralfmende.github.io/MobileStationWebApp/index.html" target="_blank">Online documentation & FAQ</a></span><br>
           <br>
           <b><span data-i18n="info.version">Version:</span></b> <span id="appVersion">loading…</span><br>
           <b><span data-i18n="info.backend">Backend:</span></b> <span id="backendType">loading…</span><br>
