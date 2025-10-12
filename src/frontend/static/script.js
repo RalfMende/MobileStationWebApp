@@ -404,12 +404,17 @@ stopBtn.addEventListener('click', () => {
   // isRunning and updateStopButtonUI() are only set via SSE!
 });
 
-// Subscribe to Server‑Sent Events (SSE) from the backend to keep the UI in sync.
-// The backend emits events for system status, switch changes and locomotive state changes.
-// When messages arrive, update the corresponding UI (stop button, switch pairs, direction, speed
-// and function buttons) if they relate to the currently active locomotive or keyboard page.
-const evtSource = new EventSource('/api/events');
-evtSource.onmessage = function(event) {
+// Subscribe to Server‑Sent Events (SSE) with simple reconnect on foreground.
+let evtSource = null;
+function connectSSE() {
+  if (evtSource && typeof evtSource.close === 'function') {
+    try { evtSource.close(); } catch {}
+  }
+  evtSource = new EventSource('/api/events');
+  evtSource.onmessage = handleSSEMessage;
+}
+
+function handleSSEMessage(event) {
   const data = JSON.parse(event.data);
   if (data.type === 'loco_list_reloaded') {
     // Backend indicates that lokomotive.cs2 changed. Reload list and UI using the shared path.
@@ -452,7 +457,19 @@ evtSource.onmessage = function(event) {
       }
     }
   }
-};
+}
+
+// Kick off SSE and re-establish on visibility/pageshow
+connectSSE();
+window.addEventListener('pageshow', function(){
+  // On iOS, pageshow fires when returning from background. Reconnect defensively.
+  connectSSE();
+});
+document.addEventListener('visibilitychange', function(){
+  if (document.visibilityState === 'visible') {
+    connectSSE();
+  }
+});
 
 //
 // ==========================
