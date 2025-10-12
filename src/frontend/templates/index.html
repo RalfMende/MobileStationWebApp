@@ -27,27 +27,24 @@
     <div class="modal-backdrop"></div>
     <div class="modal-content" style="max-width:480px;">
       <div class="modal-header">
-        <h2 id="infoModalTitle">Info</h2>
-        <button id="infoModalClose" class="modal-close" aria-label="Schließen">×</button>
+        <h2 id="infoModalTitle" data-i18n="info.title">Info</h2>
+        <button id="infoModalClose" class="modal-close" aria-label="Close" data-i18n="common.close" data-i18n-attr="aria-label">×</button>
       </div>
       <div class="modal-body" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.2rem;">
         <div style="font-size:clamp(1rem,calc(var(--top-btn-h)*0.40),1.3rem); font-weight:normal; text-align:center;">
-          Der Code dieser WebApp ist öffentlich verfügbar auf <a href="https://github.com/RalfMende/MobileStationWebApp" target="_blank">GitHub</a>.<br>
-          Dort findest du auch die Lizenzbedingungen (siehe Datei LICENSE) und die jeweils aktuelle Version.<br>
+          <span data-i18n="info.aboutHtml">The source code of this WebApp is publicly available on <a href="https://github.com/RalfMende/MobileStationWebApp" target="_blank">GitHub</a>.<br>There you'll also find the license terms (see LICENSE) and the latest release.</span><br>
           <br>
-          <b>Version:</b> <span id="appVersion">loading…</span><br>
-          <b>Backend:</b> <span id="backendType">loading…</span><br>
+          <b><span data-i18n="info.version">Version:</span></b> <span id="appVersion">loading…</span><br>
+          <b><span data-i18n="info.backend">Backend:</span></b> <span id="backendType">loading…</span><br>
           <br>
-          Autor: Ralf Mende<br>
-          Für Fragen, Bug-Reports oder Feature-Wünsche bitte ein Issue auf GitHub eröffnen.<br>
+          <span data-i18n="info.author">Author: Ralf Mende</span><br>
+          <span data-i18n="info.issues">For questions, bug reports, or feature requests, please open an issue on GitHub.</span><br>
         </div>
-        <div style="font-size:clamp(1rem,calc(var(--top-btn-h)*0.40),1.3rem); font-weight:normal; text-align:center;">
-          Steuerung der SRSEII-Lokliste:
-        </div>
-        <button class="event-btn" id="eventBtn1" style="height:var(--top-btn-h); min-height:0; font-size:clamp(0.8rem,calc(var(--top-btn-h)*0.30),1.1rem); padding-inline:clamp(0.7rem,calc(var(--top-btn-h)*0.40),2rem); width:50vw; max-width:320px; display:block; margin:0 auto;">Lokliste aktualisieren</button>
-        <button class="event-btn" id="eventBtn2" style="height:var(--top-btn-h); min-height:0; font-size:clamp(0.8rem,calc(var(--top-btn-h)*0.30),1.1rem); padding-inline:clamp(0.7rem,calc(var(--top-btn-h)*0.40),2rem); width:50vw; max-width:320px; display:block; margin:0 auto;">Loklistenimport Railcontrol</button>
-        <button class="event-btn" id="eventBtn3" style="height:var(--top-btn-h); min-height:0; font-size:clamp(0.8rem,calc(var(--top-btn-h)*0.30),1.1rem); padding-inline:clamp(0.7rem,calc(var(--top-btn-h)*0.40),2rem); width:50vw; max-width:320px; display:block; margin:0 auto;">Railcontrol neu starten</button>
-        <button class="event-btn" id="eventBtn4" style="height:var(--top-btn-h); min-height:0; font-size:clamp(0.8rem,calc(var(--top-btn-h)*0.30),1.1rem); padding-inline:clamp(0.7rem,calc(var(--top-btn-h)*0.40),2rem); width:50vw; max-width:320px; display:block; margin:0 auto;">Lokliste neu einlesen</button>
+        <div style="font-size:clamp(1rem,calc(var(--top-btn-h)*0.40),1.3rem); font-weight:normal; text-align:center;" data-i18n="info.controlsHeader">SRSEII locomotive list controls:</div>
+        <button class="event-btn" id="eventBtn1" data-i18n="info.btn.refresh" style="height:var(--top-btn-h); min-height:0; font-size:clamp(0.8rem,calc(var(--top-btn-h)*0.30),1.1rem); padding-inline:clamp(0.7rem,calc(var(--top-btn-h)*0.40),2rem); width:50vw; max-width:320px; display:block; margin:0 auto;">Refresh locomotive list</button>
+        <button class="event-btn" id="eventBtn2" data-i18n="info.btn.import" style="height:var(--top-btn-h); min-height:0; font-size:clamp(0.8rem,calc(var(--top-btn-h)*0.30),1.1rem); padding-inline:clamp(0.7rem,calc(var(--top-btn-h)*0.40),2rem); width:50vw; max-width:320px; display:block; margin:0 auto;">Import locomotive list from Railcontrol</button>
+        <button class="event-btn" id="eventBtn3" data-i18n="info.btn.restart" style="height:var(--top-btn-h); min-height:0; font-size:clamp(0.8rem,calc(var(--top-btn-h)*0.30),1.1rem); padding-inline:clamp(0.7rem,calc(var(--top-btn-h)*0.40),2rem); width:50vw; max-width:320px; display:block; margin:0 auto;">Restart Railcontrol</button>
+        <button class="event-btn" id="eventBtn4" data-i18n="info.btn.reload" style="height:var(--top-btn-h); min-height:0; font-size:clamp(0.8rem,calc(var(--top-btn-h)*0.30),1.1rem); padding-inline:clamp(0.7rem,calc(var(--top-btn-h)*0.40),2rem); width:50vw; max-width:320px; display:block; margin:0 auto;">Reload locomotive list</button>
       </div>
     </div>
   </div>
@@ -84,15 +81,15 @@
     <div class="modal-backdrop"></div>
     <div class="modal-content">
       <div class="modal-header">
-        <h2 id="iconPickerTitle">Select Icon</h2>
-        <button id="iconPickerClose" class="modal-close" aria-label="Close">×</button>
+        <h2 id="iconPickerTitle" data-i18n="icon.title">Select Icon</h2>
+        <button id="iconPickerClose" class="modal-close" aria-label="Close" data-i18n="common.close" data-i18n-attr="aria-label">×</button>
       </div>
       <div class="modal-body">
-        <input type="text" id="iconFilter" placeholder="Filter…" class="modal-filter" />
+        <input type="text" id="iconFilter" placeholder="Filter…" class="modal-filter" data-i18n="icon.filterPlaceholder" data-i18n-attr="placeholder" />
         <div id="iconPickerGrid" class="icon-grid" aria-live="polite"></div>
       </div>
       <div class="modal-footer">
-        <button id="iconPickerCancel" class="tab">Cancel</button>
+        <button id="iconPickerCancel" class="tab" data-i18n="icon.cancel">Cancel</button>
       </div>
     </div>
   </div>
@@ -100,7 +97,7 @@
   <div id="keyboardPage" class="page hidden">
     <div class="keyboard-area">
       <div class="keyboard-header">
-        <span id="keyboardHeaderText">Keyboard Seite 1a</span>
+  <span id="keyboardHeaderText">Keyboard Page 1a</span>
       </div>
       <div class="keyboard-grid">
         <!-- Row 1: Demo labels above each button group -->

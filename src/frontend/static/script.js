@@ -59,6 +59,117 @@ function asset(rel) {
   return STATIC_BASE + rel;
 }
 
+// ==========================
+//  I18N (internationalization)
+// ==========================
+// Rules:
+// - Default language is English (en)
+// - Detect browser language and map to 'de' when it starts with 'de'
+// - Apply to elements with data-i18n, using innerText by default
+// - If data-i18n-attr is set, translate that attribute instead
+// - Do NOT change stopBtn, infoBtn, controlTab, keyboardTab
+
+const I18N = {
+  en: {
+    common: {
+      close: 'Close',
+    },
+    info: {
+      title: 'Info',
+      aboutHtml: 'The source code of this WebApp is publicly available on <a href="https://github.com/RalfMende/MobileStationWebApp" target="_blank">GitHub</a>.<br>There you\'ll also find the license terms (see LICENSE) and the latest release.',
+      version: 'Version:',
+      backend: 'Backend:',
+      author: 'Author: Ralf Mende',
+      issues: 'For questions, bug reports, or feature requests, please open an issue on GitHub.',
+      controlsHeader: 'SRSEII locomotive list controls:',
+      btn: {
+        refresh: 'Refresh locomotive list',
+        import: 'Import locomotive list from Railcontrol',
+        restart: 'Restart Railcontrol',
+        reload: 'Reload locomotive list',
+      }
+    },
+    icon: {
+      title: 'Select Icon',
+      filterPlaceholder: 'Filter…',
+      cancel: 'Cancel',
+    },
+    keyboard: {
+      headerPrefix: 'Keyboard Page ',
+    }
+  },
+  de: {
+    common: {
+      close: 'Schließen',
+    },
+    info: {
+      title: 'Info',
+      aboutHtml: 'Der Code dieser WebApp ist öffentlich verfügbar auf <a href="https://github.com/RalfMende/MobileStationWebApp" target="_blank">GitHub</a>.<br>Dort findest du auch die Lizenzbedingungen (siehe Datei LICENSE) und die jeweils aktuelle Version.',
+      version: 'Version:',
+      backend: 'Backend:',
+      author: 'Autor: Ralf Mende',
+      issues: 'Für Fragen, Bug-Reports oder Feature-Wünsche bitte ein Issue auf GitHub eröffnen.',
+      controlsHeader: 'Steuerung der SRSEII-Lokliste:',
+      btn: {
+        refresh: 'Lokliste aktualisieren',
+        import: 'Loklistenimport Railcontrol',
+        restart: 'Railcontrol neu starten',
+        reload: 'Lokliste neu einlesen',
+      }
+    },
+    icon: {
+      title: 'Icon wählen',
+      filterPlaceholder: 'Filter…',
+      cancel: 'Abbrechen',
+    },
+    keyboard: {
+      headerPrefix: 'Keyboard Seite ',
+    }
+  }
+};
+
+function detectLang() {
+  const nav = navigator;
+  let lang = (nav.languages && nav.languages[0]) || nav.language || 'en';
+  lang = String(lang).toLowerCase();
+  if (lang.startsWith('de')) return 'de';
+  return 'en';
+}
+
+let CURRENT_LANG = detectLang();
+let T = I18N[CURRENT_LANG] || I18N.en;
+
+function applyI18n() {
+  T = I18N[CURRENT_LANG] || I18N.en;
+  // Apply static translations
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const attr = el.getAttribute('data-i18n-attr');
+    const parts = key.split('.');
+    let val = T;
+    for (const p of parts) {
+      if (val && typeof val === 'object' && p in val) val = val[p]; else { val = null; break; }
+    }
+    if (val == null) return;
+    if (attr) {
+      el.setAttribute(attr, String(val));
+    } else {
+      // Allow HTML in some strings (introHtml/moreHtml)
+      if (/Html$/.test(parts[parts.length-1])) el.innerHTML = String(val);
+      else el.textContent = String(val);
+    }
+  });
+  // Update dynamic keyboard header
+  updateKeyboardHeaderText();
+}
+
+// Apply i18n once DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', applyI18n, { once: true });
+} else {
+  applyI18n();
+}
+
 // Tab navigation between control and keyboard panels.
 // The markup contains two tabs: one for the locomotive control view and one for the keyboard view.
 // Attach click listeners to each tab so that clicking a tab hides the inactive page, reveals the
@@ -871,7 +982,8 @@ function updateKeyboardHeaderText() {
   const header = document.getElementById('keyboardHeaderText');
   if (!header) return;
   const btn = document.querySelector('.keyboard-page-btn.active');
-  header.textContent = 'Keyboard Seite ' + (btn ? btn.textContent : '1a');
+  const prefix = (I18N[CURRENT_LANG] || I18N.en).keyboard.headerPrefix;
+  header.textContent = prefix + (btn ? btn.textContent : '1a');
 }
 
 /**
