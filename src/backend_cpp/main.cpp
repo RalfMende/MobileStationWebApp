@@ -578,12 +578,10 @@ static void udp_listener_thread(std::atomic<bool>& stop_flag) {
         // Optional MFX-BIND timer only active if --bind flag set
         if (g_enable_bind_timer && mfx_bind_pending && Clock::now() >= mfx_bind_deadline) {
             mfx_bind_pending = false;
-            int loco_id = 1; int fn = 1; int value = 1;
-            g_loco_fn[loco_id][fn] = (value!=0);
-            publish_event(function_event_json(loco_id, fn, g_loco_fn[loco_id][fn]));
+            int loco_id = 1; int fn = 0; int value = 1;
             uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_FUNCTION, 0, 0);
             udp_send_frame(can_id, payload_function((uint32_t)loco_id, fn, (value!=0)?1:0), 6);
-            if (g_verbose) fprintf(stderr, "[MFX-BIND] Timer expired -> Requesting update of Lokomotive.cs2\n");
+            if (g_verbose) fprintf(stderr, "[MFX-BIND] Timer expired -> Requesting update of Lokomotive.cs2\n");        
         }
 
         uint8_t buf[64];
@@ -1004,7 +1002,6 @@ int main(int argc, char** argv) {
         value = get_num("value", 1);
         if (loco_id < 0) { res.status=400; res.set_content("{\"status\":\"error\",\"message\":\"loco_id fehlt\"}", "application/json"); return; }
         // Reuse control_event logic
-        g_loco_fn[loco_id][fn] = (value!=0); publish_event(function_event_json(loco_id, fn, g_loco_fn[loco_id][fn]));
         uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_FUNCTION, 0, 0);
         udp_send_frame(can_id, payload_function((uint32_t)loco_id, fn, (value!=0)?1:0), 6);
         res.set_content("{\"status\":\"ok\"}", "application/json");
