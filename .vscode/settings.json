@@ -1,0 +1,29 @@
+{
+    "files.associations": { "set": "cpp" },
+    "C_Cpp.intelliSenseEngine": "default",
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "C_Cpp.default.cppStandard": "c++17",
+    "mac": {
+        "C_Cpp.default.compilerPath": "/usr/bin/clang++",
+        "C_Cpp.default.compileCommands": "${workspaceFolder}/src/backend_cpp/build-macos-debug/compile_commands.json",
+        "C_Cpp.default.intelliSenseMode": "macos-clang-arm64",
+        "C_Cpp.default.defines": ["_LIBCPP_DISABLE_AVAILABILITY=1"],
+        "C_Cpp.default.compilerArgs": ["-std=gnu++17","-stdlib=libc++","-mmacosx-version-min=10.15"],
+        "C_Cpp.default.browse.path": [
+            "${workspaceFolder}/src/backend_cpp",
+            "${workspaceFolder}/src/backend_cpp/third_party"
+        ]
+    },
+    "windows": {
+        "C_Cpp.default.configurationProvider": "",
+        "C_Cpp.default.compileCommands": "",
+        "C_Cpp.default.compilerPath": "cl.exe",
+        "C_Cpp.default.intelliSenseMode": "windows-msvc-arm64",
+        "C_Cpp.default.cppStandard": "c++17",
+        "C_Cpp.default.includePath": [
+            "${workspaceFolder}/src/backend_cpp",
+            "${workspaceFolder}/src/backend_cpp/third_party"
+        ],
+        "C_Cpp.default.defines": ["_WIN32"]
+    }
+}

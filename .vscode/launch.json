@@ -26,7 +26,7 @@
     // MSVC x64
     {
       "name": "C++ Backend Debug (MSVC)",
-      "type": "cppdbg",
+      "type": "cppvsdbg",
       "request": "launch",
       "program": "${workspaceFolder}/src/backend_cpp/build-msvc/Debug/mswebapp_cpp.exe",
       "args": [
@@ -39,12 +39,11 @@
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false,
       "externalConsole": false,
-      "preLaunchTask": "C++ backend: Build Debug (MSVC)",
-      "MIMode": "lldb"
+      "preLaunchTask": "C++ backend: Build Debug (MSVC)"
     },
     {
       "name": "C++ Backend Release (MSVC)",
-      "type": "cppdbg",
+      "type": "cppvsdbg",
       "request": "launch",
       "program": "${workspaceFolder}/src/backend_cpp/build-msvc/Release/mswebapp_cpp.exe",
       "args": [
@@ -57,14 +56,13 @@
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false,
       "externalConsole": false,
-      "preLaunchTask": "C++ backend: Build Release (MSVC)",
-      "MIMode": "lldb"
+      "preLaunchTask": "C++ backend: Build Release (MSVC)"
     },
 
     // MSVC ARM64
     {
       "name": "C++ Backend Debug (MSVC ARM64)",
-      "type": "cppdbg",
+      "type": "cppvsdbg",
       "request": "launch",
       "program": "${workspaceFolder}/src/backend_cpp/build-msvc-arm64/Debug/mswebapp_cpp.exe",
       "args": [
@@ -72,18 +70,16 @@
         "--udp-ip", "Gleisbox",
         "--host", "0.0.0.0",
         "--port", "6020",
-        "--www", "${workspaceFolder}/src/frontend",
-        "--bind"
+        "--www", "${workspaceFolder}/src/frontend"
       ],
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false,
       "externalConsole": false,
-      "preLaunchTask": "C++ backend: Build Debug (MSVC ARM64)",
-      "MIMode": "lldb"
+      "preLaunchTask": "C++ backend: Build Debug (MSVC ARM64)"
     },
     {
       "name": "C++ Backend Release (MSVC ARM64)",
-      "type": "cppdbg",
+      "type": "cppvsdbg",
       "request": "launch",
       "program": "${workspaceFolder}/src/backend_cpp/build-msvc-arm64/Release/mswebapp_cpp.exe",
       "args": [
@@ -91,14 +87,12 @@
         "--udp-ip", "Gleisbox",
         "--host", "0.0.0.0",
         "--port", "6020",
-        "--www", "${workspaceFolder}/src/frontend",
-        "--bind"
+        "--www", "${workspaceFolder}/src/frontend"
       ],
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false,
       "externalConsole": false,
-      "preLaunchTask": "C++ backend: Build Release (MSVC ARM64)",
-      "MIMode": "lldb"
+      "preLaunchTask": "C++ backend: Build Release (MSVC ARM64)"
     },
 
   // macOS
@@ -112,11 +106,13 @@
         "--udp-ip", "Gleisbox",
         "--host", "0.0.0.0",
         "--port", "6020",
-        "--www", "${workspaceFolder}/src/frontend"
+        "--www", "${workspaceFolder}/src/frontend",
+        "--bind", "1000"
       ],
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false,
       "MIMode": "lldb",
+      "targetArchitecture": "arm64",
       "externalConsole": false,
       "preLaunchTask": "C++ backend: Build Debug (macOS)"
     },
@@ -135,6 +131,7 @@
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false,
       "MIMode": "lldb",
+      "targetArchitecture": "arm64",
       "externalConsole": false,
       "preLaunchTask": "C++ backend: Build Release (macOS)"
     }

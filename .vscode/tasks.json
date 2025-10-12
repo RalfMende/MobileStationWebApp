@@ -1,128 +1,179 @@
 {
-  "version": "2.0.0",
-  "tasks": [
-    
-    {
-      "label": "C++ backend: Configure (MSVC)",
-      "type": "shell",
-      "command": "cmake",
-      "args": [
-        "-S", "${workspaceFolder}/src/backend_cpp",
-        "-B", "${workspaceFolder}/src/backend_cpp/build-msvc",
-        "-G", "Visual Studio 17 2022",
-        "-A", "x64"
-      ],
-      "options": { "cwd": "${workspaceFolder}" },
-      "problemMatcher": []
-    },
-    {
-      "label": "C++ backend: Build Debug (MSVC)",
-      "type": "shell",
-      "command": "cmake",
-      "args": [
-        "--build", "${workspaceFolder}/src/backend_cpp/build-msvc",
-        "--config", "Debug"
-      ],
-      "options": { "cwd": "${workspaceFolder}" },
-      "problemMatcher": [],
-      "dependsOn": ["C++ backend: Configure (MSVC)"]
-    },
-    {
-      "label": "C++ backend: Build Release (MSVC)",
-      "type": "shell",
-      "command": "cmake",
-      "args": [
-        "--build", "${workspaceFolder}/src/backend_cpp/build-msvc",
-        "--config", "Release"
-      ],
-      "options": { "cwd": "${workspaceFolder}" },
-      "problemMatcher": [],
-      "dependsOn": ["C++ backend: Configure (MSVC)"]
-    },
-    
-    {
-      "label": "C++ backend: Configure (macOS Debug)",
-      "type": "shell",
-      "command": "cmake",
-      "args": [
-        "-S", "${workspaceFolder}/src/backend_cpp",
-        "-B", "${workspaceFolder}/src/backend_cpp/build-macos-debug",
-        "-DCMAKE_BUILD_TYPE=Debug"
-      ],
-      "options": { "cwd": "${workspaceFolder}" },
-      "problemMatcher": []
-    },
-    {
-      "label": "C++ backend: Build Debug (macOS)",
-      "type": "shell",
-      "command": "cmake",
-      "args": [
-        "--build", "${workspaceFolder}/src/backend_cpp/build-macos-debug"
-      ],
-      "options": { "cwd": "${workspaceFolder}" },
-      "problemMatcher": [],
-      "dependsOn": ["C++ backend: Configure (macOS Debug)"]
-    },
-    {
-      "label": "C++ backend: Configure (macOS Release)",
-      "type": "shell",
-      "command": "cmake",
-      "args": [
-        "-S", "${workspaceFolder}/src/backend_cpp",
-        "-B", "${workspaceFolder}/src/backend_cpp/build-macos-release",
-        "-DCMAKE_BUILD_TYPE=Release"
-      ],
-      "options": { "cwd": "${workspaceFolder}" },
-      "problemMatcher": []
-    },
-    {
-      "label": "C++ backend: Build Release (macOS)",
-      "type": "shell",
-      "command": "cmake",
-      "args": [
-        "--build", "${workspaceFolder}/src/backend_cpp/build-macos-release"
-      ],
-      "options": { "cwd": "${workspaceFolder}" },
-      "problemMatcher": [],
-      "dependsOn": ["C++ backend: Configure (macOS Release)"]
-    },
-    
-    {
-      "label": "C++ backend: Configure (MSVC ARM64)",
-      "type": "shell",
-      "command": "cmake",
-      "args": [
-        "-S", "${workspaceFolder}/src/backend_cpp",
-        "-B", "${workspaceFolder}/src/backend_cpp/build-msvc-arm64",
-        "-G", "Visual Studio 17 2022",
-        "-A", "ARM64"
-      ],
-      "options": { "cwd": "${workspaceFolder}" },
-      "problemMatcher": []
-    },
-    {
-      "label": "C++ backend: Build Debug (MSVC ARM64)",
-      "type": "shell",
-      "command": "cmake",
-      "args": [
-        "--build", "${workspaceFolder}/src/backend_cpp/build-msvc-arm64",
-        "--config", "Debug"
-      ],
-      "options": { "cwd": "${workspaceFolder}" },
-      "problemMatcher": [],
-      "dependsOn": ["C++ backend: Configure (MSVC ARM64)"]
-    },
-    {
-      "label": "C++ backend: Build Release (MSVC ARM64)",
-      "type": "shell",
-      "command": "cmake",
-      "args": [
-        "--build", "${workspaceFolder}/src/backend_cpp/build-msvc-arm64",
-        "--config", "Release"
-      ],
-      "options": { "cwd": "${workspaceFolder}" },
-      "problemMatcher": [],
-      "dependsOn": ["C++ backend: Configure (MSVC ARM64)"]
-    }
-  ]
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "C++ backend: Configure (MSVC)",
+			"type": "shell",
+			"command": "cmake",
+			"args": [
+				"-S",
+				"${workspaceFolder}/src/backend_cpp",
+				"-B",
+				"${workspaceFolder}/src/backend_cpp/build-msvc",
+				"-G",
+				"Visual Studio 17 2022",
+				"-A",
+				"x64"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "C++ backend: Build Debug (MSVC)",
+			"type": "shell",
+			"command": "cmake",
+			"args": [
+				"--build",
+				"${workspaceFolder}/src/backend_cpp/build-msvc",
+				"--config",
+				"Debug"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [],
+			"dependsOn": [
+				"C++ backend: Configure (MSVC)"
+			]
+		},
+		{
+			"label": "C++ backend: Build Release (MSVC)",
+			"type": "shell",
+			"command": "cmake",
+			"args": [
+				"--build",
+				"${workspaceFolder}/src/backend_cpp/build-msvc",
+				"--config",
+				"Release"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [],
+			"dependsOn": [
+				"C++ backend: Configure (MSVC)"
+			]
+		},
+		{
+			"label": "C++ backend: Configure (macOS Debug)",
+			"type": "shell",
+			"command": "cmake",
+			"args": [
+				"-S",
+				"${workspaceFolder}/src/backend_cpp",
+				"-B",
+				"${workspaceFolder}/src/backend_cpp/build-macos-debug",
+				"-DCMAKE_BUILD_TYPE=Debug"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "C++ backend: Build Debug (macOS)",
+			"type": "shell",
+			"command": "cmake",
+			"args": [
+				"--build",
+				"${workspaceFolder}/src/backend_cpp/build-macos-debug"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [],
+			"dependsOn": [
+				"C++ backend: Configure (macOS Debug)"
+			]
+		},
+		{
+			"label": "C++ backend: Configure (macOS Release)",
+			"type": "shell",
+			"command": "cmake",
+			"args": [
+				"-S",
+				"${workspaceFolder}/src/backend_cpp",
+				"-B",
+				"${workspaceFolder}/src/backend_cpp/build-macos-release",
+				"-DCMAKE_BUILD_TYPE=Release"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "C++ backend: Build Release (macOS)",
+			"type": "shell",
+			"command": "cmake",
+			"args": [
+				"--build",
+				"${workspaceFolder}/src/backend_cpp/build-macos-release"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [],
+			"dependsOn": [
+				"C++ backend: Configure (macOS Release)"
+			]
+		},
+		{
+			"label": "C++ backend: Configure (MSVC ARM64)",
+			"type": "shell",
+			"command": "cmake",
+			"args": [
+				"-S",
+				"${workspaceFolder}/src/backend_cpp",
+				"-B",
+				"${workspaceFolder}/src/backend_cpp/build-msvc-arm64",
+				"-G",
+				"Visual Studio 17 2022",
+				"-A",
+				"ARM64"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "C++ backend: Build Debug (MSVC ARM64)",
+			"type": "shell",
+			"command": "cmake",
+			"args": [
+				"--build",
+				"${workspaceFolder}/src/backend_cpp/build-msvc-arm64",
+				"--config",
+				"Debug"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [],
+			"dependsOn": [
+				"C++ backend: Configure (MSVC ARM64)"
+			]
+		},
+		{
+			"label": "C++ backend: Build Release (MSVC ARM64)",
+			"type": "shell",
+			"command": "cmake",
+			"args": [
+				"--build",
+				"${workspaceFolder}/src/backend_cpp/build-msvc-arm64",
+				"--config",
+				"Release"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [],
+			"dependsOn": [
+				"C++ backend: Configure (MSVC ARM64)"
+			]
+		}
+	]
 }
