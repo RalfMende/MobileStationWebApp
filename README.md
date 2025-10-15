@@ -31,7 +31,7 @@ The app includes a manifest and touch icon, so it launches fullscreen and behave
 
 | Control View | Keyboard View |
 | --- | --- |
-| <img src="docs/mswebapp_control.jpeg" alt="Control" width="420" /> | <img src="docs/mswebapp_keyboard.jpeg" alt="Keyboard" width="420" /> |
+| <img src="docs/mswebapp_control.jpg" alt="Control" width="420" /> | <img src="docs/mswebapp_keyboard.jpg" alt="Keyboard" width="420" /> |
 
 ## Quick Start (Development)
 - C++ Backend (Windows): Build and run the "Debug C++ Backend" launch config in VS Code, or build with CMake tasks provided.
