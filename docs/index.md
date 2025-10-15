@@ -4,6 +4,7 @@ Welcome to the documentation for MobileStationWebApp!
 
 ## Table of Contents
 
+- [Getting Started](quick-start.md)
 - [Installation Guide on SRSEII](INSTALL-openwrt.md)
 - [FAQ](#faq)
 
