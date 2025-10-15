@@ -16,45 +16,79 @@ Once the server is running, open your browser and navigate to:
 
 The control view shows speed, direction and function buttons.
 
-![Control view](./mswebapp_control.jpg)
-
-- Speed: Drag the main slider to set the speed.
-- Direction: Tap the direction button to toggle forward/reverse.
-- Functions: Tap F0, F1, … to toggle lights, sound, etc.
+<table>
+	<tr>
+		<td style="width:50%; vertical-align: top; padding-right: 12px;">
+			<img src="./mswebapp_control.jpg" alt="Control view" />
+		</td>
+		<td style="width:50%; vertical-align: top;">
+			<ul>
+				<li>Speed: Drag the main slider to set the speed.</li>
+				<li>Direction: Tap the direction button to toggle forward/reverse.</li>
+				<li>Functions: Tap F0, F1, … to toggle lights, sound, etc.</li>
+			</ul>
+		</td>
+	</tr>
+</table>
 
 ## 2) Keyboard / Switches
 
 Operate turnouts and accessories via the keyboard view.
 
-![Keyboard view](./mswebapp_keyboard.jpg)
-
-- Each tile represents a switch or accessory.
-- Tap to toggle the state; the current state is highlighted.
+<table>
+	<tr>
+		<td style="width:50%; vertical-align: top; padding-right: 12px;">
+			<img src="./mswebapp_keyboard.jpg" alt="Keyboard view" />
+		</td>
+		<td style="width:50%; vertical-align: top;">
+			<ul>
+				<li>Each tile represents a switch or accessory.</li>
+				<li>Tap to toggle the state; the current state is highlighted.</li>
+			</ul>
+		</td>
+	</tr>
+	</table>
 
 ## 3) Change a locomotive icon
 
 Change a locomotive's icon.
 
-![Select a locomotive](./mswebapp_select.jpg)
-
-- Click the central locomotive image to open the list of available icons.
-- Scroll the list (or use search if available).
-- Tap an icon to apply it.
-- To cancel, use the upper-right or lower-right button.
+<table>
+	<tr>
+		<td style="width:50%; vertical-align: top; padding-right: 12px;">
+			<img src="./mswebapp_select.jpg" alt="Select a locomotive" />
+		</td>
+		<td style="width:50%; vertical-align: top;">
+			<ul>
+				<li>Click the central locomotive image to open the list of available icons.</li>
+				<li>Scroll the list (or use search if available).</li>
+				<li>Tap an icon to apply it.</li>
+				<li>To cancel, use the upper-right or lower-right button.</li>
+			</ul>
+		</td>
+	</tr>
+</table>
 
 ## 4) System info and health
 
 View system status and manage the SRSEII loco list.
 
-![Info view](./mswebapp_info.jpg)
+<table>
+	<tr>
+		<td style="width:50%; vertical-align: top; padding-right: 12px;">
+			<img src="./mswebapp_info.jpg" alt="Info view" />
+		</td>
+		<td style="width:50%; vertical-align: top;">
+			<ul>
+				<li>System information: RUN/STOP state, loco/switch counts, backend version, UDP target</li>
+				<li>Access Online Help</li>
+				<li>Manage the SRSEII loco list (reload/update)</li>
+			</ul>
+		</td>
+	</tr>
+</table>
 
-- System information: RUN/STOP state, loco/switch counts, backend version, UDP target
-- Access Online Help
-- Manage the SRSEII loco list (reload/update)
-
-## Tips
-
-### Mobile Usage: Install as WebApp
+## Tipp: Mobile Usage: Install as WebApp
 You can install the MobileStation Web App directly to your home screen for a native app-like experience:
 
 - **iOS:** Open the app in Safari, tap the Share icon, then select "Add to Home Screen".
