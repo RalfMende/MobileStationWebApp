@@ -734,7 +734,7 @@ function setLocoSpeed(val) {
  * @returns {string} the zero‑padded string
  */
 function pad2(v) {
-  const s = String(v ?? '');
+  const s = String((v === null || v === undefined) ? '' : v);
   return s.length >= 2 ? s : s.padStart(2, '0');
 }
 
@@ -782,9 +782,12 @@ function getFunctionTypeFromLocList(idx) {
   try {
     const loco = locList[currentLocoUid];
     if (!loco || !loco.funktionen) return null;
-    const entry = loco.funktionen[idx] ?? loco.funktionen[String(idx)];
+    let entry = loco.funktionen[idx];
+    if (entry === undefined) entry = loco.funktionen[String(idx)];
     if (!entry) return null;
-    return entry.typ ?? entry.type ?? null;
+    if (entry.typ !== undefined) return entry.typ;
+    if (entry.type !== undefined) return entry.type;
+    return null;
   } catch (e) {
     return null;
   }
