@@ -816,7 +816,8 @@ int main(int argc, char** argv) {
         std::error_code ec;
         uintmax_t sz = fs::file_size(p, ec);
         auto mt = fs::last_write_time(p, ec).time_since_epoch().count();
-        return "\"" + std::to_string(sz) + "-" + std::to_string(mt) + "\"";
+        return "\"" + std::to_string(static_cast<unsigned long long>(sz)) + "-" +
+               std::to_string(static_cast<long long>(mt)) + "\"";
     };
     svr.Get(R"(/static/(.*))", [&](const httplib::Request& req, httplib::Response &res){
         std::string rel = req.matches[1].str();
