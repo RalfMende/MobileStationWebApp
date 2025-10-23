@@ -854,7 +854,7 @@ function setupLocoFunctionButtons(col, offset) {
 
 // Create and attach the locomotive function buttons on initial load
 setupLocoFunctionButtons(leftCol, 0);
-setupLocoFunctionButtons(rightCol, 7);
+setupLocoFunctionButtons(rightCol, 8);
 
 /**
  * Handle clicks on locomotive function buttons via event delegation.
