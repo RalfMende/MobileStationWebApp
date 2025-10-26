@@ -408,7 +408,7 @@ stopBtn.addEventListener('click', () => {
 let evtSource = null;
 function connectSSE() {
   if (evtSource && typeof evtSource.close === 'function') {
-    try { evtSource.close(); } catch {}
+    try { evtSource.close(); } catch (e) {}
   }
   evtSource = new EventSource('/api/events');
   evtSource.onmessage = handleSSEMessage;
