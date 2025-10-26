@@ -1,6 +1,6 @@
 {
-  "name": "SRSEII",
-  "short_name": "SRSEII",
+  "name": "MSWebApp",
+  "short_name": "MSWebApp",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
