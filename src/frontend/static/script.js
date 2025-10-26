@@ -756,7 +756,7 @@ function pad2(v) {
  */
 function setFunctionIcon(img, iconPrefix, id, index) {
   const primary  = asset(`fcticons/FktIcon_a_${iconPrefix}_${pad2(id)}.png`);
-  const fallback = `/static/grafics/FktIcon_a_${iconPrefix}_${pad2(50 + index)}.png`;
+  const fallback = `/static/grafics/fct_${iconPrefix}_${index}.png`;
 
   const probe = new Image();
   probe.onload  = () => { img.src = primary; };
@@ -1229,14 +1229,14 @@ function updateSwitchUI(btn1, btn2, valueNum) {
     // btn1 active, btn2 inactive
     btn1.classList.add('active');
     btn2.classList.remove('active');
-    if (img1) img1.src = '/static/grafics/MagIcon_00_00_a.png';
-    if (img2) img2.src = '/static/grafics/MagIcon_00_01_i.png';
+    if (img1) img1.src = '/static/grafics/mag_re_active.png';
+    if (img2) img2.src = '/static/grafics/mag_gr_inactive.png';
   } else {
     // btn1 inactive, btn2 active
     btn1.classList.remove('active');
     btn2.classList.add('active');
-    if (img1) img1.src = '/static/grafics/MagIcon_00_00_i.png';
-    if (img2) img2.src = '/static/grafics/MagIcon_00_01_a.png';
+    if (img1) img1.src = '/static/grafics/mag_re_inactive.png';
+    if (img2) img2.src = '/static/grafics/mag_gr_active.png';
   }
 }
 
