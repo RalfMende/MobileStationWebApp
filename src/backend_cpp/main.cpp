@@ -832,7 +832,7 @@ int main(int argc, char** argv) {
         if (!inm.empty() && inm == etag) {
             res.status = 304;
             res.set_header("ETag", etag.c_str());
-            res.set_header("Cache-Control", "public, max-age=31536000, immutable");
+            res.set_header("Cache-Control", "public, max-age=86400");
             res.set_header("Vary", "Accept-Encoding");
             return;
         }
@@ -843,7 +843,7 @@ int main(int argc, char** argv) {
         std::string ext = wanted.extension().string();
         res.set_content(buf.str(), mime_of(ext));
         res.set_header("ETag", etag.c_str());
-        res.set_header("Cache-Control", "public, max-age=31536000, immutable");
+        res.set_header("Cache-Control", "public, max-age=86400");
         res.set_header("Vary", "Accept-Encoding");
         if (use_gz) res.set_header("Content-Encoding", "gzip");
     });
@@ -870,7 +870,7 @@ int main(int argc, char** argv) {
                 std::ifstream f(fallback, std::ios::binary);
                 std::ostringstream buf; buf << f.rdbuf();
                 res.set_content(buf.str(), "application/octet-stream");
-                res.set_header("Cache-Control", "public, max-age=31536000, immutable");
+                res.set_header("Cache-Control", "public, max-age=86400");
             } else {
                 res.status = 404;
             }
