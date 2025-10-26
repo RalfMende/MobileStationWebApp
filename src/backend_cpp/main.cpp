@@ -37,9 +37,6 @@
 
 namespace fs = std::filesystem;
 
-// Application version (keep in sync with Python package version)
-static const char* kMsWebAppVersion = "1.1.4";
-
 // ---- Basic types/state ----
 struct Loco {
     int uid = 0;
@@ -1114,8 +1111,7 @@ int main(int argc, char** argv) {
             << "\"system_state\":\"" << (g_running.load()?"running":"stopped") << "\"," 
             << "\"loco_count\":" << g_locos.size() << ","
             << "\"switch_count\":" << g_switch_state.size() << ","
-            << "\"udp_target\":\"" << g_udp_ip << ":" << g_udp_tx << "\"," 
-            << "\"version\":\"" << kMsWebAppVersion << "\"}";
+            << "\"udp_target\":\"" << g_udp_ip << ":" << g_udp_tx << "\"}";
         res.set_content(os.str(), "application/json");
     });
 

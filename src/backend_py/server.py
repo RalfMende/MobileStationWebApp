@@ -21,10 +21,7 @@ from flask import Flask, request, jsonify, render_template, Response, stream_wit
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s %(message)s')
 logger = logging.getLogger('mswebapp')
 
-try:
-    from . import __version__ as _MSW_VERSION  # type: ignore
-except Exception:
-    _MSW_VERSION = "0.0.0"
+# Version handling removed: the backend no longer exposes or maintains a version string.
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 FRONTEND_DIR = os.path.abspath(os.path.join(BASE_DIR, '..', 'frontend'))
@@ -871,8 +868,7 @@ def health():
             'system_state': system_state,
             'loco_count': loco_cnt,
             'switch_count': switch_cnt,
-            'udp_target': f"{udp_ip}:{udp_tx}",
-            'version': _MSW_VERSION
+            'udp_target': f"{udp_ip}:{udp_tx}"
         })
     except Exception as e:
         return jsonify({'status': 'error', 'error': str(e)}), 500
