@@ -72,7 +72,7 @@ function asset(rel) {
 const I18N = {
   en: {
     common: {
-      close: 'Close',
+      close: 'Close'
     },
     info: {
       title: 'Info',
@@ -85,9 +85,9 @@ const I18N = {
       controlsHeader: 'SRSEII locomotive list controls:',
       btn: {
         refresh: 'Refresh locomotive list',
-        import: 'Import locomotive list from Railcontrol',
+        'import': 'Import locomotive list from Railcontrol',
         restart: 'Restart Railcontrol',
-        reload: 'Reload locomotive list',
+        reload: 'Reload locomotive list'
       }
     },
     icon: {
@@ -101,7 +101,7 @@ const I18N = {
   },
   de: {
     common: {
-      close: 'Schließen',
+      close: 'Schließen'
     },
     info: {
       title: 'Info',
@@ -114,9 +114,9 @@ const I18N = {
       controlsHeader: 'Steuerung der SRSEII-Lokliste:',
       btn: {
         refresh: 'Lokliste aktualisieren',
-        import: 'Loklistenimport Railcontrol',
+        'import': 'Loklistenimport Railcontrol',
         restart: 'Railcontrol neu starten',
-        reload: 'Lokliste neu einlesen',
+        reload: 'Lokliste neu einlesen'
       }
     },
     icon: {
@@ -322,7 +322,7 @@ function initInfoUI() {
         fetch('/api/info_events', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ loco_id: locoId, function: fn, value: 1 })
+          body: JSON.stringify({ loco_id: locoId, "function": fn, value: 1 })
         });
       });
       el._wired = true;
@@ -549,7 +549,11 @@ function loadAndRenderLocoList(options) {
         }
         if (selected == null) {
           const firstUid = uids[0];
-          if (firstUid) selected = locList[firstUid]?.uid || Number(firstUid);
+          if (firstUid) {
+            var entry = locList[firstUid];
+            var uidVal = entry && entry.uid;
+            selected = (uidVal !== undefined && uidVal !== null) ? Number(uidVal) : Number(firstUid);
+          }
         }
         if (selected != null) selectLoco(selected);
       });
@@ -886,7 +890,7 @@ function handleLocoFunctionButtonClick(ev) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         loco_id: currentLocoUid,
-        function: idx,
+        fn: idx,
         value: nowActive ? 1 : 0
       })
     });
