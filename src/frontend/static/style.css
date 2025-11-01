@@ -98,10 +98,10 @@
   box-sizing: border-box;
   color: #fff;
   cursor: pointer;
-  flex: 1 1 0;
+  flex: auto;
   font-size: var(--control-font);
   font-weight: bold;
-  height: var(--kb-btn-size);
+  height: var(--kb-btn-size) !important;
   margin: 0;
   min-width: 0;
   transition: background 0.2s, border 0.2s;
@@ -113,7 +113,6 @@
   flex-direction: column;
   justify-content: flex-start;
   min-width: 0;
-  flex: 0 0 var(--kb-btn-size);
   width: var(--kb-btn-size);
   max-width: var(--kb-btn-size);
   justify-self: center;
@@ -300,7 +299,7 @@
   color: white;
   cursor: pointer;
   margin: 0 0.2rem;
-  padding: 0.4rem 1rem;
+  padding: 0.4rem;
 }
 .tab.active {
   background: #000;
@@ -367,7 +366,7 @@
   --topbar-h: 0px;
   --vh: var(--app-height, 100svh);
   --control-font: clamp(0.9rem, calc(var(--top-btn-h) * 0.40), 1.6rem);
-  --kb-btn-size: calc(var(--app-width) * 0.2);
+  --kb-btn-size: calc(var(--app-height) * 0.11);
   --kb-group-inner-gap: clamp(6px, calc(var(--vh) * 0.03), 20px);
   --kb-header-h: clamp(24px, calc(var(--vh) * 0.06), 64px);
   --kb-gap: clamp(6px, calc(var(--vh) * 0.02), 16px);
