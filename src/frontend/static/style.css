@@ -84,9 +84,10 @@
   background: var(--bar-gradient);
   display: flex;
   gap: 0.2rem;
-  height: calc(var(--vh) * 0.1);
+  height: var(--bar-h);
   justify-content: center;
   padding: 0;
+  width: 100%;
 }
 .keyboard-btn {
   aspect-ratio: 1 / 1;
@@ -117,11 +118,6 @@
   width: var(--kb-btn-size);
   max-width: var(--kb-btn-size);
   justify-self: center;
-}
-.keyboard-btn-debug {
-  color: #222;
-  font-size: clamp(0.9rem, calc(var(--top-btn-h) * 0.40), 1.6rem);
-  font-weight: bold;
 }
 .keyboard-btn-group {
   align-items: center;
@@ -220,13 +216,14 @@
   cursor: pointer;
   height: var(--loco-item-h);
 }
-.loco-list-wrapper {
+.control-bottom-bar {
   align-items: center;
   background: var(--bar-gradient);
   display: flex;
-  height: calc(var(--vh) * 0.1);
+  height: var(--bar-h);
   overflow-x: auto;
   padding: 0 0.4rem;
+  width: 100%;
 }
 .main-content {
   display: flex;
@@ -310,7 +307,7 @@
   align-items: center;
   background: var(--bar-gradient);
   display: flex;
-  height: calc(var(--vh) * 0.1);
+  height: var(--bar-h);
   justify-content: space-between;
   padding: env(safe-area-inset-top) 0.8rem 0 0.8rem;
   padding-top: env(safe-area-inset-top);
