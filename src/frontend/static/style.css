@@ -225,7 +225,7 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  height: calc(var(--vh) - var(--topbar-h));
+  height: calc(var(--vh) - var(--bar-h));
   overflow: hidden;
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -309,7 +309,6 @@
   justify-content: center;
   gap: 0;
 }
-.top-bar #stopBtn { justify-self: end; }
 .top-bar .tab,
 .top-bar #stopBtn {
   align-items: center;
@@ -339,6 +338,7 @@
 .top-bar #stopBtn {
   box-sizing: border-box;
   white-space: nowrap;
+  justify-self: end;
   width: calc(
     var(--stop-label-chars) * 1ch
     + 2 * clamp(0.5rem, calc(var(--top-btn-h) * 0.40), 2rem)  
@@ -371,7 +371,6 @@
   --slider-w: calc(var(--app-width) * 0.4);
   --stop-label-chars: 4;
   --top-btn-h: calc(var(--bar-h) * 0.6);
-  --topbar-h: 0px;
   --vh: var(--app-height, 100svh);
   --control-font: clamp(0.9rem, calc(var(--top-btn-h) * 0.40), 1.6rem);
   --kb-btn-size: calc(var(--app-width) * 0.2);
@@ -379,7 +378,7 @@
   --kb-header-h: clamp(24px, calc(var(--vh) * 0.06), 64px);
   --kb-gap: clamp(6px, calc(var(--vh) * 0.02), 16px);
   --radius: calc(var(--top-btn-h) * 0.20);
-  --kb-page-btn-pad-x: clamp(0.2rem, calc(var(--kb-header-h) * 0.2), 0.6rem);
+  --kb-page-btn-pad-x: clamp(0.2rem, calc(var(--kb-header-h) * 0.1), 0.6rem);
 }
 html, body {
   background: black;
