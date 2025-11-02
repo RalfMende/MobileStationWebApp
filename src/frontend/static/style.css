@@ -22,13 +22,6 @@
   background: red;
   color: white;
 }
-.demo-label {
-  color: #000;
-  font-size: calc(clamp(0.9rem, calc(var(--top-btn-h) * 0.40), 1.6rem) * 0.66);
-  font-weight: normal;
-  margin-bottom: 0.1rem;
-  text-align: center;
-}
 .dir-btn {
   font-size: 1.2rem;
   aspect-ratio: 1 / 1;
@@ -38,7 +31,7 @@
 }
 .direction-buttons {
   display: flex;
-  gap: calc(var(--slider-w) * 0.2);;
+  gap: calc(var(--slider-w) * 0.2);
 }
 .functions-side {
   align-items: stretch;
@@ -87,7 +80,6 @@
   height: var(--bar-h);
   justify-content: center;
   padding: 0;
-  width: 100%;
 }
 .keyboard-btn {
   aspect-ratio: 1 / 1;
@@ -223,7 +215,6 @@
   height: var(--bar-h);
   overflow-x: auto;
   padding: 0 0.4rem;
-  width: 100%;
 }
 .main-content {
   display: flex;
