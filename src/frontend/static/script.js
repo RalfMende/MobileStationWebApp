@@ -50,10 +50,10 @@ const infoModalClose = document.getElementById('infoModalClose');
 // Keyboard buttons and page buttons are built dynamically; query as needed
 let keyboardPageBtns = null; // will be set after dynamic build
 
-if (!window.CONFIG_PATH) {
-  throw new Error('CONFIG_PATH not defined: backend must set window.CONFIG_PATH before loading script.js');
-}
-const STATIC_BASE = window.CONFIG_PATH.replace(/\/$/, '');
+// CONFIG_PATH is injected by the backend into index.html. Be tolerant if it's missing
+// and fall back to the default public config base used by the servers ("/cfg").
+const DEFAULT_CONFIG_BASE = '/cfg';
+const STATIC_BASE = String(window.CONFIG_PATH || DEFAULT_CONFIG_BASE).replace(/\/$/, '');
 function asset(rel) {
   if (!rel.startsWith('/')) rel = '/' + rel;
   return STATIC_BASE + rel;
