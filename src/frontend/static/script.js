@@ -637,9 +637,11 @@ function updateSpeedUI(val) {
   speedFill.style.height = `${(val / 1000) * 100}%`;
   // Each locomotive may declare its own max speed in km/h.  If not
   // provided, default to 200.  Convert the protocol value to km/h.
-  const tachomax = locList[currentLocoUid].tachomax || 200;
-  const kmh = Math.round(val * tachomax / 1000);
-  speedValue.textContent = `${kmh} km/h`;
+  const tachomax = locList[currentLocoUid].tachomax;
+  if (tachomax > 0) {
+    const kmh = Math.round(val * tachomax / 1000);
+    speedValue.textContent = `${kmh} km/h`;
+  }
 }
 
 /**

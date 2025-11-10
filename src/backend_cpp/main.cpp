@@ -44,7 +44,7 @@ struct Loco {
     std::string name;
     std::string icon; // or bild
     int symbol = 0;
-    int tachomax = 200;
+    int tachomax = 0;
     std::map<int,int> fn_typ; // function index -> type id
 };
 
@@ -350,10 +350,10 @@ static void parse_lokomotive_cs2(const fs::path &p) {
                     cur.symbol = parse_int_auto(val);
                 } else if (key == "tachomax") {
                     cur.tachomax = parse_int_auto(val);
-                } else if (key == "vmax") {
+                } /*else if (key == "vmax") {
                     int vmax = parse_int_auto(val);
-                    if (cur.tachomax <= 0 && vmax > 0) cur.tachomax = vmax;
-                }
+                    if (cur.tachomax <= 0 && vmax > 0) cur.tachomax = vmax; //Workaround for MS where there is no tachomax
+                }*/
             }
         }
     }
