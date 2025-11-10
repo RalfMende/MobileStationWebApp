@@ -831,9 +831,9 @@ int main(int argc, char** argv) {
         std::string rel = req.matches[1].str();
         fs::path wanted = static_dir / rel;
         // Prefer precompressed .gz if client accepts gzip
-    bool accept_gzip = req.has_header("Accept-Encoding") && req.get_header_value("Accept-Encoding").find("gzip") != std::string::npos;
+        bool accept_gzip = req.has_header("Accept-Encoding") && req.get_header_value("Accept-Encoding").find("gzip") != std::string::npos;
         fs::path gz = wanted; gz += ".gz";
-    bool use_gz = g_enable_precompressed_gzip && accept_gzip && fs::exists(gz);
+        bool use_gz = g_enable_precompressed_gzip && accept_gzip && fs::exists(gz);
         fs::path file = use_gz ? gz : wanted;
         std::error_code ec;
         if (!fs::exists(file, ec) || fs::is_directory(file, ec)) { res.status = 404; return; }
