@@ -19,6 +19,7 @@
 #include <optional>
 #include <filesystem>
 #include <condition_variable>
+#include <cstring>
 #include <cctype>
 
 #include "httplib.h" // yhirose/cpp-httplib single header (HTTP + SSE via chunked)
@@ -500,7 +501,7 @@ static std::vector<uint8_t> payload_system_state(uint32_t device_uid, bool runni
 }
 
 static void udp_send_frame(uint32_t can_id, const std::vector<uint8_t> &payload, int dlc) {
-    auto data = pad_to_8(payload);
+     auto data = pad_to_8(payload);
 #ifdef _WIN32
     SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock == INVALID_SOCKET) return;
@@ -661,6 +662,7 @@ struct Subscriber {
 };
 static std::mutex g_subs_mtx;
 static std::set<Subscriber*> g_subscribers;
+static const size_t kMaxSseClients = 32; // hard cap to prevent thread-pool starvation
 
 static void publish_event(const std::string &msg) {
     std::lock_guard<std::mutex> lk(g_subs_mtx);
@@ -755,6 +757,8 @@ int main(int argc, char** argv) {
     std::thread rx(udp_listener_thread, std::ref(stop_flag));
 
     httplib::Server svr;
+    // Increase worker threads to avoid starvation with long-lived SSE requests
+    svr.new_task_queue = [] { return new httplib::ThreadPool(32); };
 
     // Static assets from src/frontend
     // If --frontend is provided, use it. Otherwise derive from executable path.
@@ -1063,6 +1067,16 @@ int main(int argc, char** argv) {
         res.set_header("Cache-Control", "no-cache");
         res.set_header("Content-Type", "text/event-stream");
         res.set_header("Connection", "keep-alive");
+        // Simple admission control: if too many SSE clients are already connected,
+        // reject to avoid exhausting the server's worker threads.
+        {
+            std::lock_guard<std::mutex> lk(g_subs_mtx);
+            if (g_subscribers.size() >= kMaxSseClients) {
+                res.status = 503;
+                res.set_content("too many SSE clients\n", "text/plain");
+                return;
+            }
+        }
         auto *sub = new Subscriber();
         {
             std::lock_guard<std::mutex> lk(g_subs_mtx);
@@ -1094,8 +1108,16 @@ int main(int argc, char** argv) {
                     if (!sink.write(line.data(), line.size())) return false;
                     lk.lock();
                 } else {
-                    sub->cv.wait_for(lk, std::chrono::seconds(15));
+                    // Wait for new events, but also send a periodic keepalive to
+                    // detect broken connections and keep intermediaries happy.
+                    auto status = sub->cv.wait_for(lk, std::chrono::seconds(15));
                     if (sub->closed) return false;
+                    if (status == std::cv_status::timeout && sub->queue.empty()) {
+                        lk.unlock();
+                        static const char ka[] = ": keepalive\n\n"; // SSE comment line
+                        if (!sink.write(ka, sizeof(ka) - 1)) return false;
+                        lk.lock();
+                    }
                 }
             }
             return true;

@@ -404,11 +404,13 @@ stopBtn.addEventListener('click', () => {
   // isRunning and updateStopButtonUI() are only set via SSE!
 });
 
-// Subscribe to Server‑Sent Events (SSE) with simple reconnect on foreground.
+// Subscribe to Server‑Sent Events (SSE) with cautious reconnect logic.
+// Avoid creating multiple parallel connections, which can starve the server.
 let evtSource = null;
 function connectSSE() {
-  if (evtSource && typeof evtSource.close === 'function') {
-    try { evtSource.close(); } catch (e) {}
+  // If there's an existing open (or connecting) EventSource, keep it.
+  if (evtSource && evtSource.readyState !== EventSource.CLOSED) {
+    return;
   }
   evtSource = new EventSource('/api/events');
   evtSource.onmessage = handleSSEMessage;
@@ -462,12 +464,12 @@ function handleSSEMessage(event) {
 // Kick off SSE and re-establish on visibility/pageshow
 connectSSE();
 window.addEventListener('pageshow', function(){
-  // On iOS, pageshow fires when returning from background. Reconnect defensively.
-  connectSSE();
+  // Reconnect only if the previous connection is closed.
+  if (!evtSource || evtSource.readyState === EventSource.CLOSED) connectSSE();
 });
 document.addEventListener('visibilitychange', function(){
   if (document.visibilityState === 'visible') {
-    connectSSE();
+    if (!evtSource || evtSource.readyState === EventSource.CLOSED) connectSSE();
   }
 });
 
