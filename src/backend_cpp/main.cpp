@@ -69,6 +69,7 @@ static std::string g_frontend_dir_override; // optional path to frontend dir (te
 static std::map<int, std::string> g_icon_overrides; // uid -> icon name (stem)
 static bool g_enable_bind_timer = false; // enable CMD_BIND timer only when --bind is passed
 static int g_bind_timeout_ms = 1000;     // timeout for MFX-BIND timer in milliseconds (default 1s)
+static bool g_enable_precompressed_gzip = true; // serve .gz files for static assets when available
 
 // ---- Utilities ----
 static std::string trim(const std::string &s) {
@@ -724,6 +725,7 @@ int main(int argc, char** argv) {
             int v = parse_int_auto(nv); if (v > 0) g_bind_timeout_ms = v;
         }
         else if (a == "--verbose" || a == "-v") { g_verbose = true; }
+        else if (a == "--no-gzip") { g_enable_precompressed_gzip = false; }
         else if (a == "--help" || a == "-h") {
             printf("Usage: mswebapp_cpp [options]\n");
             printf("  --config <dir>     Path to config directory (contains config/, icons/, fcticons/, ...)\n");
@@ -732,6 +734,7 @@ int main(int argc, char** argv) {
             printf("  --port <port>      HTTP port (default 6020)\n");
             printf("  --www <dir>        Frontend directory containing templates/ and static/\n");
             printf("  --bind[=<ms>]      Enable requesting new loco config after MFX-BIND command automatically; optional timeout in ms (default %d)\n", g_bind_timeout_ms);
+            printf("  --no-gzip          Disable serving precompressed .gz files (default is enabled)\n");
             printf("  --verbose          Verbose logging\n");
             return 0;
         }
@@ -828,9 +831,9 @@ int main(int argc, char** argv) {
         std::string rel = req.matches[1].str();
         fs::path wanted = static_dir / rel;
         // Prefer precompressed .gz if client accepts gzip
-        bool accept_gzip = req.has_header("Accept-Encoding") && req.get_header_value("Accept-Encoding").find("gzip") != std::string::npos;
+    bool accept_gzip = req.has_header("Accept-Encoding") && req.get_header_value("Accept-Encoding").find("gzip") != std::string::npos;
         fs::path gz = wanted; gz += ".gz";
-        bool use_gz = accept_gzip && fs::exists(gz);
+    bool use_gz = g_enable_precompressed_gzip && accept_gzip && fs::exists(gz);
         fs::path file = use_gz ? gz : wanted;
         std::error_code ec;
         if (!fs::exists(file, ec) || fs::is_directory(file, ec)) { res.status = 404; return; }
