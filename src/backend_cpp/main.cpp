@@ -42,6 +42,7 @@ struct Loco {
     int uid = 0;
     std::string name;
     std::string icon; // or bild
+    int symbol = 0;
     int tachomax = 200;
     std::map<int,int> fn_typ; // function index -> type id
 };
@@ -151,6 +152,7 @@ static std::string loco_list_json() {
         std::string icon_eff = (itov != g_icon_overrides.end()) ? itov->second : l.icon;
         os << "\"icon\":\"" << json_escape(icon_eff) << "\",";
         os << "\"tachomax\":" << l.tachomax;
+        os << ",\"symbol\":" << l.symbol;
         if (!l.fn_typ.empty()) {
             os << ",\"funktionen\":{";
             bool ffirst = true;
@@ -343,6 +345,8 @@ static void parse_lokomotive_cs2(const fs::path &p) {
                     cur.name = val;
                 } else if (key == "icon") {
                     cur.icon = val;
+                } else if (key == "symbol") {
+                    cur.symbol = parse_int_auto(val);
                 } else if (key == "tachomax") {
                     cur.tachomax = parse_int_auto(val);
                 } else if (key == "vmax") {

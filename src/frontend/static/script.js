@@ -484,21 +484,39 @@ document.addEventListener('visibilitychange', function(){
 // state are prefixed with "fetchAnd…".
 
 // Helper: select a locomotive by uid, update UI and fetch state
+// Unified image fallback: icon -> sym_<Symbol>.png -> leeres Gleis.png
+function setLocoImageWithSymbolFallback(imgEl, loco) {
+  if (!imgEl) return;
+  const iconName = loco && loco.icon;
+  const symbolVal = loco && loco.symbol;
+  let stage = 0; // 0: try icon, 1: try symbol, 2: final fallback
+  imgEl.onerror = function onErr() {
+    if (stage === 0 && Number.isFinite(Number(symbolVal))) {
+      stage = 1;
+      imgEl.src = `/static/grafics/sym_${Number(symbolVal)}.png`;
+    } else if (stage <= 1) {
+      stage = 2;
+      imgEl.onerror = null;
+      imgEl.src = asset('icons/leeres Gleis.png');
+    }
+  };
+  if (iconName) {
+    imgEl.src = asset(`icons/${iconName}.png`);
+  } else if (Number.isFinite(Number(symbolVal))) {
+    stage = 1; // next error -> fallback
+    imgEl.src = `/static/grafics/sym_${Number(symbolVal)}.png`;
+  } else {
+    imgEl.onerror = null; // no need for chain
+    imgEl.src = asset('icons/leeres Gleis.png');
+  }
+}
+
 function selectLoco(uid) {
   currentLocoUid = Number(uid);
   if (!isFinite(currentLocoUid)) return;
   const loco = locList[String(currentLocoUid)] || locList[currentLocoUid];
   locoDesc.textContent = loco ? (loco.name || '') : '';
-  const iconName = (loco && (loco.icon || loco.bild)) || null;
-  locoImg.onerror = function() {
-    locoImg.onerror = null;
-    locoImg.src = '/static/grafics/unknown_loco_txt.png';
-  };
-  if (iconName) {
-    locoImg.src = asset(`icons/${iconName}.png`);
-  } else {
-    locoImg.src = '/static/grafics/unknown_loco_txt.png';
-  }
+  setLocoImageWithSymbolFallback(locoImg, loco);
   fetchAndApplyLocoState(currentLocoUid);
   localStorage.setItem('currentLocoUid', String(currentLocoUid));
 }
@@ -513,13 +531,7 @@ function renderLocoList() {
     const img = new Image();
     img.alt = loco.name;
     img.title = loco.name;
-    img.onerror = function() {
-      img.onerror = null;
-      img.src = '/static/grafics/unknown_loco.png';
-    };
-    const iconName = loco.icon || loco.bild;
-    if (iconName) img.src = asset(`icons/${iconName}.png`);
-    else img.src = '/static/grafics/unknown_loco.png';
+    setLocoImageWithSymbolFallback(img, loco);
     if (listEl) listEl.appendChild(img);
     img.onclick = () => selectLoco(loco.uid);
   });
