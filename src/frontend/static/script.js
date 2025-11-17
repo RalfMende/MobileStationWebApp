@@ -705,7 +705,7 @@ speedBar.addEventListener('pointerdown', (e) => {
     speedBar.removeEventListener('pointerup', onUp);
     speedBar.removeEventListener('pointercancel', onUp);
 
-    if (!isDragging) {
+    if (!isDragging && e.clientY > 0) {
       const rect = speedBar.getBoundingClientRect();
       const y = e.clientY - rect.top;
       const percent = 1 - (y / rect.height);
