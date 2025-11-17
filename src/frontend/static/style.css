@@ -86,9 +86,9 @@
   box-sizing: border-box;
   color: #fff;
   cursor: pointer;
-  flex: 1 1 0;
+  flex: auto;
   font-size: var(--control-font);
-  height: var(--kb-btn-size);
+  height: var(--kb-btn-size) !important;
   margin: 0;
   /*min-width: 0;*/
   transition: background 0.2s, border 0.2s;

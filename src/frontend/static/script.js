@@ -1200,7 +1200,6 @@ function initializeKeyboardButtons(switchState) {
     btn.style.border = '2px solid #ccc';
     btn.style.background = '#fff';
     btn.style.boxShadow = 'none';
-    btn.style.height = '150%';
     btn.style.maxHeight = 'none';
     let img = btn.querySelector('img');
     if (!img) {
