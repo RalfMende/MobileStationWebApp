@@ -1280,11 +1280,11 @@ if (keyboardGrid) {
     // keyNum: 1-based within page; buttons are paired (1,2), (3,4), ...
     const groupIdx = Math.floor((keyNum - 1) / 2);
     const eventIdx = (currentKeyboardId * keyboardGroupCnt) + groupIdx;
-    const value = (keyNum % 2 === 0) ? 1 : 0; // even -> right/diverging, odd -> left/straight
+    const pos = (keyNum % 2 === 0) ? 1 : 0; // even -> right/diverging, odd -> left/straight
     fetch('/api/keyboard_event', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idx: eventIdx, value })
+      body: JSON.stringify({ idx: eventIdx, pos })
     });
   });
 }

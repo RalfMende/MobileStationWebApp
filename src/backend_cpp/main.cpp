@@ -59,6 +59,7 @@ static std::atomic<bool> g_running{false};
 static std::string g_config_dir = "var";
 static std::string g_public_cfg = "/cfg";
 static std::string g_udp_ip = "127.0.0.1";
+static int g_udp_resend_switch_cmd_ms = 200;
 static int g_udp_tx = 15731;
 static int g_udp_rx = 15730;
 static int g_http_port = 6020;
@@ -480,14 +481,14 @@ static std::vector<uint8_t> payload_function(uint32_t loco_uid, int fn, int val)
     return b;
 }
 
-static std::vector<uint8_t> payload_switch(uint32_t uid, int val) {
+static std::vector<uint8_t> payload_switch(uint32_t uid, int pos, int cur) {
     std::vector<uint8_t> b;
     b.push_back((uid >> 24) & 0xFF);
     b.push_back((uid >> 16) & 0xFF);
     b.push_back((uid >> 8) & 0xFF);
     b.push_back(uid & 0xFF);
-    b.push_back(val & 0xFF);
-    b.push_back(0x01);
+    b.push_back(pos & 0xFF);
+    b.push_back(cur & 0xFF);
     return b;
 }
 
@@ -1003,7 +1004,7 @@ int main(int argc, char** argv) {
 
     // API: keyboard_event (switch)
     svr.Post("/api/keyboard_event", [&](const httplib::Request& req, httplib::Response &res){
-        int idx=-1, value=-1;
+        int idx=-1, pos=-1;
         auto body = req.body;
         auto find_num = [&](const char* key)->int{
             auto pos = body.find(key);
@@ -1015,10 +1016,10 @@ int main(int argc, char** argv) {
             if (k>j) return std::stoi(body.substr(j,k-j));
             return -1;
         };
-        idx = find_num("idx"); value = find_num("value");
-        if (idx<0 || value<0) { res.status=400; res.set_content("{\"status\":\"error\",\"message\":\"idx and value required\"}","application/json"); return; }
-        g_switch_state[idx] = value;
-        publish_event(switch_event_json(idx, value));
+        idx = find_num("idx"); pos = find_num("pos");
+        if (idx<0 || pos<0) { res.status=400; res.set_content("{\"status\":\"error\",\"message\":\"idx and pos required\"}","application/json"); return; }
+        g_switch_state[idx] = pos;
+        publish_event(switch_event_json(idx, pos));
         {
             // Map index to UID if available from parsed magnetartikel.cs2
             int uid = idx;
@@ -1026,7 +1027,13 @@ int main(int argc, char** argv) {
                 uid = g_switch_uid[idx];
             }
             uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_SWITCH, 0, 0);
-            udp_send_frame(can_id, payload_switch((uint32_t)uid, value), 6);
+            udp_send_frame(can_id, payload_switch((uint32_t)uid, pos, 1), 6);
+            if (g_udp_resend_switch_cmd_ms > 0) {
+                std::thread([can_id, uid, pos]{
+                    std::this_thread::sleep_for(std::chrono::milliseconds(g_udp_resend_switch_cmd_ms));
+                    udp_send_frame(can_id, payload_switch((uint32_t)uid, pos, 0), 6);
+                }).detach();
+            }
         }
         res.set_content("{\"status\":\"ok\"}", "application/json");
     });
