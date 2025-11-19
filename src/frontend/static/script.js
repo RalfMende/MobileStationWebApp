@@ -1315,7 +1315,7 @@ const iconFilter = document.getElementById('iconFilter');
  * - Renders the grid and wires the filter input for client-side filtering.
  */
 function openIconPicker() {
-  if (!currentLocoUid) return;
+  if (currentLocoUid === null || currentLocoUid === undefined) return;
   if (!iconPickerModal) return;
   iconPickerModal.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
@@ -1386,7 +1386,7 @@ function renderIconGrid(items) {
  * @param {string} iconNameNoExt - chosen icon name without file extension
  */
 function chooseIconForCurrentLoco(iconNameNoExt) {
-  if (!currentLocoUid) return;
+  if (currentLocoUid === null || currentLocoUid === undefined) return;
   fetch('/api/loco_icon', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

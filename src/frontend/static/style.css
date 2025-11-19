@@ -347,7 +347,21 @@
 .modal.hidden { display: none !important; }
 .modal { position: fixed; inset: 0; z-index: 1000; }
 .modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.6); }
-.modal-content { position: relative; background: #111; color: #fff; width: min(900px, calc(var(--app-width, 100vw) * 0.95)); max-height: 90vh; margin: 5vh auto; border-radius: var(--radius); display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+.modal-content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #111;
+  color: #fff;
+  width: 90vw;
+  max-width: 480px;
+  max-height: 90vh;
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
 .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 0.3rem 0.8rem; background: var(--bar-gradient); border-top-left-radius: var(--radius); border-top-right-radius: var(--radius); }
 .modal-header h2 { margin: 0; font-size: clamp(0.9rem, calc(var(--top-btn-h) * 0.40), 1.2rem); }
 .modal-body { padding: 0.8rem; overflow: auto; }
