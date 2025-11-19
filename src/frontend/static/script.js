@@ -519,6 +519,12 @@ function selectLoco(uid) {
   const loco = locList[String(currentLocoUid)] || locList[currentLocoUid];
   locoDesc.textContent = loco ? (loco.name || '') : '';
   setLocoImageWithSymbolFallback(locoImg, loco);
+
+  if (leftCol) leftCol.innerHTML = '';
+  if (rightCol) rightCol.innerHTML = '';
+  setupLocoFunctionButtons(leftCol, 0);
+  setupLocoFunctionButtons(rightCol, 8);
+
   fetchAndApplyLocoState(currentLocoUid);
   localStorage.setItem('currentLocoUid', String(currentLocoUid));
 }
