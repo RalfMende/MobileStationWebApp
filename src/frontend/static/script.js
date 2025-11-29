@@ -787,7 +787,7 @@ function pad2(v) {
 function setFunctionIcon(img, iconPrefix, id, index) {
   const primary  = asset(`fcticons/FktIcon_a_${iconPrefix}_${pad2(id)}.png`);
   const secondary = `/static/grafics/fct_${iconPrefix}_${id}.png`;
-  const fallback  = `/static/grafics/fct_${iconPrefix}_${index}.png`;
+  const fallback  = `/static/grafics/fct_${iconPrefix}_${50 + index}.png`;
 
   function trySetIcon(urls) {
     if (!urls.length) return;
