@@ -768,27 +768,35 @@ function pad2(v) {
  * Set a function icon with fallbacks (browser‑safe, no filesystem).
  *
  * Each locomotive function (e.g. headlights, horn) is represented by
- * an icon.  Icons may differ across locomotives, so this helper
- * constructs a URL for the appropriate file and falls back to a
- * generic icon if the specific one isn't available.  The browser
- * preloads the primary icon and selects the fallback on error.  This
- * avoids filesystem access issues on certain platforms.
+ * an icon. Icons may differ across locomotives, so this helper
+ * constructs URLs for a primary function icon and two fallbacks:
+ *
+ *   1) Config‑based primary icon under STATIC_BASE/fcticons
+ *   2) Per‑id fallback under /static/grafics/fct_${iconPrefix}_${id}.png
+ *   3) Per‑index fallback under /static/grafics/fct_${iconPrefix}_${index}.png
+ *
+ * The browser preloads each candidate and falls through on error.
+ * The function does not return a meaningful value; it mutates `img.src`
+ * asynchronously once a working URL is found.
  *
  * @param {HTMLImageElement} img – the DOM image element to mutate
  * @param {string} iconPrefix – 'we' for inactive or 'ge' for active
  * @param {number} id – the icon identifier
  * @param {number} index – the function index (used for fallback)
- * @returns {string} the URL of the primary image
  */
 function setFunctionIcon(img, iconPrefix, id, index) {
   const primary  = asset(`fcticons/FktIcon_a_${iconPrefix}_${pad2(id)}.png`);
-  const fallback = `/static/grafics/fct_${iconPrefix}_${index}.png`;
+  const secondary = `/static/grafics/fct_${iconPrefix}_${id}.png`;
+  const fallback  = `/static/grafics/fct_${iconPrefix}_${index}.png`;
 
-  const probe = new Image();
-  probe.onload  = () => { img.src = primary; };
-  probe.onerror = () => { img.src = fallback; };
-  probe.src = primary;
-  return primary;
+  function trySetIcon(urls) {
+    if (!urls.length) return;
+    const probe = new Image();
+    probe.onload = () => { img.src = probe.src; };
+    probe.onerror = () => { trySetIcon(urls.slice(1)); };
+    probe.src = urls[0];
+  }
+  trySetIcon([primary, secondary, fallback]);
 }
 
 /**
