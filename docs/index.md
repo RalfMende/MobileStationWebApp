@@ -48,12 +48,12 @@ By default, MobileStationWebApp uses the Mobile Station graphics. To use the loc
 
 **How do I setup Switches / Turnouts**
 
-Please edit the configuration file on the SRSEII /www/config/magnetartikel.cs2
+Edit /www/config/magnetartikel.cs2 on the SRSEII, then restart the MSWEBAPP service for the changes to take effect.
 
 
 **How can I display different Turnout and Signal Icons?**
 
-This feature isn't implemented yet. Only the red and green icon is available.
+This feature is not yet available. Only the red and green icons are supported.
 
 
 **How can I get help?**
