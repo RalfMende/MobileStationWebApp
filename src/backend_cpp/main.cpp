@@ -34,6 +34,8 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <unistd.h>
+#include <sys/inotify.h>
+#include <fcntl.h>
 #endif
 
 namespace fs = std::filesystem;
@@ -1185,35 +1187,39 @@ int main(int argc, char** argv) {
         printf("UDP target %s tx=%d rx=%d device_uid=%d (hash=%04X)\n", g_udp_ip.c_str(), g_udp_tx, g_udp_rx, g_device_uid, generate_hash((uint32_t)g_device_uid));
     }
 
-    // Watcher thread for lokomotive.cs2 reloads
+    // Watcher thread for lokomotive.cs2 reloads (inotify on Linux/macOS, disabled on Windows)
     std::thread watcher([&](){
         fs::path lokfile = fs::path(g_config_dir)/"config"/"lokomotive.cs2";
-        std::error_code ec;
-        auto last_write = fs::exists(lokfile, ec) ? fs::last_write_time(lokfile, ec) : fs::file_time_type{};
+#ifdef _WIN32
+        (void)lokfile;
+#else
+        int fd = inotify_init1(IN_NONBLOCK);
+        if (fd < 0) return;
+        int wd = inotify_add_watch(fd, lokfile.string().c_str(), IN_CLOSE_WRITE | IN_MOVED_TO | IN_DELETE_SELF | IN_ATTRIB);
+        if (wd < 0) { close(fd); return; }
+        char buf[4096];
         while (!stop_flag.load()) {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-            auto cur = fs::exists(lokfile, ec) ? fs::last_write_time(lokfile, ec) : fs::file_time_type{};
-            if (ec) continue;
-            if (cur != last_write) {
-                last_write = cur;
-                try {
-                    parse_lokomotive_cs2(lokfile);
-                    // Reinit state maps for new/removed locos preserving values where possible
-                    std::map<int,int> new_speed; std::map<int,int> new_dir; std::map<int,std::map<int,bool>> new_fn;
-                    for (auto &kv : g_locos) {
-                        int uid = kv.first;
-                        new_speed[uid] = g_loco_speed.count(uid)? g_loco_speed[uid] : 0;
-                        new_dir[uid]   = g_loco_dir.count(uid)? g_loco_dir[uid] : 1;
-                        new_fn[uid]    = g_loco_fn.count(uid)? g_loco_fn[uid] : std::map<int,bool>{};
-                    }
-                    g_loco_speed.swap(new_speed);
-                    g_loco_dir.swap(new_dir);
-                    g_loco_fn.swap(new_fn);
-                    publish_event("{\"type\":\"loco_list_reloaded\"}");
-                } catch (...) {
+            ssize_t n = read(fd, buf, sizeof(buf));
+            if (n <= 0) { std::this_thread::sleep_for(std::chrono::milliseconds(200)); continue; }
+            try {
+                parse_lokomotive_cs2(lokfile);
+                // Reinit state maps for new/removed locos preserving values where possible
+                std::map<int,int> new_speed; std::map<int,int> new_dir; std::map<int,std::map<int,bool>> new_fn;
+                for (auto &kv : g_locos) {
+                    int uid = kv.first;
+                    new_speed[uid] = g_loco_speed.count(uid)? g_loco_speed[uid] : 0;
+                    new_dir[uid]   = g_loco_dir.count(uid)? g_loco_dir[uid] : 1;
+                    new_fn[uid]    = g_loco_fn.count(uid)? g_loco_fn[uid] : std::map<int,bool>{};
                 }
+                g_loco_speed.swap(new_speed);
+                g_loco_dir.swap(new_dir);
+                g_loco_fn.swap(new_fn);
+                publish_event("{\"type\":\"loco_list_reloaded\"}");
+            } catch (...) {
             }
         }
+        close(fd);
+#endif
     });
 
     svr.listen_after_bind();
