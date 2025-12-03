@@ -4,7 +4,7 @@ This guide helps you get up and running fast and shows the key parts of the UI.
 
 ## What you need
 
-- Install MobileStationWebApp on your SRSEII
+- Install the package "mswebapp" on your SRSEII
 - Make sure the service is running
 - Connect your phone/tablet/PC to the same network as the SRSEII (or connect directly to the SRSEII)
 
