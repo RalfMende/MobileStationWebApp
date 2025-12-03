@@ -42,24 +42,28 @@ namespace fs = std::filesystem;
 struct Loco {
     int uid = 0;
     std::string name;
-    std::string icon; // or bild
+    std::string icon;
     int symbol = 0;
     int tachomax = 0;
     std::map<int,int> fn_typ; // function index -> type id
 };
-
 static std::map<int, Loco> g_locos; // uid -> loco
-static std::map<int, int> g_switch_state; // idx -> value
-static std::vector<int> g_switch_uid; // idx -> computed uid (if available)
-static std::vector<std::string> g_switch_name; // idx -> name
 static std::map<int, int> g_loco_speed; // uid -> 0..1023
 static std::map<int, int> g_loco_dir;   // uid -> 0/1/2
 static std::map<int, std::map<int,bool>> g_loco_fn; // uid -> fn->bool
+struct SwitchEntry {
+    int uid = -1;            // computed uid
+    std::string name;
+    std::string typ;
+    std::string dectyp;     // decoder type (mm2/dcc/sx1/...) used to compute uid
+    int switch_delay = 0;   // switching time (ms) parsed as integer
+};
+static std::vector<SwitchEntry> g_switches; // index corresponds to switch slot
+static std::map<int, int> g_switch_state; // idx -> value
 static std::atomic<bool> g_running{false};
 static std::string g_config_dir = "var";
 static std::string g_public_cfg = "/cfg";
 static std::string g_udp_ip = "127.0.0.1";
-static int g_udp_resend_switch_cmd_ms = 200;
 static int g_udp_tx = 15731;
 static int g_udp_rx = 15730;
 static int g_http_port = 6020;
@@ -364,36 +368,48 @@ static void parse_lokomotive_cs2(const fs::path &p) {
 
 static void parse_magnetartikel_cs2(const fs::path &p) {
     g_switch_state.clear();
-    g_switch_uid.clear(); g_switch_uid.resize(64, -1);
-    g_switch_name.clear(); g_switch_name.resize(64);
+    g_switches.clear();
+    g_switches.resize(64);
     std::ifstream f(p);
     if (!f) return;
-    std::string line; bool in = false; int idx=0; int cur_id=0; std::string dectyp;
-    while (std::getline(f,line)) {
+    std::string line; bool in = false; int idx = 0; int cur_id = 0; std::string dectyp; std::string cur_name; std::string cur_typ; int cur_time = 0;
+    while (std::getline(f, line)) {
         line = trim(line);
-        if (line == "artikel") { in = true; idx++; cur_id=0; dectyp.clear(); continue; }
-        if (in && !line.empty() && line[0]=='.' && line.find('=')!=std::string::npos) {
+        if (line == "artikel") {
+            in = true; idx++; cur_id = 0; dectyp.clear(); cur_name.clear();
+            continue;
+        }
+        if (in && !line.empty() && line[0] == '.' && line.find('=') != std::string::npos) {
             auto pos = line.find('=');
-            std::string key = trim(line.substr(1, pos-1));
-            std::string val = trim(line.substr(pos+1));
+            std::string key = trim(line.substr(1, pos - 1));
+            std::string val = trim(line.substr(pos + 1));
             if (key == "id") {
                 try { cur_id = parse_int_auto(val); } catch (...) { cur_id = 0; }
+            } else if (key == "name") {
+                cur_name = val;
+            } else if (key == "typ") {
+                cur_typ = val;
+            } else if (key == "schaltzeit") {
+                cur_time = parse_int_auto(val);
             } else if (key == "dectyp") {
                 std::transform(val.begin(), val.end(), val.begin(), [](unsigned char c){ return (char)std::tolower(c); });
                 dectyp = val;
-            } else if (key == "name") {
-                if (idx>=1 && idx<=64) g_switch_name[idx-1] = val;
             }
-            if (idx <= 64) {
-                g_switch_state[idx-1] = 0;
-                // Compute UID once we see id (dectyp may come later; we recompute on each key)
+            if (idx >= 1 && idx <= 64) {
+                int vec_idx = idx - 1;
+                g_switch_state[vec_idx] = 0;
+                // Compute UID (recompute each time as in previous logic)
                 int id_int = cur_id - 1;
                 int uid = -1;
                 if (dectyp == "mm2") uid = 0x3000 | (id_int & 0x3FF);
                 else if (dectyp == "dcc") uid = 0x3800 | (id_int & 0x3FF);
                 else if (dectyp == "sx1") uid = 0x2800 | (id_int & 0x3FF);
                 else uid = (id_int & 0x3FF);
-                g_switch_uid[idx-1] = uid;
+                g_switches[vec_idx].uid = uid;
+                if (!cur_name.empty()) g_switches[vec_idx].name = cur_name;
+                if (!cur_typ.empty()) g_switches[vec_idx].typ = cur_typ;
+                g_switches[vec_idx].switch_delay = cur_time;
+                if (!dectyp.empty()) g_switches[vec_idx].dectyp = dectyp;
             }
         }
     }
@@ -637,8 +653,8 @@ static void udp_listener_thread(std::atomic<bool>& stop_flag) {
                 int value = int(data[4]);
                 // Map UID back to index if known
                 int idx = -1;
-                for (size_t i = 0; i < g_switch_uid.size(); ++i) {
-                    if (g_switch_uid[i] == uid) { idx = int(i); break; }
+                for (size_t i = 0; i < g_switches.size(); ++i) {
+                    if (g_switches[i].uid == uid) { idx = int(i); break; }
                 }
                 if (idx < 0) {
                     // Fallback: use low 10 bits as simple index if unknown mapping
@@ -917,9 +933,13 @@ int main(int argc, char** argv) {
         std::ostringstream os; os << "{\"artikel\":[";
         for (int i=0;i<=maxIdx;i++) {
             if (i>0) os << ",";
-            std::string name = (i < (int)g_switch_name.size()) ? g_switch_name[i] : std::string();
-            int uid = (i < (int)g_switch_uid.size() && g_switch_uid[i] >= 0) ? g_switch_uid[i] : i;
-            os << "{\"name\":\"" << json_escape(name) << "\",\"uid\":" << uid << "}";
+            std::string name = (i < (int)g_switches.size()) ? g_switches[i].name : std::string();
+            int uid = (i < (int)g_switches.size() && g_switches[i].uid >= 0) ? g_switches[i].uid : i;
+            os << "{\"name\":\"" << json_escape(name) << "\",\"uid\":" << uid;
+            if (i < (int)g_switches.size() && !g_switches[i].dectyp.empty()) {
+                os << ",\"typ\":\"" << json_escape(g_switches[i].dectyp) << "\"";
+            }
+            os << "}";
         }
         os << "]}";
         res.set_content(os.str(), "application/json");
@@ -964,8 +984,6 @@ int main(int argc, char** argv) {
 
     // API: control_event
     svr.Post("/api/control_event", [&](const httplib::Request& req, httplib::Response &res){
-        // Minimal body parse: expect JSON with keys; to avoid JSON deps, accept form as well
-        // For simplicity, assume application/json and parse very naively
         int uid=0; int speed=-1; int direction=-1; int fn=-1; int val=-1;
         auto body = req.body;
         auto find_num = [&](const char* key)->int{
@@ -1023,17 +1041,17 @@ int main(int argc, char** argv) {
         {
             // Map index to UID if available from parsed magnetartikel.cs2
             int uid = idx;
-            if (idx >= 0 && idx < (int)g_switch_uid.size() && g_switch_uid[idx] >= 0) {
-                uid = g_switch_uid[idx];
+            if (idx >= 0 && idx < (int)g_switches.size() && g_switches[idx].uid >= 0) {
+                uid = g_switches[idx].uid;
             }
             uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_SWITCH, 0, 0);
             udp_send_frame(can_id, payload_switch((uint32_t)uid, pos, 1), 6);
-            if (g_udp_resend_switch_cmd_ms > 0) {
-                std::thread([can_id, uid, pos]{
-                    std::this_thread::sleep_for(std::chrono::milliseconds(g_udp_resend_switch_cmd_ms));
-                    udp_send_frame(can_id, payload_switch((uint32_t)uid, pos, 0), 6);
-                }).detach();
-            }
+            int switch_delay_ms = 200; // default delay before auto-reset
+            if (g_switches[idx].switch_delay > 0) { switch_delay_ms = g_switches[idx].switch_delay; }
+            std::thread([can_id, uid, pos, switch_delay_ms]{
+                std::this_thread::sleep_for(std::chrono::milliseconds(switch_delay_ms));
+                udp_send_frame(can_id, payload_switch((uint32_t)uid, pos, 0), 6);
+            }).detach();
         }
         res.set_content("{\"status\":\"ok\"}", "application/json");
     });

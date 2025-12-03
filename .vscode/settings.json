@@ -2,7 +2,8 @@
     "files.associations": {
         "set": "cpp",
         "fstream": "cpp",
-        "xlocmes": "cpp"
+        "xlocmes": "cpp",
+        "thread": "cpp"
     },
     "C_Cpp.intelliSenseEngine": "default",
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
