@@ -849,9 +849,16 @@ function createLocoFunctionButton(idx) {
   btn.style.background = 'transparent';
   btn.style.padding = '0';
   btn.dataset.index = String(idx);
-  let imgid = getFunctionTypeFromLocList(idx);
+  let rawType = getFunctionTypeFromLocList(idx);
+  let imgid = rawType;
+  let isMomentary = false;
+  if (Number(imgid) > 128) {
+    isMomentary = true;
+    imgid = Number(imgid) - 128;
+  }
   if (imgid == null) imgid = 50 + idx;
   btn.dataset.imgid = String(imgid);
+  btn.dataset.momentary = isMomentary ? '1' : '0';
   btn.setAttribute('aria-pressed', 'false');
   btn.dataset.active = '0';
   const img = document.createElement('img');
@@ -884,6 +891,52 @@ function setupLocoFunctionButtons(col, offset) {
     col.addEventListener('click', handleLocoFunctionButtonClick);
     col.dataset.fnDelegated = '1';
   }
+  // Add delegated pointer handlers for momentary functions (type > 128)
+  if (!col.dataset.fnPointerDelegated) {
+    const onPointerDown = (ev) => {
+      const btn = ev.target instanceof Element ? ev.target.closest('button.fn-btn') : null;
+      if (!btn || !col.contains(btn)) return;
+      if (btn.dataset.momentary !== '1') return;
+      const idx = Number(btn.dataset.index);
+      const imgid = Number(btn.dataset.imgid);
+      // Visual feedback: show active icon while pressed
+      const img = btn.querySelector('img');
+      if (img) setFunctionIcon(img, 'ge', imgid, idx);
+      btn.dataset.active = '1';
+      btn.setAttribute('aria-pressed', 'true');
+      try {
+        fetch('/api/control_event', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ loco_id: currentLocoUid, fn: idx, value: 1 })
+        });
+      } catch(e) { /* ignore */ }
+    };
+    const onPointerUpOrCancel = (ev) => {
+      const btn = ev.target instanceof Element ? ev.target.closest('button.fn-btn') : null;
+      if (!btn || !col.contains(btn)) return;
+      if (btn.dataset.momentary !== '1') return;
+      const idx = Number(btn.dataset.index);
+      const imgid = Number(btn.dataset.imgid);
+      // Revert icon/state on release
+      const img = btn.querySelector('img');
+      if (img) setFunctionIcon(img, 'we', imgid, idx);
+      btn.dataset.active = '0';
+      btn.setAttribute('aria-pressed', 'false');
+      try {
+        fetch('/api/control_event', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ loco_id: currentLocoUid, fn: idx, value: 0 })
+        });
+      } catch(e) { /* ignore */ }
+    };
+    col.addEventListener('pointerdown', onPointerDown);
+    col.addEventListener('pointerup', onPointerUpOrCancel);
+    col.addEventListener('pointercancel', onPointerUpOrCancel);
+    col.addEventListener('pointerleave', onPointerUpOrCancel);
+    col.dataset.fnPointerDelegated = '1';
+  }
 }
 
 // Create and attach the locomotive function buttons on initial load
@@ -903,9 +956,12 @@ setupLocoFunctionButtons(rightCol, 8);
 function handleLocoFunctionButtonClick(ev) {
   const btn = ev.target instanceof Element ? ev.target.closest('button.fn-btn') : null;
   if (!btn) return;
+  // For momentary buttons (type > 128), clicks should not toggle state
+  if (btn.dataset.momentary === '1') return;
   const idx = Number(btn.dataset.index);
   let imgid = getFunctionTypeFromLocList(idx);
   if (imgid == null) imgid = Number(btn.dataset.imgid) || (50 + idx);
+  if (Number(imgid) > 128) imgid = Number(imgid) - 128;
   btn.dataset.imgid = String(imgid);
   const wasActive = btn.dataset.active === '1' || btn.getAttribute('aria-pressed') === 'true';
   const nowActive = !wasActive;
@@ -944,6 +1000,9 @@ function handleLocoFunctionButtonClick(ev) {
 function applyLocoFunctionButtonState(btn, idx, active) {
   let imgid = getFunctionTypeFromLocList(idx);
   if (imgid == null) imgid = Number(btn.dataset.imgid) || (50 + idx);
+  let isMomentary = false;
+  if (Number(imgid) > 128) { isMomentary = true; imgid = Number(imgid) - 128; }
+  btn.dataset.momentary = isMomentary ? '1' : '0';
   btn.dataset.imgid = String(imgid);
   btn.dataset.active = active ? '1' : '0';
   btn.setAttribute('aria-pressed', active ? 'true' : 'false');
