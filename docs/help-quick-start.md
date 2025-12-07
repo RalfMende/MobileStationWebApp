@@ -9,10 +9,18 @@ This guide helps you get up and running fast and shows the key parts of the UI.
 - Connect your phone/tablet/PC to the same network as the SRSEII (or connect directly to the SRSEII)
 
 Once the server is running, open your browser and navigate to:
+- http://gleisbox:6020 (or use IP of SRSEII)
 
-- http://gleisbox:6020 (or http://<server-ip>:6020)
 
-## 1) Control a locomotive
+> [!TIP] Mobile Usage: Install as WebApp
+> You can install the MobileStation Web App directly to your home screen for a native app-like experience:
+> 
+> - **iOS:** Open the app in Safari, tap the Share icon, then select "Add to Home Screen".
+> - **Android:** Open the app in Chrome (or most browsers), tap the menu (⋮), then choose "Install app" or "Add to Home screen".
+>
+>The app includes a manifest and touch icon, so it launches fullscreen and behaves like a native app.
+
+## Control a locomotive
 
 The control view shows speed, direction and function buttons.
 
@@ -31,7 +39,7 @@ The control view shows speed, direction and function buttons.
     </tr>
 </table>
 
-## 2) Keyboard / Switches
+## Keyboard / Switches
 
 Operate turnouts and accessories via the keyboard view.
 
@@ -49,7 +57,7 @@ Operate turnouts and accessories via the keyboard view.
     </tr>
     </table>
 
-## 3) Change a locomotive icon
+## Change a locomotive icon
 
 Change a locomotive's icon.
 
@@ -69,7 +77,7 @@ Change a locomotive's icon.
     </tr>
 </table>
 
-## 4) System info and health
+## System info and health
 
 View system status and manage the SRSEII loco list.
 
@@ -88,10 +96,5 @@ View system status and manage the SRSEII loco list.
     </tr>
 </table>
 
-## Tipp: Mobile Usage: Install as WebApp
-You can install the MobileStation Web App directly to your home screen for a native app-like experience:
 
-- **iOS:** Open the app in Safari, tap the Share icon, then select "Add to Home Screen".
-- **Android:** Open the app in Chrome (or most browsers), tap the menu (⋮), then choose "Install app" or "Add to Home screen".
 
-The app includes a manifest and touch icon, so it launches fullscreen and behaves like a native app.
