@@ -7,9 +7,9 @@ Designed to run on the SRSEII Gleisbox and general Linux/OpenWrt environments.
 Provides a self-contained C++ backend (HTTP, API, SSE, UDP) and an optional Python backend for development.
 
 ## Online Help
-- Start here: [Getting Started](docs/help-quick-start.md)
-- Full documentation: [Online Help](docs/index.md)
-- Installation on SRSEII: [Install Guide](docs/help-install-guide.md)
+An Online help is available under: [Online Help](docs/index.md)
+- [Getting Started](docs/help-quick-start.md)
+- [FAQ](docs/help-faqe.md)
 
 ## Features
 - Control Locomotive speed, direction, and up to 16 functions
