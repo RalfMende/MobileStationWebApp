@@ -688,6 +688,7 @@ function fetchAndApplyLocoState(locoUid) {
 speedBar.addEventListener('pointerdown', (e) => {
   isDragging = false;
   const startY = e.clientY;
+  const startVal = Math.min(1000, Math.max(0, Number(speedSlider.value) || 0));
   dragTimeout = setTimeout(() => {
     isDragging = true;
   }, 100);
@@ -697,9 +698,10 @@ speedBar.addEventListener('pointerdown', (e) => {
   const onMove = (e) => {
     if (!isDragging) return;
     const rect = speedBar.getBoundingClientRect();
-    const y = e.clientY - rect.top;
-    const percent = 1 - (y / rect.height);
-    const value = Math.min(1000, Math.max(0, Math.round(percent * 1000)));
+    // Delta‑drag: adjust previous value by vertical movement proportionally to bar height
+    const dy = startY - e.clientY; // moving up increases speed
+    const delta = (dy / rect.height) * 1000;
+    const value = Math.round(Math.min(1000, Math.max(0, startVal + delta)));
     speedSlider.value = value;
     setLocoSpeed(value);
   };
@@ -711,9 +713,10 @@ speedBar.addEventListener('pointerdown', (e) => {
     speedBar.removeEventListener('pointerup', onUp);
     speedBar.removeEventListener('pointercancel', onUp);
 
-    if (!isDragging && e.clientY > 0) {
+    // Short tap: set absolute value at tapped position
+    if (!isDragging) {
       const rect = speedBar.getBoundingClientRect();
-      const y = e.clientY - rect.top;
+      const y = startY - rect.top;
       const percent = 1 - (y / rect.height);
       const value = Math.min(1000, Math.max(0, Math.round(percent * 1000)));
       speedSlider.value = value;
