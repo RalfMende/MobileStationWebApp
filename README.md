@@ -4,7 +4,7 @@
 
 Märklin Mobile Station inspired Web UI to control locomotives and accessories (CS2/CS3 style).
 Designed to run on the SRSEII Gleisbox and general Linux/OpenWrt environments.
-Provides a self-contained C++ backend (HTTP, API, SSE, UDP) and an optional Python backend for development.
+It provides a self-contained C++ backend (HTTP, API, SSE, UDP).
 
 ## Online Help
 An Online help is available under: [Online Help](docs/index.md)
