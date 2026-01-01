@@ -1495,3 +1495,24 @@ if (iconPickerModal) {
     if (e.target === iconPickerModal || e.target.classList.contains('modal-backdrop')) closeIconPicker();
   });
 }
+
+/**
+ * Viewport fallback for Chrome 71 and older browsers:
+ * If 100dvh is unsupported, set --vh to window.innerHeight in px.
+*/
+(function(){
+  try {
+    var supportsDvh = !!(window.CSS && CSS.supports && CSS.supports('height: 100dvh'));
+    if (!supportsDvh) {
+      var applyVh = function(){
+        var vh = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+        document.documentElement.style.setProperty('--vh', vh + 'px');
+      };
+      applyVh();
+      window.addEventListener('resize', applyVh);
+      window.addEventListener('orientationchange', applyVh);
+    }
+  } catch(e) {
+    // ignore
+  }
+})();

@@ -78,6 +78,7 @@
   height: var(--bar-h);
   justify-content: space-evenly;
   padding: 0;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 .keyboard-btn {
   aspect-ratio: 1 / 1;
@@ -225,6 +226,7 @@
   height: var(--bar-h);
   overflow-x: auto;
   padding: 0 0.4rem;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 .main-content {
   display: flex;
@@ -397,9 +399,8 @@
 .icon-card img { width: 100%; height: 90px; object-fit: contain; background: #000; border-radius: var(--radius); }
 .icon-card .caption { font-size: 0.8rem; color: #ddd; text-align: center; word-break: break-word; }
 :root {
-  --app-height: 100svh;
   --app-width: 100vw;
-  --vh: var(--app-height, 100svh);
+  --vh: 100dvh;
   --bar-gradient: linear-gradient(to bottom, rgb(165, 165, 165), rgb(69, 69, 69));
   --bar-h: calc(var(--vh) * 0.1);
   --func-btn-size: calc(var(--vh) * 0.1);
