@@ -589,10 +589,10 @@ static void udp_listener_thread(std::atomic<bool>& stop_flag) {
     DWORD timeout = 1000; setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
 #else
     int s = socket(AF_INET, SOCK_DGRAM, 0);
-    if (s < 0) return;
+    if (s < 0) { perror("socket creation in udp_listener_thread failed"); return; }
     int yes = 1; setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
     sockaddr_in addr{}; addr.sin_family = AF_INET; addr.sin_port = htons(g_udp_rx); addr.sin_addr.s_addr = INADDR_ANY;
-    if (bind(s, (sockaddr*)&addr, sizeof(addr)) < 0) { close(s); return; }
+    if (bind(s, (sockaddr*)&addr, sizeof(addr)) < 0) { close(s); perror("bind in udp_listener_thread failed"); return; }
     struct timeval tv; tv.tv_sec = 1; tv.tv_usec = 0; setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 #endif
 
