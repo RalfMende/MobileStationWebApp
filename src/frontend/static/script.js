@@ -95,6 +95,12 @@ const I18N = {
       filterPlaceholder: 'Filter…',
       cancel: 'Cancel',
     },
+    sort: {
+      'default': 'Address',
+      name: 'Name',
+      recent: 'Recently used',
+      activeFirst: 'Active locos first',
+    },
     keyboard: {
       headerPrefix: 'Keyboard Page ',
     }
@@ -123,6 +129,12 @@ const I18N = {
       title: 'Icon wählen',
       filterPlaceholder: 'Filter…',
       cancel: 'Abbrechen',
+    },
+    sort: {
+      'default': 'Adresse',
+      name: 'Name',
+      recent: 'Zuletzt',
+      activeFirst: 'Aktive Loks zuerst',
     },
     keyboard: {
       headerPrefix: 'Keyboard Seite ',
@@ -527,22 +539,174 @@ function selectLoco(uid) {
 
   fetchAndApplyLocoState(currentLocoUid);
   localStorage.setItem('currentLocoUid', String(currentLocoUid));
+  pushRecentLoco(currentLocoUid);
+  if (locoSortMode === 'recent') renderLocoList();
 }
+
+// =====================
+//  LOCO LIST SORTING
+// =====================
+var locoSortMode = localStorage.getItem('locoSortMode') || 'default';
+var locoSortActiveFirst = localStorage.getItem('locoSortActiveFirst') === '1';
+let activeFirstPollTimer = null;
+
+var recentLocoUids = (function() {
+  try { var v = JSON.parse(localStorage.getItem('recentLocoUids')); return Array.isArray(v) ? v : []; }
+  catch(e) { return []; }
+})();
+
+function pushRecentLoco(uid) {
+  var s = String(uid);
+  recentLocoUids = recentLocoUids.filter(function(u){ return u !== s; });
+  recentLocoUids.unshift(s);
+  // Keep list bounded
+  if (recentLocoUids.length > 200) recentLocoUids.length = 200;
+  localStorage.setItem('recentLocoUids', JSON.stringify(recentLocoUids));
+}
+
+function startActiveFirstPolling() {
+  stopActiveFirstPolling();
+  if (!locoSortActiveFirst) return;
+  activeFirstPollTimer = setInterval(function() {
+    fetch('/api/loco_state').then(function(r){ return r.json(); }).then(function(s) {
+      locoState = s || {};
+      renderLocoList();
+    }).catch(function(){});
+  }, 1000);
+}
+
+function stopActiveFirstPolling() {
+  if (activeFirstPollTimer) { clearInterval(activeFirstPollTimer); activeFirstPollTimer = null; }
+}
+
+/**
+ * Return a sorted copy of the uid keys from locList according to the
+ * current sort mode and the "active first" toggle.
+ *
+ * @returns {string[]} sorted uid array
+ */
+function getSortedLocoUids() {
+  var uids = Object.keys(locList);
+  // Primary sort
+  if (locoSortMode === 'name') {
+    uids.sort(function(a, b) {
+      var na = ((locList[a] && locList[a].name) || '').toLowerCase();
+      var nb = ((locList[b] && locList[b].name) || '').toLowerCase();
+      return na < nb ? -1 : na > nb ? 1 : 0;
+    });
+  } else if (locoSortMode === 'recent') {
+    // Order by recently-used list; unknown UIDs go to the end
+    var posMap = {};
+    for (var ri = 0; ri < recentLocoUids.length; ri++) posMap[recentLocoUids[ri]] = ri;
+    uids.sort(function(a, b) {
+      var pa = (a in posMap) ? posMap[a] : 99999;
+      var pb = (b in posMap) ? posMap[b] : 99999;
+      return pa - pb;
+    });
+  }
+  // "Active first" secondary sort – stable partition
+  if (locoSortActiveFirst) {
+    var active = [];
+    var inactive = [];
+    for (var i = 0; i < uids.length; i++) {
+      var uid = uids[i];
+      var st = locoState && locoState[uid];
+      var spd = st ? Number(st.speed || 0) : 0;
+      if (spd > 0) {
+        active.push(uid);
+      } else {
+        inactive.push(uid);
+      }
+    }
+    uids = active.concat(inactive);
+  }
+  return uids;
+}
+
+/** Refresh the visual state of the sort menu checkmarks */
+function updateSortMenuUI() {
+  var menu = document.getElementById('locoSortMenu');
+  if (!menu) return;
+  var opts = menu.querySelectorAll('.loco-sort-option');
+  for (var i = 0; i < opts.length; i++) {
+    var btn = opts[i];
+    var mode = btn.getAttribute('data-sort');
+    if (mode === 'active-first') {
+      if (locoSortActiveFirst) { btn.classList.add('active'); } else { btn.classList.remove('active'); }
+    } else {
+      if (mode === locoSortMode) { btn.classList.add('active'); } else { btn.classList.remove('active'); }
+    }
+  }
+}
+
+// Wire up sort button and menu
+(function initSortUI() {
+  var sortBtn = document.getElementById('locoSortBtn');
+  var sortMenu = document.getElementById('locoSortMenu');
+  if (!sortBtn || !sortMenu) return;
+
+  sortBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    var isHidden = sortMenu.classList.contains('hidden');
+    if (isHidden) {
+      updateSortMenuUI();
+      sortMenu.classList.remove('hidden');
+    } else {
+      sortMenu.classList.add('hidden');
+    }
+  });
+
+  // Close menu when clicking outside
+  document.addEventListener('click', function(e) {
+    if (!sortMenu.classList.contains('hidden') && !sortMenu.contains(e.target) && e.target !== sortBtn) {
+      sortMenu.classList.add('hidden');
+    }
+  });
+
+  // Handle sort option clicks
+  var opts = sortMenu.querySelectorAll('.loco-sort-option');
+  for (var i = 0; i < opts.length; i++) {
+    opts[i].addEventListener('click', function() {
+      var mode = this.getAttribute('data-sort');
+      if (mode === 'active-first') {
+        // Toggle
+        locoSortActiveFirst = !locoSortActiveFirst;
+        localStorage.setItem('locoSortActiveFirst', locoSortActiveFirst ? '1' : '0');
+        if (locoSortActiveFirst) startActiveFirstPolling(); else stopActiveFirstPolling();
+      } else {
+        locoSortMode = mode;
+        localStorage.setItem('locoSortMode', mode);
+      }
+      updateSortMenuUI();
+      renderLocoList();
+      sortMenu.classList.add('hidden');
+    });
+  }
+
+  // Apply initial UI state
+  updateSortMenuUI();
+  // Start polling if active-first was persisted
+  if (locoSortActiveFirst) startActiveFirstPolling();
+})();
 
 // Helper: rebuild the locomotive list icons and click handlers
 function renderLocoList() {
-  const listEl = document.getElementById('locoList');
+  var listEl = document.getElementById('locoList');
   if (listEl) listEl.innerHTML = '';
-  const uids = Object.keys(locList);
-  uids.forEach(uid => {
-    const loco = locList[uid];
-    const img = new Image();
+  var uids = getSortedLocoUids();
+  for (var i = 0; i < uids.length; i++) {
+    var uid = uids[i];
+    var loco = locList[uid];
+    var img = new Image();
     img.alt = loco.name;
     img.title = loco.name;
     setLocoImageWithSymbolFallback(img, loco);
     if (listEl) listEl.appendChild(img);
-    img.onclick = () => selectLoco(loco.uid);
-  });
+    // Use an IIFE for closure in old Chrome (no let in for-loops)
+    (function(locoUid) {
+      img.onclick = function() { selectLoco(locoUid); };
+    })(loco.uid);
+  }
   return uids;
 }
 

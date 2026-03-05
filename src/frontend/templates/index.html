@@ -76,6 +76,16 @@
       <div class="functions-side" id="rightFunctions"></div>
     </div>
     <div class="control-bottom-bar">
+      <button id="locoSortBtn" class="loco-sort-btn" aria-label="Sort" title="Sort">
+        <img src="/static/grafics/sort.png" alt="Sort" width="18" height="18" />
+      </button>
+      <div id="locoSortMenu" class="loco-sort-menu hidden">
+        <button class="loco-sort-option" data-sort="default" data-i18n="sort.default">Address</button>
+        <button class="loco-sort-option" data-sort="name" data-i18n="sort.name">Name</button>
+        <button class="loco-sort-option" data-sort="recent" data-i18n="sort.recent">Recently used</button>
+        <hr class="loco-sort-divider">
+        <button class="loco-sort-option loco-sort-toggle" data-sort="active-first" data-i18n="sort.activeFirst">Active locos first</button>
+      </div>
       <div id="locoList" class="loco-list"></div>
     </div>
   </div>

@@ -229,7 +229,10 @@ textarea {
 .loco-list {
   display: flex;
   gap: 0.5rem;
+  overflow-x: auto;
   padding: 0.4rem;
+  flex: 1;
+  min-width: 0;
 }
 /* emulate gap for old Chrome */
 .loco-list > * + * { margin-left: 0.5rem; }
@@ -242,9 +245,72 @@ textarea {
   background: var(--bar-gradient);
   display: flex;
   height: var(--bar-h);
-  overflow-x: auto;
+  overflow: visible;
   padding: 0 0.4rem;
   padding-bottom: env(safe-area-inset-bottom);
+  position: relative;
+}
+.loco-sort-btn {
+  align-items: center;
+  background: rgba(255,255,255,0.15);
+  border: none;
+  border-radius: var(--radius);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  flex-shrink: 0;
+  height: calc(var(--bar-h) * 0.6);
+  justify-content: center;
+  margin-right: 0.4rem;
+  padding: 0;
+  width: calc(var(--bar-h) * 0.6);
+  z-index: 2;
+}
+.loco-sort-btn:hover,
+.loco-sort-btn:active {
+  background: rgba(255,255,255,0.30);
+}
+.loco-sort-menu {
+  background: #222;
+  border: 1px solid #555;
+  border-radius: var(--radius);
+  bottom: calc(var(--bar-h) + 0.3rem);
+  box-shadow: 0 -4px 16px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+  left: 0.4rem;
+  min-width: 11rem;
+  padding: 0.3rem 0;
+  position: absolute;
+  z-index: 100;
+}
+.loco-sort-menu.hidden {
+  display: none !important;
+}
+.loco-sort-option {
+  background: transparent;
+  border: none;
+  color: #ddd;
+  cursor: pointer;
+  font-size: calc(var(--control-font) * 1.05);
+  padding: 0.45rem 0.8rem;
+  text-align: left;
+  white-space: nowrap;
+}
+.loco-sort-option:hover {
+  background: rgba(255,255,255,0.12);
+}
+.loco-sort-option.active {
+  color: #fff;
+  font-weight: bold;
+}
+.loco-sort-option.active::before {
+  content: '\2713\00a0';
+}
+.loco-sort-divider {
+  border: none;
+  border-top: 1px solid #444;
+  margin: 0.2rem 0;
 }
 .main-content {
   display: flex;
