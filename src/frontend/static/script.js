@@ -7,8 +7,9 @@
  Ralf Mende
 */
 
-// Number of switch groups per keyboard page (each group has 2 buttons) -> can be set to 8/16
-const keyboardGroupCnt = 8;
+// Number of switch groups per keyboard page (each group has 2 buttons).
+// Portrait: 8 groups/page (pages 1a..4b), Landscape: 16 groups/page (pages 1..4).
+let keyboardGroupCnt = 8;
 
 let locList = {};
 let switchList = {};
@@ -49,6 +50,15 @@ const infoModal = document.getElementById('infoModal');
 const infoModalClose = document.getElementById('infoModalClose');
 // Keyboard buttons and page buttons are built dynamically; query as needed
 let keyboardPageBtns = null; // will be set after dynamic build
+
+function detectKeyboardGroupCnt() {
+  try {
+    if (window.matchMedia && window.matchMedia('(orientation: landscape)').matches) return 16;
+  } catch (e) {
+    // ignore and use fallback below
+  }
+  return (window.innerWidth > window.innerHeight) ? 16 : 8;
+}
 
 // CONFIG_PATH is injected by the backend into index.html. Be tolerant if it's missing
 // and fall back to the default public config base used by the servers ("/cfg").
@@ -1281,7 +1291,8 @@ function updateKeyboardHeaderText() {
   if (!header) return;
   const btn = document.querySelector('.keyboard-page-btn.active');
   const prefix = (I18N[CURRENT_LANG] || I18N.en).keyboard.headerPrefix;
-  header.textContent = prefix + (btn ? btn.textContent : '1a');
+  const fallbackLabel = (keyboardGroupCnt === 16) ? '1' : '1a';
+  header.textContent = prefix + (btn ? btn.textContent : fallbackLabel);
 }
 
 /**
@@ -1342,14 +1353,39 @@ function buildKeyboardBottomBar() {
   keyboardPageBtns = document.querySelectorAll('.keyboard-page-btn');
 }
 
-// Build pages immediately (HTML is already parsed since script is at end of body)
-buildKeyboardBottomBar();
+// Rebuild keyboard UI according to current orientation.
+function applyKeyboardLayout(preservePosition) {
+  const oldCnt = keyboardGroupCnt;
+  const absoluteGroup = (preservePosition ? (currentKeyboardId * oldCnt) : 0);
+  keyboardGroupCnt = detectKeyboardGroupCnt();
+
+  buildKeyboardBottomBar();
+  buildKeyboardGrid();
+  wireKeyboardPageButtons();
+
+  const targetPage = Math.floor(absoluteGroup / keyboardGroupCnt);
+  activateKeyboardBtnById(targetPage);
+  if (!keyboardPageBtns || keyboardPageBtns.length === 0) {
+    currentKeyboardId = 0;
+  }
+  updateKeyboardGroupLabels();
+
+  fetch('/api/switch_state')
+    .then(response => response.json())
+    .then(data => {
+      const switchState = data && data.switch_state ? data.switch_state : [];
+      initializeKeyboardButtons(switchState);
+    })
+    .catch(() => {
+      initializeKeyboardButtons([]);
+    });
+}
 
 /**
  * Build the keyboard grid (groups with 2 buttons each) based on keyboardGroupCnt.
  *
  * Renders 'keyboardGroupCnt' switch groups for the current page arranged in a
- * 4-column layout. Each group consists of a text label and two adjacent
+ * two-row layout. Each group consists of a text label and two adjacent
  * buttons with a 1-based 'data-key' per page. Existing grid content is cleared
  * before rebuilding.
  *
@@ -1361,12 +1397,13 @@ function buildKeyboardGrid() {
   const grid = document.querySelector('.keyboard-grid');
   if (!grid) return;
   grid.innerHTML = '';
-  const colsPerRow = 4;
+  const colsPerRow = Math.max(1, Math.ceil(keyboardGroupCnt / 2));
   const rows = Math.ceil(keyboardGroupCnt / colsPerRow);
   let groupIndex = 0;
   for (let r = 0; r < rows; r++) {
     const row = document.createElement('div');
     row.className = 'keyboard-row';
+    row.style.gridTemplateColumns = `repeat(${colsPerRow}, minmax(0, 1fr))`;
     for (let c = 0; c < colsPerRow && groupIndex < keyboardGroupCnt; c++, groupIndex++) {
       const col = document.createElement('div');
       col.className = 'keyboard-btn-col';
@@ -1389,8 +1426,6 @@ function buildKeyboardGrid() {
     grid.appendChild(row);
   }
 }
-  // Build keyboard grid according to group count
-  buildKeyboardGrid();
 
 /**
  * Wire click handlers for keyboard page selector buttons.
@@ -1434,10 +1469,18 @@ function wireKeyboardPageButtons() {
   });
 }
 
-// Wire handlers after build and activate first page
-wireKeyboardPageButtons();
-activateKeyboardBtnById(0);
-updateKeyboardGroupLabels();
+// Initial build and responsive updates for orientation changes.
+applyKeyboardLayout(false);
+
+function onKeyboardLayoutMaybeChanged() {
+  const nextCnt = detectKeyboardGroupCnt();
+  if (nextCnt !== keyboardGroupCnt) {
+    applyKeyboardLayout(true);
+  }
+}
+
+window.addEventListener('resize', onKeyboardLayoutMaybeChanged);
+window.addEventListener('orientationchange', onKeyboardLayoutMaybeChanged);
 
 /**
  * Initialise keyboard buttons based on the current switch state.
