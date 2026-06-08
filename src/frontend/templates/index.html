@@ -76,16 +76,9 @@
       <div class="functions-side" id="rightFunctions"></div>
     </div>
     <div class="control-bottom-bar">
-      <button id="locoSortBtn" class="loco-sort-btn" aria-label="Sort" title="Sort">
-        <img src="/static/grafics/sort.png" alt="Sort" width="18" height="18" />
+      <button id="locoAddBtn" class="loco-add-btn" aria-label="Add locomotive" title="Add locomotive">
+        <img src="/static/grafics/plus.png" alt="Add locomotive" width="18" height="18" />
       </button>
-      <div id="locoSortMenu" class="loco-sort-menu hidden">
-        <button class="loco-sort-option" data-sort="default" data-i18n="sort.default">Address</button>
-        <button class="loco-sort-option" data-sort="name" data-i18n="sort.name">Name</button>
-        <button class="loco-sort-option" data-sort="recent" data-i18n="sort.recent">Recently used</button>
-        <hr class="loco-sort-divider">
-        <button class="loco-sort-option loco-sort-toggle" data-sort="active-first" data-i18n="sort.activeFirst">Active locos first</button>
-      </div>
       <div id="locoList" class="loco-list"></div>
     </div>
   </div>
@@ -103,6 +96,20 @@
       </div>
       <div class="modal-footer">
         <button id="iconPickerCancel" class="tab" data-i18n="icon.cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="locoPickerModal" class="bottom-sheet hidden" role="dialog" aria-modal="true" aria-labelledby="locoPickerTitle">
+    <div class="modal-backdrop"></div>
+    <div class="bottom-sheet-content">
+      <div class="modal-header">
+        <h2 id="locoPickerTitle" data-i18n="locoPicker.title">Select Locomotive</h2>
+        <button id="locoPickerClose" class="modal-close" aria-label="Close" data-i18n="common.close" data-i18n-attr="aria-label">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="locoPickerFilter" placeholder="Search…" class="modal-filter" data-i18n="locoPicker.searchPlaceholder" data-i18n-attr="placeholder" autocomplete="off" />
+        <div id="locoPickerList" class="loco-picker-list" aria-live="polite"></div>
       </div>
     </div>
   </div>

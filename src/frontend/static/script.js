@@ -105,11 +105,9 @@ const I18N = {
       filterPlaceholder: 'Filter…',
       cancel: 'Cancel',
     },
-    sort: {
-      'default': 'Address',
-      name: 'Name',
-      recent: 'Recently used',
-      activeFirst: 'Active locos first',
+    locoPicker: {
+      title: 'Select Locomotive',
+      searchPlaceholder: 'Search…',
     },
     keyboard: {
       headerPrefix: 'Keyboard Page ',
@@ -140,11 +138,9 @@ const I18N = {
       filterPlaceholder: 'Filter…',
       cancel: 'Abbrechen',
     },
-    sort: {
-      'default': 'Adresse',
-      name: 'Name',
-      recent: 'Zuletzt',
-      activeFirst: 'Aktive Loks zuerst',
+    locoPicker: {
+      title: 'Lok auswählen',
+      searchPlaceholder: 'Suche…',
     },
     keyboard: {
       headerPrefix: 'Keyboard Seite ',
@@ -535,7 +531,8 @@ function setLocoImageWithSymbolFallback(imgEl, loco) {
   }
 }
 
-function selectLoco(uid) {
+function selectLoco(uid, options) {
+  var opts = Object.assign({ ensureDock: false, scrollDock: false }, options || {});
   currentLocoUid = Number(uid);
   if (!isFinite(currentLocoUid)) return;
   const loco = locList[String(currentLocoUid)] || locList[currentLocoUid];
@@ -549,176 +546,335 @@ function selectLoco(uid) {
 
   fetchAndApplyLocoState(currentLocoUid);
   localStorage.setItem('currentLocoUid', String(currentLocoUid));
-  pushRecentLoco(currentLocoUid);
-  if (locoSortMode === 'recent') renderLocoList();
+  if (opts.ensureDock) {
+    ensureLocoInDock(String(currentLocoUid));
+    if (opts.scrollDock) dockScrollTargetUid = String(currentLocoUid);
+  }
+  renderLocoList();
 }
 
 // =====================
-//  LOCO LIST SORTING
+//  LOCO DOCK & PICKER
 // =====================
-var locoSortMode = localStorage.getItem('locoSortMode') || 'default';
-var locoSortActiveFirst = localStorage.getItem('locoSortActiveFirst') === '1';
-let activeFirstPollTimer = null;
 
-var recentLocoUids = (function() {
-  try { var v = JSON.parse(localStorage.getItem('recentLocoUids')); return Array.isArray(v) ? v : []; }
-  catch(e) { return []; }
-})();
+// Maximum number of locomotives shown in the bottom dock.
+var LOCO_DOCK_MAX = 10;
+var dockLocoUids = loadUidArrayFromStorage('dockLocoUids');
+var pinnedLocoUids = loadUidArrayFromStorage('pinnedLocoUids');
+var dockScrollTargetUid = null;
 
-function pushRecentLoco(uid) {
-  var s = String(uid);
-  recentLocoUids = recentLocoUids.filter(function(u){ return u !== s; });
-  recentLocoUids.unshift(s);
-  // Keep list bounded
-  if (recentLocoUids.length > 200) recentLocoUids.length = 200;
-  localStorage.setItem('recentLocoUids', JSON.stringify(recentLocoUids));
+function loadUidArrayFromStorage(key) {
+  try {
+    var v = JSON.parse(localStorage.getItem(key));
+    if (!Array.isArray(v)) return [];
+    return v.map(function(u){ return String(u); });
+  } catch (e) {
+    return [];
+  }
 }
 
-function startActiveFirstPolling() {
-  stopActiveFirstPolling();
-  if (!locoSortActiveFirst) return;
-  activeFirstPollTimer = setInterval(function() {
-    fetch('/api/loco_state').then(function(r){ return r.json(); }).then(function(s) {
-      locoState = s || {};
-      renderLocoList();
-    }).catch(function(){});
-  }, 1000);
-}
-
-function stopActiveFirstPolling() {
-  if (activeFirstPollTimer) { clearInterval(activeFirstPollTimer); activeFirstPollTimer = null; }
+function saveDockState() {
+  localStorage.setItem('dockLocoUids', JSON.stringify(dockLocoUids));
+  localStorage.setItem('pinnedLocoUids', JSON.stringify(pinnedLocoUids));
 }
 
 /**
- * Return a sorted copy of the uid keys from locList according to the
- * current sort mode and the "active first" toggle.
- *
- * @returns {string[]} sorted uid array
+ * Return all loco UIDs in static backend order.
+ * @returns {string[]}
  */
 function getSortedLocoUids() {
-  var uids = Object.keys(locList);
-  // Primary sort
-  if (locoSortMode === 'name') {
-    uids.sort(function(a, b) {
-      var na = ((locList[a] && locList[a].name) || '').toLowerCase();
-      var nb = ((locList[b] && locList[b].name) || '').toLowerCase();
-      return na < nb ? -1 : na > nb ? 1 : 0;
-    });
-  } else if (locoSortMode === 'recent') {
-    // Order by recently-used list; unknown UIDs go to the end
-    var posMap = {};
-    for (var ri = 0; ri < recentLocoUids.length; ri++) posMap[recentLocoUids[ri]] = ri;
-    uids.sort(function(a, b) {
-      var pa = (a in posMap) ? posMap[a] : 99999;
-      var pb = (b in posMap) ? posMap[b] : 99999;
-      return pa - pb;
-    });
-  }
-  // "Active first" secondary sort – stable partition
-  if (locoSortActiveFirst) {
-    var active = [];
-    var inactive = [];
-    for (var i = 0; i < uids.length; i++) {
-      var uid = uids[i];
-      var st = locoState && locoState[uid];
-      var spd = st ? Number(st.speed || 0) : 0;
-      if (spd > 0) {
-        active.push(uid);
-      } else {
-        inactive.push(uid);
-      }
-    }
-    uids = active.concat(inactive);
-  }
-  return uids;
+  return Object.keys(locList);
 }
 
-/** Refresh the visual state of the sort menu checkmarks */
-function updateSortMenuUI() {
-  var menu = document.getElementById('locoSortMenu');
-  if (!menu) return;
-  var opts = menu.querySelectorAll('.loco-sort-option');
-  for (var i = 0; i < opts.length; i++) {
-    var btn = opts[i];
-    var mode = btn.getAttribute('data-sort');
-    if (mode === 'active-first') {
-      if (locoSortActiveFirst) { btn.classList.add('active'); } else { btn.classList.remove('active'); }
-    } else {
-      if (mode === locoSortMode) { btn.classList.add('active'); } else { btn.classList.remove('active'); }
+function syncDockWithAvailableLoks(allUids) {
+  var available = {};
+  for (var i = 0; i < allUids.length; i++) available[String(allUids[i])] = true;
+  dockLocoUids = dockLocoUids.filter(function(uid){ return !!available[uid]; });
+  pinnedLocoUids = pinnedLocoUids.filter(function(uid){
+    return !!available[uid] && dockLocoUids.indexOf(uid) !== -1;
+  });
+  if (dockLocoUids.length === 0) {
+    dockLocoUids = allUids.slice(0, LOCO_DOCK_MAX).map(function(uid){ return String(uid); });
+  }
+  saveDockState();
+}
+
+function ensureLocoInDock(uidStr) {
+  if (!uidStr) return false;
+  if (dockLocoUids.indexOf(uidStr) !== -1) return false;
+  dockLocoUids.push(uidStr);
+  while (dockLocoUids.length > LOCO_DOCK_MAX) {
+    var removeIdx = -1;
+    for (var i = 0; i < dockLocoUids.length; i++) {
+      if (pinnedLocoUids.indexOf(dockLocoUids[i]) === -1) {
+        removeIdx = i;
+        break;
+      }
     }
+    if (removeIdx === -1) {
+      dockLocoUids.pop();
+      break;
+    }
+    var removedUid = dockLocoUids.splice(removeIdx, 1)[0];
+    pinnedLocoUids = pinnedLocoUids.filter(function(uid){ return uid !== removedUid; });
+  }
+  saveDockState();
+  return true;
+}
+
+function toggleLocoPinned(uidStr) {
+  if (!uidStr || dockLocoUids.indexOf(uidStr) === -1) return;
+  var idx = pinnedLocoUids.indexOf(uidStr);
+  if (idx === -1) pinnedLocoUids.push(uidStr);
+  else pinnedLocoUids.splice(idx, 1);
+  saveDockState();
+  _dockRenderedUids = null; // force full rebuild so pin styling is re-applied
+  renderLocoList();
+}
+
+function scrollDockToUid(listEl, uidStr) {
+  if (!listEl || !uidStr) return;
+  var targetEl = listEl.querySelector('img[data-loco-uid="' + uidStr + '"]');
+  if (!targetEl) return;
+  try {
+    var maxScrollLeft = Math.max(0, listEl.scrollWidth - listEl.clientWidth);
+    var centeredLeft = targetEl.offsetLeft - ((listEl.clientWidth - targetEl.offsetWidth) / 2);
+    var targetLeft = Math.max(0, Math.min(maxScrollLeft, centeredLeft));
+    if (typeof listEl.scrollTo === 'function') {
+      listEl.scrollTo({ left: targetLeft, behavior: 'smooth' });
+    } else {
+      listEl.scrollLeft = targetLeft;
+    }
+  } catch (e) {
+    targetEl.scrollIntoView();
   }
 }
 
-// Wire up sort button and menu
-(function initSortUI() {
-  var sortBtn = document.getElementById('locoSortBtn');
-  var sortMenu = document.getElementById('locoSortMenu');
-  if (!sortBtn || !sortMenu) return;
-
-  sortBtn.addEventListener('click', function(e) {
-    e.stopPropagation();
-    var isHidden = sortMenu.classList.contains('hidden');
-    if (isHidden) {
-      updateSortMenuUI();
-      sortMenu.classList.remove('hidden');
-    } else {
-      sortMenu.classList.add('hidden');
+function wireDockLongPressHandlers(imgEl, uidStr) {
+  var pressTimer = null;
+  var wasLongPress = false;
+  function clearTimer() {
+    if (pressTimer) {
+      clearTimeout(pressTimer);
+      pressTimer = null;
     }
-  });
-
-  // Close menu when clicking outside
-  document.addEventListener('click', function(e) {
-    if (!sortMenu.classList.contains('hidden') && !sortMenu.contains(e.target) && e.target !== sortBtn) {
-      sortMenu.classList.add('hidden');
-    }
-  });
-
-  // Handle sort option clicks
-  var opts = sortMenu.querySelectorAll('.loco-sort-option');
-  for (var i = 0; i < opts.length; i++) {
-    opts[i].addEventListener('click', function() {
-      var mode = this.getAttribute('data-sort');
-      if (mode === 'active-first') {
-        // Toggle
-        locoSortActiveFirst = !locoSortActiveFirst;
-        localStorage.setItem('locoSortActiveFirst', locoSortActiveFirst ? '1' : '0');
-        if (locoSortActiveFirst) startActiveFirstPolling(); else stopActiveFirstPolling();
-      } else {
-        locoSortMode = mode;
-        localStorage.setItem('locoSortMode', mode);
-      }
-      updateSortMenuUI();
-      renderLocoList();
-      sortMenu.classList.add('hidden');
-    });
   }
+  function startTimer() {
+    clearTimer();
+    wasLongPress = false;
+    pressTimer = setTimeout(function() {
+      wasLongPress = true;
+      toggleLocoPinned(uidStr);
+      if (navigator && typeof navigator.vibrate === 'function') navigator.vibrate(12);
+    }, 550);
+  }
+  function cancelTimer() { clearTimer(); }
+  imgEl.addEventListener('mousedown', startTimer);
+  imgEl.addEventListener('touchstart', startTimer, { passive: true });
+  imgEl.addEventListener('mouseup', cancelTimer);
+  imgEl.addEventListener('mouseleave', cancelTimer);
+  imgEl.addEventListener('touchend', cancelTimer);
+  imgEl.addEventListener('touchcancel', cancelTimer);
+  return function consumeLongPress() {
+    var v = wasLongPress;
+    wasLongPress = false;
+    return v;
+  };
+}
 
-  // Apply initial UI state
-  updateSortMenuUI();
-  // Start polling if active-first was persisted
-  if (locoSortActiveFirst) startActiveFirstPolling();
-})();
+/**
+ * Rebuild the locomotive dock (horizontal scroll bar).
+ * Shows at most LOCO_DOCK_MAX entries in static backend order.
+ * The currently active locomotive is highlighted.
+ *
+ * When only the active/pinned state changes (same UIDs), the DOM is NOT
+ * rebuilt — only CSS classes are toggled.  This preserves scroll position
+ * without any save/restore tricks.  A full rebuild only happens when the
+ * set of displayed UIDs actually changes.
+ *
+ * @returns {string[]} all UIDs (not just the capped dock subset)
+ */
+var _dockRenderedUids = null; // last dock UIDs that were fully built into DOM
 
-// Helper: rebuild the locomotive list icons and click handlers
 function renderLocoList() {
   var listEl = document.getElementById('locoList');
+  var allUids = getSortedLocoUids();
+  syncDockWithAvailableLoks(allUids);
+  var activeStr = currentLocoUid !== null ? String(currentLocoUid) : null;
+  var dockUids = dockLocoUids.slice(0, LOCO_DOCK_MAX);
+
+  // Check whether the dock UIDs are identical to the last full build
+  var needsFullRebuild = !_dockRenderedUids || _dockRenderedUids.length !== dockUids.length;
+  if (!needsFullRebuild) {
+    for (var ci = 0; ci < dockUids.length; ci++) {
+      if (_dockRenderedUids[ci] !== dockUids[ci]) { needsFullRebuild = true; break; }
+    }
+  }
+
+  if (!needsFullRebuild && listEl) {
+    // Fast path: only update CSS classes – scroll position is untouched
+    var imgs = listEl.querySelectorAll('img[data-loco-uid]');
+    for (var pi = 0; pi < imgs.length; pi++) {
+      var puid = imgs[pi].getAttribute('data-loco-uid');
+      imgs[pi].classList.toggle('loco-active', puid === activeStr);
+      imgs[pi].classList.toggle('loco-pinned', pinnedLocoUids.indexOf(puid) !== -1);
+    }
+
+    // Important: handle pending scroll requests even when no full rebuild
+    // happens (e.g. picker selection of a loco already in dock).
+    if (dockScrollTargetUid) {
+      var fastScrollTarget = dockScrollTargetUid;
+      dockScrollTargetUid = null;
+      scrollDockToUid(listEl, fastScrollTarget);
+    }
+
+    return allUids;
+  }
+
+  // Full rebuild (dock composition changed)
+  var prevScrollLeft = listEl ? listEl.scrollLeft : 0;
   if (listEl) listEl.innerHTML = '';
-  var uids = getSortedLocoUids();
-  for (var i = 0; i < uids.length; i++) {
-    var uid = uids[i];
+  _dockRenderedUids = dockUids.slice();
+
+  for (var i = 0; i < dockUids.length; i++) {
+    var uid = dockUids[i];
     var loco = locList[uid];
+    if (!loco) continue;
     var img = new Image();
     img.alt = loco.name;
     img.title = loco.name;
+    img.setAttribute('data-loco-uid', uid);
+    if (uid === activeStr) img.classList.add('loco-active');
+    if (pinnedLocoUids.indexOf(uid) !== -1) img.classList.add('loco-pinned');
     setLocoImageWithSymbolFallback(img, loco);
+    var consumeLongPress = wireDockLongPressHandlers(img, uid);
     if (listEl) listEl.appendChild(img);
-    // Use an IIFE for closure in old Chrome (no let in for-loops)
     (function(locoUid) {
-      img.onclick = function() { selectLoco(locoUid); };
-    })(loco.uid);
+      img.onclick = function(e) {
+        if (consumeLongPress()) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        selectLoco(locoUid);
+      };
+    })(uid);
   }
-  return uids;
+  if (listEl) {
+    if (dockScrollTargetUid) {
+      // New loco added from picker – scroll to it once images have painted
+      var scrollTarget = dockScrollTargetUid;
+      dockScrollTargetUid = null;
+      requestAnimationFrame(function() {
+        scrollDockToUid(listEl, scrollTarget);
+      });
+    } else {
+      listEl.scrollLeft = prevScrollLeft;
+    }
+  }
+  return allUids;
 }
+
+// =====================
+//  LOCO PICKER (Bottom Sheet)
+// =====================
+
+/**
+ * Open the loco picker bottom sheet and render all available locomotives
+ * in static backend order.
+ */
+function openLocoPicker() {
+  var modal = document.getElementById('locoPickerModal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  var filterEl = document.getElementById('locoPickerFilter');
+  if (filterEl) {
+    filterEl.value = '';
+    filterEl.oninput = function() {
+      renderLocoPicker(filterEl.value.trim().toLowerCase());
+    };
+  }
+  renderLocoPicker('');
+  // Focus the search field after a brief delay so the keyboard appears
+  if (filterEl) setTimeout(function() { filterEl.focus(); }, 80);
+}
+
+/**
+ * Close the loco picker bottom sheet.
+ */
+function closeLocoPicker() {
+  var modal = document.getElementById('locoPickerModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+/**
+ * Render the loco list inside the bottom sheet, optionally filtered.
+ * Items keep static backend order. The active loco is highlighted.
+ * @param {string} filter - lowercase search string (name, uid/address)
+ */
+function renderLocoPicker(filter) {
+  var listEl = document.getElementById('locoPickerList');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+  var allUids = getSortedLocoUids();
+  var activeStr = currentLocoUid !== null ? String(currentLocoUid) : null;
+  for (var i = 0; i < allUids.length; i++) {
+    var uid = allUids[i];
+    var loco = locList[uid];
+    if (!loco) continue;
+    var name = (loco.name || '').toLowerCase();
+    var addr = String(loco.uid || uid);
+    if (filter && name.indexOf(filter) === -1 && addr.indexOf(filter) === -1) continue;
+    var item = document.createElement('div');
+    item.className = 'loco-picker-item';
+    if (uid === activeStr) item.classList.add('loco-picker-active');
+    var thumb = new Image();
+    thumb.alt = loco.name || uid;
+    thumb.className = 'loco-picker-thumb';
+    setLocoImageWithSymbolFallback(thumb, loco);
+    var label = document.createElement('div');
+    label.className = 'loco-picker-label';
+    var nameEl = document.createElement('span');
+    nameEl.className = 'loco-picker-name';
+    nameEl.textContent = loco.name || uid;
+    var addrEl = document.createElement('span');
+    addrEl.className = 'loco-picker-addr';
+    addrEl.textContent = addr;
+    label.appendChild(nameEl);
+    label.appendChild(addrEl);
+    item.appendChild(thumb);
+    item.appendChild(label);
+    (function(locoUid) {
+      item.onclick = function() {
+        selectLoco(locoUid, { ensureDock: true, scrollDock: true });
+        closeLocoPicker();
+      };
+    })(uid);
+    listEl.appendChild(item);
+  }
+}
+
+// Wire add button to open the loco picker
+(function initLocoPickerUI() {
+  var addBtn = document.getElementById('locoAddBtn');
+  if (addBtn) {
+    addBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      openLocoPicker();
+    });
+  }
+  var modal = document.getElementById('locoPickerModal');
+  var closeBtn = document.getElementById('locoPickerClose');
+  if (closeBtn) closeBtn.onclick = closeLocoPicker;
+  if (modal) {
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal || e.target.classList.contains('modal-backdrop')) closeLocoPicker();
+    });
+  }
+})();
 
 // Unified loader: fetch loco_list (and optionally loco_state), render UI, and choose selection
 function loadAndRenderLocoList(options) {
