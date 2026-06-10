@@ -275,9 +275,25 @@ textarea {
   outline: 2px solid rgba(255,255,255,0.65);
   outline-offset: 2px;
 }
-.loco-list img.loco-pinned {
-  border-radius: var(--radius);
-  box-shadow: 0 0 0 2px rgba(255, 203, 64, 0.9);
+/* Wrapper for each dock entry — enables pin-badge overlay positioning */
+.loco-dock-item {
+  align-items: center;
+  cursor: pointer;
+  display: inline-flex;
+  flex-shrink: 0;
+  justify-content: center;
+  position: relative;
+}
+/* Pin-badge shown in the top-right corner of pinned loks */
+.loco-pin-badge {
+  color: #fff;
+  filter: grayscale(1) brightness(100) drop-shadow(0 1px 2px rgba(0,0,0,0.7));
+  font-size: calc(var(--loco-item-h) * 0.66);
+  line-height: 1;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  top: 0;
 }
 .bottom-sheet {
   position: fixed;

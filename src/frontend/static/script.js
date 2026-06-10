@@ -634,7 +634,8 @@ function toggleLocoPinned(uidStr) {
 
 function scrollDockToUid(listEl, uidStr) {
   if (!listEl || !uidStr) return;
-  var targetEl = listEl.querySelector('img[data-loco-uid="' + uidStr + '"]');
+  var targetEl = listEl.querySelector('.loco-dock-item[data-loco-uid="' + uidStr + '"]');
+  if (!targetEl) targetEl = listEl.querySelector('img[data-loco-uid="' + uidStr + '"]');
   if (!targetEl) return;
   try {
     var maxScrollLeft = Math.max(0, listEl.scrollWidth - listEl.clientWidth);
@@ -702,6 +703,11 @@ function renderLocoList() {
   syncDockWithAvailableLoks(allUids);
   var activeStr = currentLocoUid !== null ? String(currentLocoUid) : null;
   var dockUids = dockLocoUids.slice(0, LOCO_DOCK_MAX);
+  dockUids.sort(function(a, b) {
+    var aPin = pinnedLocoUids.indexOf(a) !== -1 ? 0 : 1;
+    var bPin = pinnedLocoUids.indexOf(b) !== -1 ? 0 : 1;
+    return aPin - bPin;
+  });
 
   // Check whether the dock UIDs are identical to the last full build
   var needsFullRebuild = !_dockRenderedUids || _dockRenderedUids.length !== dockUids.length;
@@ -740,6 +746,11 @@ function renderLocoList() {
     var uid = dockUids[i];
     var loco = locList[uid];
     if (!loco) continue;
+
+    var wrapper = document.createElement('div');
+    wrapper.className = 'loco-dock-item';
+    wrapper.setAttribute('data-loco-uid', uid);
+
     var img = new Image();
     img.alt = loco.name;
     img.title = loco.name;
@@ -747,8 +758,18 @@ function renderLocoList() {
     if (uid === activeStr) img.classList.add('loco-active');
     if (pinnedLocoUids.indexOf(uid) !== -1) img.classList.add('loco-pinned');
     setLocoImageWithSymbolFallback(img, loco);
+    wrapper.appendChild(img);
+
+    // Pin badge: small overlay in the top-right corner
+    if (pinnedLocoUids.indexOf(uid) !== -1) {
+      var badge = document.createElement('span');
+      badge.className = 'loco-pin-badge';
+      badge.textContent = '📌';
+      wrapper.appendChild(badge);
+    }
+
     var consumeLongPress = wireDockLongPressHandlers(img, uid);
-    if (listEl) listEl.appendChild(img);
+    if (listEl) listEl.appendChild(wrapper);
     (function(locoUid) {
       img.onclick = function(e) {
         if (consumeLongPress()) {
