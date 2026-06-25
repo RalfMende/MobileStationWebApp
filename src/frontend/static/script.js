@@ -556,6 +556,60 @@ function installHorizontalSwipeNavigation() {
   bindSwipe(keyboardPage, function() { switchKeyboardPageByOffset(1); }, function() { switchKeyboardPageByOffset(-1); });
 }
 
+function wireSingleOrDoubleClick(el, onSingle, onDouble, delayMs) {
+  if (!el) return;
+  var delay = Number(delayMs) > 0 ? Number(delayMs) : 280;
+  var clickTimer = null;
+  var suppressClickUntil = 0;
+
+  function runSingle(e) {
+    if (typeof onSingle === 'function') onSingle(e);
+  }
+
+  function runDouble(e) {
+    if (typeof onDouble === 'function') onDouble(e);
+  }
+
+  function queueSingle(e) {
+    clickTimer = setTimeout(function() {
+      clickTimer = null;
+      runSingle(e);
+    }, delay);
+  }
+
+  function handleTap(e) {
+    if (clickTimer) {
+      clearTimeout(clickTimer);
+      clickTimer = null;
+      e.preventDefault();
+      e.stopPropagation();
+      runDouble(e);
+      return;
+    }
+    queueSingle(e);
+  }
+
+  // Hint browsers to avoid double-tap zoom heuristics on this element.
+  el.style.touchAction = 'manipulation';
+
+  // iOS Safari/Firefox: detect double-tap from touch events directly.
+  el.addEventListener('touchend', function(e) {
+    suppressClickUntil = Date.now() + 700;
+    if (e.cancelable) e.preventDefault();
+    handleTap(e);
+  }, { passive: false });
+
+  // Desktop/mouse fallback and non-touch environments.
+  el.addEventListener('click', function(e) {
+    if (Date.now() < suppressClickUntil) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    handleTap(e);
+  });
+}
+
 //
 // ==========================
 //  LOCOMOTIVE CONTROL SECTION
@@ -767,36 +821,22 @@ function scrollDockToUid(listEl, uidStr) {
   }
 }
 
-function wireDockLongPressHandlers(imgEl, uidStr) {
-  var pressTimer = null;
-  var wasLongPress = false;
-  function clearTimer() {
-    if (pressTimer) {
-      clearTimeout(pressTimer);
-      pressTimer = null;
-    }
-  }
-  function startTimer() {
-    clearTimer();
-    wasLongPress = false;
-    pressTimer = setTimeout(function() {
-      wasLongPress = true;
+function wireDockClickAndPinHandlers(imgEl, uidStr) {
+  if (!imgEl) return;
+  imgEl.setAttribute('draggable', 'false');
+  imgEl.style.webkitTouchCallout = 'none';
+  imgEl.style.webkitUserSelect = 'none';
+  imgEl.style.userSelect = 'none';
+  imgEl.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+  wireSingleOrDoubleClick(
+    imgEl,
+    function() { selectLoco(uidStr); },
+    function() {
       toggleLocoPinned(uidStr);
       if (navigator && typeof navigator.vibrate === 'function') navigator.vibrate(12);
-    }, 550);
-  }
-  function cancelTimer() { clearTimer(); }
-  imgEl.addEventListener('mousedown', startTimer);
-  imgEl.addEventListener('touchstart', startTimer, { passive: true });
-  imgEl.addEventListener('mouseup', cancelTimer);
-  imgEl.addEventListener('mouseleave', cancelTimer);
-  imgEl.addEventListener('touchend', cancelTimer);
-  imgEl.addEventListener('touchcancel', cancelTimer);
-  return function consumeLongPress() {
-    var v = wasLongPress;
-    wasLongPress = false;
-    return v;
-  };
+    },
+    280
+  );
 }
 
 /**
@@ -884,18 +924,8 @@ function renderLocoList() {
       wrapper.appendChild(badge);
     }
 
-    var consumeLongPress = wireDockLongPressHandlers(img, uid);
+    wireDockClickAndPinHandlers(img, uid);
     if (listEl) listEl.appendChild(wrapper);
-    (function(locoUid) {
-      img.onclick = function(e) {
-        if (consumeLongPress()) {
-          e.preventDefault();
-          e.stopPropagation();
-          return;
-        }
-        selectLoco(locoUid);
-      };
-    })(uid);
   }
   if (listEl) {
     if (dockScrollTargetUid) {
@@ -2003,7 +2033,12 @@ function chooseIconForCurrentLoco(iconNameNoExt) {
 // Wire modal interactions: open on central loco image, close via X/Cancel/backdrop.
 if (locoImg) {
   locoImg.style.cursor = 'pointer';
-  locoImg.addEventListener('click', openIconPicker);
+  locoImg.setAttribute('draggable', 'false');
+  locoImg.style.webkitTouchCallout = 'none';
+  locoImg.style.webkitUserSelect = 'none';
+  locoImg.style.userSelect = 'none';
+  locoImg.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+  wireSingleOrDoubleClick(locoImg, null, openIconPicker, 280);
 }
 if (iconPickerClose) iconPickerClose.onclick = closeIconPicker;
 if (iconPickerCancel) iconPickerCancel.onclick = closeIconPicker;
