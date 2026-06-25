@@ -1300,9 +1300,12 @@ function fetchAndApplyLocoState(locoUid) {
 // speed setting for the locomotive.
 speedBar.addEventListener('pointerdown', (e) => {
   isDragging = false;
+  let cancelledByHorizontalSwipe = false;
+  const startX = e.clientX;
   let startY = e.clientY;
   let startVal = Math.min(1000, Math.max(0, Number(speedSlider.value) || 0));
   const dragThreshold = 4; // px threshold to decide drag vs tap
+  const horizontalCancelThreshold = 18; // px: treat as page swipe, not speed interaction
 
   // Prevent text selection while interacting with the speed bar
   document.body.classList.add('no-select');
@@ -1317,7 +1320,19 @@ speedBar.addEventListener('pointerdown', (e) => {
 
   const onMove = (e) => {
     e.preventDefault();
+    const dx = e.clientX - startX;
     const dy = startY - e.clientY; // moving up increases speed
+
+    // If horizontal movement dominates, abort speed handling for this gesture
+    // so page-swipe gestures do not change speed accidentally.
+    if (!isDragging && !cancelledByHorizontalSwipe) {
+      if (Math.abs(dx) >= horizontalCancelThreshold && Math.abs(dx) > Math.abs(dy)) {
+        cancelledByHorizontalSwipe = true;
+        return;
+      }
+    }
+
+    if (cancelledByHorizontalSwipe) return;
     if (!isDragging && Math.abs(dy) >= dragThreshold) {
       isDragging = true;
     }
@@ -1343,6 +1358,8 @@ speedBar.addEventListener('pointerdown', (e) => {
 
     // Re-enable text selection after interaction ends
     document.body.classList.remove('no-select');
+
+    if (cancelledByHorizontalSwipe) return;
 
     // Tap: set absolute value at the final pointer position
     if (!isDragging) {
