@@ -509,8 +509,21 @@ function switchKeyboardPageByOffset(offset) {
   if (!keyboardPageBtns || keyboardPageBtns.length === 0) return;
   var next = currentKeyboardId + offset;
   if (next < 0 || next >= keyboardPageBtns.length) return;
-  // Reuse existing click handler path so labels/state refresh are identical.
-  keyboardPageBtns[next].click();
+  var visualDir = offset > 0 ? -1 : 1; // next -> slide left, previous -> slide right
+  if (isKeyboardSwipeAnimating) return;
+  isKeyboardSwipeAnimating = true;
+  var contentEl = keyboardPage ? keyboardPage.querySelector('.keyboard-area') : null;
+  animateHorizontalSwap(
+    contentEl,
+    visualDir,
+    function() {
+      // Reuse existing click handler path so labels/state refresh are identical.
+      keyboardPageBtns[next].click();
+    },
+    function() {
+      isKeyboardSwipeAnimating = false;
+    }
+  );
 }
 
 function installHorizontalSwipeNavigation() {
@@ -554,6 +567,95 @@ function installHorizontalSwipeNavigation() {
   bindSwipe(controlPage, function() { switchLocoByOffset(1); }, function() { switchLocoByOffset(-1); });
   // Keyboard view: swipe left/right to switch keyboard pages.
   bindSwipe(keyboardPage, function() { switchKeyboardPageByOffset(1); }, function() { switchKeyboardPageByOffset(-1); });
+}
+
+var isControlSwipeAnimating = false;
+var isKeyboardSwipeAnimating = false;
+
+function animateHorizontalSwap(contentEl, visualDir, applyChange, onDone) {
+  if (!contentEl) {
+    applyChange();
+    if (typeof onDone === 'function') onDone();
+    return;
+  }
+
+  var reduceMotion = false;
+  try {
+    reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  } catch (e) {
+    reduceMotion = false;
+  }
+  if (reduceMotion) {
+    applyChange();
+    if (typeof onDone === 'function') onDone();
+    return;
+  }
+
+  var width = Math.max(1, contentEl.clientWidth || contentEl.offsetWidth || 1);
+  var outX = (visualDir < 0 ? -1 : 1) * width;
+  var inX = -outX;
+  var durationMs = 280;
+  var easing = 'cubic-bezier(0.22, 0.61, 0.36, 1)';
+
+  var outgoing = contentEl.cloneNode(true);
+  outgoing.style.position = 'absolute';
+  outgoing.style.left = '0';
+  outgoing.style.top = '0';
+  outgoing.style.width = '100%';
+  outgoing.style.height = '100%';
+  outgoing.style.margin = '0';
+  outgoing.style.pointerEvents = 'none';
+  outgoing.style.zIndex = '12';
+  outgoing.style.willChange = 'transform';
+  outgoing.style.transform = 'translateX(0px)';
+  outgoing.style.transition = 'none';
+  outgoing.setAttribute('aria-hidden', 'true');
+
+  var parent = contentEl.parentElement;
+  if (!parent) {
+    applyChange();
+    if (typeof onDone === 'function') onDone();
+    return;
+  }
+
+  var oldParentPosition = parent.style.position;
+  var oldParentOverflow = parent.style.overflow;
+  if (window.getComputedStyle(parent).position === 'static') {
+    parent.style.position = 'relative';
+  }
+  parent.style.overflow = 'hidden';
+  parent.appendChild(outgoing);
+
+  contentEl.style.willChange = 'transform';
+  contentEl.style.transition = 'none';
+  contentEl.style.transform = 'translateX(' + inX + 'px)';
+
+  // Apply the data/UI change while incoming view is offscreen.
+  applyChange();
+
+  // Force reflow to ensure both layers have their start positions before animating.
+  outgoing.offsetWidth;
+  contentEl.offsetWidth;
+
+  outgoing.style.transition = 'transform ' + durationMs + 'ms ' + easing;
+  contentEl.style.transition = 'transform ' + durationMs + 'ms ' + easing;
+
+  requestAnimationFrame(function() {
+    outgoing.style.transform = 'translateX(' + outX + 'px)';
+    contentEl.style.transform = 'translateX(0px)';
+  });
+
+  function finalize() {
+    if (outgoing && outgoing.parentNode) outgoing.parentNode.removeChild(outgoing);
+    contentEl.style.transition = '';
+    contentEl.style.transform = '';
+    contentEl.style.willChange = '';
+    if (oldParentPosition) parent.style.position = oldParentPosition; else parent.style.position = '';
+    if (oldParentOverflow) parent.style.overflow = oldParentOverflow; else parent.style.overflow = '';
+    if (typeof onDone === 'function') onDone();
+  }
+
+  setTimeout(finalize, durationMs + 30);
 }
 
 function wireSingleOrDoubleClick(el, onSingle, onDouble, delayMs) {
@@ -694,7 +796,21 @@ function switchLocoByOffset(offset) {
   if (idx === -1) return;
   var nextIdx = idx + offset;
   if (nextIdx < 0 || nextIdx >= ordered.length) return;
-  selectLoco(ordered[nextIdx]);
+  var targetUid = ordered[nextIdx];
+  var visualDir = offset > 0 ? -1 : 1; // next -> slide left, previous -> slide right
+  if (isControlSwipeAnimating) return;
+  isControlSwipeAnimating = true;
+  var contentEl = controlPage ? controlPage.querySelector('.main-content') : null;
+  animateHorizontalSwap(
+    contentEl,
+    visualDir,
+    function() {
+      selectLoco(targetUid);
+    },
+    function() {
+      isControlSwipeAnimating = false;
+    }
+  );
 }
 
 // =====================
