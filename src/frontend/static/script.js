@@ -499,6 +499,65 @@ document.addEventListener('visibilitychange', function(){
 
 //
 // ==========================
+//  UI NAVIGATION SECTION
+// ==========================
+//
+// Cross-view navigation helpers (tabs, swipe gestures, and page switching)
+// are grouped here because they affect both control and keyboard views.
+
+function switchKeyboardPageByOffset(offset) {
+  if (!keyboardPageBtns || keyboardPageBtns.length === 0) return;
+  var next = currentKeyboardId + offset;
+  if (next < 0 || next >= keyboardPageBtns.length) return;
+  // Reuse existing click handler path so labels/state refresh are identical.
+  keyboardPageBtns[next].click();
+}
+
+function installHorizontalSwipeNavigation() {
+  var SWIPE_MIN_X = 70;
+  var SWIPE_MAX_Y = 45;
+
+  function bindSwipe(containerEl, onSwipeLeft, onSwipeRight) {
+    if (!containerEl) return;
+    var startX = 0;
+    var startY = 0;
+    var tracking = false;
+
+    containerEl.addEventListener('touchstart', function(e) {
+      if (!e.touches || e.touches.length !== 1) return;
+      var target = e.target;
+      if (target && target.closest && target.closest('button, input, textarea, #locoList, .modal, .bottom-sheet')) {
+        tracking = false;
+        return;
+      }
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      tracking = true;
+    }, { passive: true });
+
+    containerEl.addEventListener('touchend', function(e) {
+      if (!tracking || !e.changedTouches || e.changedTouches.length !== 1) return;
+      tracking = false;
+      var dx = e.changedTouches[0].clientX - startX;
+      var dy = e.changedTouches[0].clientY - startY;
+      if (Math.abs(dx) < SWIPE_MIN_X || Math.abs(dy) > SWIPE_MAX_Y || Math.abs(dy) > Math.abs(dx)) return;
+      if (dx < 0) onSwipeLeft();
+      else onSwipeRight();
+    }, { passive: true });
+
+    containerEl.addEventListener('touchcancel', function() {
+      tracking = false;
+    }, { passive: true });
+  }
+
+  // Control view: swipe left/right to switch between dock locomotives.
+  bindSwipe(controlPage, function() { switchLocoByOffset(1); }, function() { switchLocoByOffset(-1); });
+  // Keyboard view: swipe left/right to switch keyboard pages.
+  bindSwipe(keyboardPage, function() { switchKeyboardPageByOffset(1); }, function() { switchKeyboardPageByOffset(-1); });
+}
+
+//
+// ==========================
 //  LOCOMOTIVE CONTROL SECTION
 // ==========================
 //
@@ -560,6 +619,28 @@ function selectLoco(uid, options) {
     return;
   }
   renderLocoList();
+}
+
+function getDisplayedDockUids() {
+  var dockUids = dockLocoUids.slice(0, LOCO_DOCK_MAX);
+  dockUids.sort(function(a, b) {
+    var aPin = pinnedLocoUids.indexOf(a) !== -1 ? 0 : 1;
+    var bPin = pinnedLocoUids.indexOf(b) !== -1 ? 0 : 1;
+    return aPin - bPin;
+  });
+  return dockUids;
+}
+
+function switchLocoByOffset(offset) {
+  var currentStr = currentLocoUid !== null ? String(currentLocoUid) : null;
+  if (!currentStr) return;
+  var ordered = getDisplayedDockUids();
+  if (!ordered.length) return;
+  var idx = ordered.indexOf(currentStr);
+  if (idx === -1) return;
+  var nextIdx = idx + offset;
+  if (nextIdx < 0 || nextIdx >= ordered.length) return;
+  selectLoco(ordered[nextIdx]);
 }
 
 // =====================
@@ -1683,6 +1764,7 @@ function wireKeyboardPageButtons() {
 
 // Initial build and responsive updates for orientation changes.
 applyKeyboardLayout(false);
+installHorizontalSwipeNavigation();
 
 function onKeyboardLayoutMaybeChanged() {
   const nextCnt = detectKeyboardGroupCnt();
