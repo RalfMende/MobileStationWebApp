@@ -109,6 +109,9 @@ const I18N = {
       title: 'Select Locomotive',
       searchPlaceholder: 'Search…',
     },
+    locoDock: {
+      noSlotFree: 'No free slot, because all locomotives are either pinned or active'
+    },
     keyboard: {
       headerPrefix: 'Keyboard Page ',
     }
@@ -141,6 +144,9 @@ const I18N = {
     locoPicker: {
       title: 'Lok auswählen',
       searchPlaceholder: 'Suche…',
+    },
+    locoDock: {
+      noSlotFree: 'Kein Slot frei, da alle Loks entweder gepinnt oder aktiv sind'
     },
     keyboard: {
       headerPrefix: 'Keyboard Seite ',
@@ -547,8 +553,11 @@ function selectLoco(uid, options) {
   fetchAndApplyLocoState(currentLocoUid);
   localStorage.setItem('currentLocoUid', String(currentLocoUid));
   if (opts.ensureDock) {
-    ensureLocoInDock(String(currentLocoUid));
     if (opts.scrollDock) dockScrollTargetUid = String(currentLocoUid);
+    ensureLocoInDock(String(currentLocoUid)).then(function() {
+      renderLocoList();
+    });
+    return;
   }
   renderLocoList();
 }
@@ -600,26 +609,52 @@ function syncDockWithAvailableLoks(allUids) {
 }
 
 function ensureLocoInDock(uidStr) {
-  if (!uidStr) return false;
-  if (dockLocoUids.indexOf(uidStr) !== -1) return false;
-  dockLocoUids.push(uidStr);
-  while (dockLocoUids.length > LOCO_DOCK_MAX) {
-    var removeIdx = -1;
-    for (var i = 0; i < dockLocoUids.length; i++) {
-      if (pinnedLocoUids.indexOf(dockLocoUids[i]) === -1) {
-        removeIdx = i;
-        break;
-      }
-    }
-    if (removeIdx === -1) {
-      dockLocoUids.pop();
-      break;
-    }
-    var removedUid = dockLocoUids.splice(removeIdx, 1)[0];
-    pinnedLocoUids = pinnedLocoUids.filter(function(uid){ return uid !== removedUid; });
+  if (!uidStr) return Promise.resolve(false);
+  if (dockLocoUids.indexOf(uidStr) !== -1) return Promise.resolve(false);
+  if (dockLocoUids.length < LOCO_DOCK_MAX) {
+    dockLocoUids.push(uidStr);
+    saveDockState();
+    return Promise.resolve(true);
   }
-  saveDockState();
-  return true;
+
+  return fetch('/api/loco_state')
+    .then(function(r) { return r.json(); })
+    .then(function(allStates) {
+      var removeIdx = -1;
+      for (var i = 0; i < dockLocoUids.length; i++) {
+        var candidateUid = dockLocoUids[i];
+        if (pinnedLocoUids.indexOf(candidateUid) !== -1) continue;
+        var state = allStates ? allStates[candidateUid] : null;
+        var speed = state ? Number(state.speed || 0) : 0;
+        var isActive = isFinite(speed) && speed > 0;
+        if (!isActive) {
+          removeIdx = i;
+          break;
+        }
+      }
+
+      if (removeIdx === -1) {
+        var msg = (I18N[CURRENT_LANG] && I18N[CURRENT_LANG].locoDock && I18N[CURRENT_LANG].locoDock.noSlotFree)
+          || (I18N.en && I18N.en.locoDock && I18N.en.locoDock.noSlotFree)
+          || 'No free slot, because all locomotives are either pinned or active';
+        alert(msg);
+        return false;
+      }
+
+      var removedUid = dockLocoUids.splice(removeIdx, 1)[0];
+      pinnedLocoUids = pinnedLocoUids.filter(function(uid){ return uid !== removedUid; });
+      dockLocoUids.push(uidStr);
+      saveDockState();
+      return true;
+    })
+    .catch(function(err) {
+      console.warn('Failed to resolve dock replacement candidates:', err);
+      var msg = (I18N[CURRENT_LANG] && I18N[CURRENT_LANG].locoDock && I18N[CURRENT_LANG].locoDock.noSlotFree)
+        || (I18N.en && I18N.en.locoDock && I18N.en.locoDock.noSlotFree)
+        || 'No free slot, because all locomotives are either pinned or active';
+      alert(msg);
+      return false;
+    });
 }
 
 function toggleLocoPinned(uidStr) {

@@ -275,7 +275,6 @@ textarea {
   outline: 2px solid rgba(255,255,255,0.65);
   outline-offset: 2px;
 }
-/* Wrapper for each dock entry — enables pin-badge overlay positioning */
 .loco-dock-item {
   align-items: center;
   cursor: pointer;
@@ -284,7 +283,6 @@ textarea {
   justify-content: center;
   position: relative;
 }
-/* Pin-badge shown in the top-right corner of pinned loks */
 .loco-pin-badge {
   color: #fff;
   filter: grayscale(1) brightness(100) drop-shadow(0 1px 2px rgba(0,0,0,0.7));
