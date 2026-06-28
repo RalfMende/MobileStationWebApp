@@ -61,7 +61,35 @@
 .hidden {
   display: none !important;
 }
-
+.app-toast {
+  background: rgba(224, 224, 224, 0.97);
+  border-top: 1px solid rgba(0,0,0,0.28);
+  border-bottom: 1px solid rgba(0,0,0,0.28);
+  box-sizing: border-box;
+  border-radius: 0;
+  bottom: calc(var(--bar-h) + env(safe-area-inset-bottom));
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.18);
+  color: #111;
+  font-size: calc(var(--control-font) * 0.95);
+  font-weight: 700;
+  left: 0;
+  max-width: 100vw;
+  opacity: 0;
+  padding: 0.72rem 1rem;
+  pointer-events: none;
+  position: fixed;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  transform: translateY(12px);
+  transition: opacity 170ms ease, transform 170ms ease;
+  width: 100vw;
+  z-index: 1400;
+}
+.app-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
 /* Prevent text selection when actively dragging controls */
 .no-select {
   user-select: none;
@@ -69,7 +97,6 @@
   -ms-user-select: none;
   -moz-user-select: none;
 }
-
 /* Allow text selection in inputs and textareas despite global no-select */
 .modal-filter,
 input,

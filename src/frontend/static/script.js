@@ -50,6 +50,37 @@ const infoModal = document.getElementById('infoModal');
 const infoModalClose = document.getElementById('infoModalClose');
 // Keyboard buttons and page buttons are built dynamically; query as needed
 let keyboardPageBtns = null; // will be set after dynamic build
+let toastEl = null;
+let toastHideTimer = null;
+
+function ensureToastElement() {
+  if (toastEl && document.body.contains(toastEl)) return toastEl;
+  toastEl = document.getElementById('appToast');
+  if (toastEl) return toastEl;
+
+  const el = document.createElement('div');
+  el.id = 'appToast';
+  el.className = 'app-toast';
+  el.setAttribute('role', 'status');
+  el.setAttribute('aria-live', 'polite');
+  document.body.appendChild(el);
+  toastEl = el;
+  return toastEl;
+}
+
+function showToast(message, durationMs) {
+  const text = String(message || '').trim();
+  if (!text) return;
+
+  const el = ensureToastElement();
+  el.textContent = text;
+  el.classList.add('show');
+
+  if (toastHideTimer) clearTimeout(toastHideTimer);
+  toastHideTimer = setTimeout(function() {
+    el.classList.remove('show');
+  }, Number(durationMs) > 0 ? Number(durationMs) : 3000);
+}
 
 function detectKeyboardGroupCnt() {
   try {
@@ -888,7 +919,7 @@ function ensureLocoInDock(uidStr) {
         var msg = (I18N[CURRENT_LANG] && I18N[CURRENT_LANG].locoDock && I18N[CURRENT_LANG].locoDock.noSlotFree)
           || (I18N.en && I18N.en.locoDock && I18N.en.locoDock.noSlotFree)
           || 'No free slot, because all locomotives are either pinned or active';
-        alert(msg);
+        showToast(msg);
         return false;
       }
 
@@ -903,7 +934,7 @@ function ensureLocoInDock(uidStr) {
       var msg = (I18N[CURRENT_LANG] && I18N[CURRENT_LANG].locoDock && I18N[CURRENT_LANG].locoDock.noSlotFree)
         || (I18N.en && I18N.en.locoDock && I18N.en.locoDock.noSlotFree)
         || 'No free slot, because all locomotives are either pinned or active';
-      alert(msg);
+      showToast(msg);
       return false;
     });
 }
