@@ -684,7 +684,11 @@ static void udp_listener_thread(std::atomic<bool>& stop_flag) {
                 g_loco_speed[uid] = spd; publish_event(speed_event_json(uid, spd));
             } else if (command == CMD_DIRECTION && dlc >= 5) {
                 int uid = (int(data[0])<<24)|(int(data[1])<<16)|(int(data[2])<<8)|int(data[3]);
-                int dir = int(data[4]); g_loco_dir[uid] = dir; publish_event(direction_event_json(uid, dir));
+                int dir = int(data[4]);
+                g_loco_dir[uid] = dir;
+                g_loco_speed[uid] = 0;
+                publish_event(direction_event_json(uid, dir));
+                publish_event(speed_event_json(uid, 0));
             } else if (command == CMD_FUNCTION && dlc >= 5) {
                 int uid = (int(data[0])<<24)|(int(data[1])<<16)|(int(data[2])<<8)|int(data[3]);
                 int fn = int(data[4]); int val = (dlc >= 6) ? int(data[5]) : 1;
@@ -756,7 +760,11 @@ static void can_listener_thread(std::atomic<bool>& stop_flag) {
                 g_loco_speed[uid] = spd; publish_event(speed_event_json(uid, spd));
             } else if (command == CMD_DIRECTION && dlc >= 5) {
                 int uid = (int(data[0])<<24)|(int(data[1])<<16)|(int(data[2])<<8)|int(data[3]);
-                int dir = int(data[4]); g_loco_dir[uid] = dir; publish_event(direction_event_json(uid, dir));
+                int dir = int(data[4]);
+                g_loco_dir[uid] = dir;
+                g_loco_speed[uid] = 0;
+                publish_event(direction_event_json(uid, dir));
+                publish_event(speed_event_json(uid, 0));
             } else if (command == CMD_FUNCTION && dlc >= 5) {
                 int uid = (int(data[0])<<24)|(int(data[1])<<16)|(int(data[2])<<8)|int(data[3]);
                 int fn = int(data[4]); int val = (dlc >= 6) ? int(data[5]) : 1;
@@ -1155,7 +1163,10 @@ int main(int argc, char** argv) {
             uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_SPEED, 0, 0);
             send_cs2_frame(can_id, payload_speed((uint32_t)uid, spd), 6);
         } else if (direction>=0) {
-            g_loco_dir[uid] = direction; publish_event(direction_event_json(uid, g_loco_dir[uid]));
+            g_loco_dir[uid] = direction;
+            g_loco_speed[uid] = 0;
+            publish_event(direction_event_json(uid, g_loco_dir[uid]));
+            publish_event(speed_event_json(uid, 0));
             uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_DIRECTION, 0, 0);
             send_cs2_frame(can_id, payload_direction((uint32_t)uid, direction), 5);
         } else if (fn>=0) {
