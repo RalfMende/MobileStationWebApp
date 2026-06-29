@@ -13,6 +13,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Build options
 option(MSWEBAPP_WITH_OPENSSL "Enable HTTPS (requires OpenSSL)" OFF)
+option(MSWEBAPP_WITH_CAN "Enable CAN interface support (Linux only, requires SocketCAN)" OFF)
 
 add_executable(mswebapp_cpp
     main.cpp
@@ -31,6 +32,13 @@ if (MSWEBAPP_WITH_OPENSSL)
     find_package(OpenSSL REQUIRED)
     target_link_libraries(mswebapp_cpp PRIVATE OpenSSL::SSL OpenSSL::Crypto)
     target_compile_definitions(mswebapp_cpp PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT)
+endif()
+
+if (MSWEBAPP_WITH_CAN)
+    if (NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        message(WARNING "MSWEBAPP_WITH_CAN is only supported on Linux (SocketCAN)")
+    endif()
+    target_compile_definitions(mswebapp_cpp PRIVATE MSWEBAPP_WITH_CAN)
 endif()
 
 # Installation

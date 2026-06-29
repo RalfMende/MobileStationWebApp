@@ -34,8 +34,16 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <unistd.h>
-#include <sys/inotify.h>
 #include <fcntl.h>
+#if defined(__linux__)
+#include <sys/inotify.h>
+#endif
+#if defined(MSWEBAPP_WITH_CAN) && defined(__linux__)
+#include <linux/can.h>
+#include <linux/can/raw.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
+#endif
 #endif
 
 namespace fs = std::filesystem;
@@ -77,6 +85,11 @@ static std::map<int, std::string> g_icon_overrides; // uid -> icon name (stem)
 static bool g_enable_bind_timer = false; // enable CMD_BIND timer only when --bind is passed
 static int g_bind_timeout_ms = 1000;     // timeout for MFX-BIND timer in milliseconds (default 1s)
 static bool g_enable_precompressed_gzip = true; // serve .gz files for static assets when available
+static std::string g_can_interface; // CAN interface name (e.g. "can0"); empty = use UDP
+static bool g_use_can = false;      // true when CAN interface is open and in use
+#if defined(MSWEBAPP_WITH_CAN) && defined(__linux__)
+static int g_can_fd = -1;           // CAN raw socket fd
+#endif
 
 // ---- Utilities ----
 static std::string trim(const std::string &s) {
@@ -575,6 +588,33 @@ static void udp_send_frame(uint32_t can_id, const std::vector<uint8_t> &payload,
 #endif
 }
 
+#if defined(MSWEBAPP_WITH_CAN) && defined(__linux__)
+// Send a CS2 CAN frame via Linux SocketCAN
+static void can_send_frame(uint32_t can_id, const std::vector<uint8_t> &payload, int dlc) {
+    if (g_can_fd < 0) return;
+    auto data = pad_to_8(payload);
+    struct can_frame frame{};
+    frame.can_id = (can_id & CAN_EFF_MASK) | CAN_EFF_FLAG;
+    frame.can_dlc = (uint8_t)(dlc & 0xF);
+    memcpy(frame.data, data.data(), frame.can_dlc);
+    if (g_verbose) {
+        fprintf(stderr, "CAN -> %s CANID=0x%08X DLC=%d DATA=", g_can_interface.c_str(), can_id, dlc);
+        for (int i = 0; i < dlc; ++i) { char b[4]; std::snprintf(b, sizeof(b), "%02X", frame.data[i]); fprintf(stderr, "%s%s", b, (i + 1 < dlc) ? " " : ""); }
+        fprintf(stderr, "\n");
+    }
+    ssize_t wrc = write(g_can_fd, &frame, sizeof(frame));
+    if (wrc < 0 && g_verbose) { perror("CAN write failed"); }
+}
+#endif
+
+// Unified send: routes to CAN or UDP depending on runtime configuration
+static void send_cs2_frame(uint32_t can_id, const std::vector<uint8_t> &payload, int dlc) {
+#if defined(MSWEBAPP_WITH_CAN) && defined(__linux__)
+    if (g_use_can) { can_send_frame(can_id, payload, dlc); return; }
+#endif
+    udp_send_frame(can_id, payload, dlc);
+}
+
 static void udp_listener_thread(std::atomic<bool>& stop_flag) {
     using Clock = std::chrono::steady_clock;
     bool mfx_bind_pending = false;
@@ -673,6 +713,69 @@ static void udp_listener_thread(std::atomic<bool>& stop_flag) {
     close(s);
 #endif
 }
+
+#if defined(MSWEBAPP_WITH_CAN) && defined(__linux__)
+static void can_listener_thread(std::atomic<bool>& stop_flag) {
+    using Clock = std::chrono::steady_clock;
+    bool mfx_bind_pending = false;
+    Clock::time_point mfx_bind_deadline{};
+    struct timeval tv{}; tv.tv_sec = 1; tv.tv_usec = 0;
+    setsockopt(g_can_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    while (!stop_flag.load()) {
+        if (g_enable_bind_timer && mfx_bind_pending && Clock::now() >= mfx_bind_deadline) {
+            mfx_bind_pending = false;
+            int loco_id = 1; int fn = 0;
+            uint32_t cid = build_can_id((uint32_t)g_device_uid, CMD_FUNCTION, 0, 0);
+            can_send_frame(cid, payload_function((uint32_t)loco_id, fn, 1), 6);
+            if (g_verbose) fprintf(stderr, "[MFX-BIND] Timer expired -> Requesting update of Lokomotive.cs2\n");
+        }
+        struct can_frame frame{};
+        ssize_t recvd = read(g_can_fd, &frame, sizeof(frame));
+        if (recvd < 0) { continue; }
+        if (recvd < (ssize_t)sizeof(struct can_frame)) continue;
+        uint32_t can_id = frame.can_id & CAN_EFF_MASK;
+        uint8_t dlc = frame.can_dlc;
+        const uint8_t *data = frame.data;
+        int cmd_resp = (can_id >> 16) & 0x1FF;
+        int command = (cmd_resp >> 1) & 0xFF;
+        int resp_bit = cmd_resp & 1;
+        if ((command == CMD_BIND || command == CMD_READ_CONFIG) && g_enable_bind_timer) {
+            int ms = (g_bind_timeout_ms > 0) ? g_bind_timeout_ms : 1000;
+            mfx_bind_deadline = Clock::now() + std::chrono::milliseconds(ms);
+            mfx_bind_pending = true;
+            if (g_verbose) fprintf(stderr, "[MFX-BIND] Received -> restart %d ms timer\n", ms);
+        }
+        if (resp_bit == 1) {
+            if (command == CMD_SYSTEM && dlc >= 5) {
+                uint8_t sub = data[4];
+                if (sub == SYS_GO) { g_running.store(true); publish_event(system_event_json()); }
+                else if (sub == SYS_STOP || sub == SYS_HALT) { g_running.store(false); publish_event(system_event_json()); }
+            } else if (command == CMD_SPEED && dlc >= 6) {
+                int uid = (int(data[0])<<24)|(int(data[1])<<16)|(int(data[2])<<8)|int(data[3]);
+                int spd = (int(data[4])<<8)|int(data[5]);
+                g_loco_speed[uid] = spd; publish_event(speed_event_json(uid, spd));
+            } else if (command == CMD_DIRECTION && dlc >= 5) {
+                int uid = (int(data[0])<<24)|(int(data[1])<<16)|(int(data[2])<<8)|int(data[3]);
+                int dir = int(data[4]); g_loco_dir[uid] = dir; publish_event(direction_event_json(uid, dir));
+            } else if (command == CMD_FUNCTION && dlc >= 5) {
+                int uid = (int(data[0])<<24)|(int(data[1])<<16)|(int(data[2])<<8)|int(data[3]);
+                int fn = int(data[4]); int val = (dlc >= 6) ? int(data[5]) : 1;
+                g_loco_fn[uid][fn] = (val != 0); publish_event(function_event_json(uid, fn, g_loco_fn[uid][fn]));
+            } else if (command == CMD_SWITCH && dlc >= 6) {
+                int uid = (int(data[0])<<24)|(int(data[1])<<16)|(int(data[2])<<8)|int(data[3]);
+                int value = int(data[4]);
+                int idx = -1;
+                for (size_t i = 0; i < g_switches.size(); ++i) {
+                    if (g_switches[i].uid == uid) { idx = int(i); break; }
+                }
+                if (idx < 0) { idx = uid & 0x3FF; if (idx >= 64) idx = idx % 64; }
+                g_switch_state[idx] = value; publish_event(switch_event_json(idx, value));
+            }
+        }
+    }
+}
+#endif // MSWEBAPP_WITH_CAN && __linux__
+
 // ---- SSE broker ----
 struct Subscriber {
     std::mutex mtx;
@@ -745,6 +848,9 @@ int main(int argc, char** argv) {
         }
         else if (a == "--verbose" || a == "-v") { g_verbose = true; }
         else if (a == "--no-gzip") { g_enable_precompressed_gzip = false; }
+#if defined(MSWEBAPP_WITH_CAN) && defined(__linux__)
+        else if (a == "--can" || a == "-i") { g_can_interface = next(i); }
+#endif
         else if (a == "--help" || a == "-h") {
             printf("Usage: mswebapp_cpp [options]\n");
             printf("  --config <dir>     Path to config directory (contains config/, icons/, fcticons/, ...)\n");
@@ -754,6 +860,9 @@ int main(int argc, char** argv) {
             printf("  --www <dir>        Frontend directory containing templates/ and static/\n");
             printf("  --bind[=<ms>]      Enable requesting new loco config after MFX-BIND command automatically; optional timeout in ms (default %d)\n", g_bind_timeout_ms);
             printf("  --no-gzip          Disable serving precompressed .gz files (default is enabled)\n");
+#if defined(MSWEBAPP_WITH_CAN) && defined(__linux__)
+            printf("  --can/-i <iface>   CAN interface name (e.g. can0); routes CS2 traffic via SocketCAN instead of UDP\n");
+#endif
             printf("  --verbose          Verbose logging\n");
             return 0;
         }
@@ -761,6 +870,33 @@ int main(int argc, char** argv) {
 
     // Resolve UDP target (hostname or numeric) to IPv4 dotted string
     g_udp_ip = resolve_hostname_to_ipv4(g_udp_ip);
+
+#if defined(MSWEBAPP_WITH_CAN) && defined(__linux__)
+    if (!g_can_interface.empty()) {
+        g_can_fd = socket(PF_CAN, SOCK_RAW, CAN_RAW);
+        if (g_can_fd < 0) {
+            fprintf(stderr, "Cannot create CAN socket: %s\n", strerror(errno));
+            return 1;
+        }
+        struct ifreq ifr{};
+        strncpy(ifr.ifr_name, g_can_interface.c_str(), IFNAMSIZ - 1);
+        if (ioctl(g_can_fd, SIOCGIFINDEX, &ifr) < 0) {
+            fprintf(stderr, "CAN interface '%s' not found: %s\n", g_can_interface.c_str(), strerror(errno));
+            close(g_can_fd); g_can_fd = -1;
+            return 1;
+        }
+        struct sockaddr_can caddr{};
+        caddr.can_family = AF_CAN;
+        caddr.can_ifindex = ifr.ifr_ifindex;
+        if (bind(g_can_fd, (struct sockaddr*)&caddr, sizeof(caddr)) < 0) {
+            fprintf(stderr, "Cannot bind CAN socket: %s\n", strerror(errno));
+            close(g_can_fd); g_can_fd = -1;
+            return 1;
+        }
+        g_use_can = true;
+        printf("Using CAN interface: %s\n", g_can_interface.c_str());
+    }
+#endif
 
     // Load config files
     parse_lokomotive_cs2(fs::path(g_config_dir)/"config"/"lokomotive.cs2");
@@ -774,9 +910,18 @@ int main(int argc, char** argv) {
         g_loco_fn[kv.first] = {};
     }
 
-    // Start UDP listener stub
+    // Start CS2 listener (CAN or UDP depending on configuration)
     std::atomic<bool> stop_flag{false};
-    std::thread rx(udp_listener_thread, std::ref(stop_flag));
+    std::thread rx;
+#if defined(MSWEBAPP_WITH_CAN) && defined(__linux__)
+    if (g_use_can) {
+        rx = std::thread(can_listener_thread, std::ref(stop_flag));
+    } else {
+        rx = std::thread(udp_listener_thread, std::ref(stop_flag));
+    }
+#else
+    rx = std::thread(udp_listener_thread, std::ref(stop_flag));
+#endif
 
     httplib::Server svr;
     // Increase worker threads to avoid starvation with long-lived SSE requests
@@ -1008,16 +1153,16 @@ int main(int argc, char** argv) {
             int spd = std::max(0,std::min(1023,speed));
             g_loco_speed[uid] = spd; publish_event(speed_event_json(uid, spd));
             uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_SPEED, 0, 0);
-            udp_send_frame(can_id, payload_speed((uint32_t)uid, spd), 6);
+            send_cs2_frame(can_id, payload_speed((uint32_t)uid, spd), 6);
         } else if (direction>=0) {
             g_loco_dir[uid] = direction; publish_event(direction_event_json(uid, g_loco_dir[uid]));
             uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_DIRECTION, 0, 0);
-            udp_send_frame(can_id, payload_direction((uint32_t)uid, direction), 5);
+            send_cs2_frame(can_id, payload_direction((uint32_t)uid, direction), 5);
         } else if (fn>=0) {
             bool on = (val!=0);
             g_loco_fn[uid][fn] = on; publish_event(function_event_json(uid, fn, on));
             uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_FUNCTION, 0, 0);
-            udp_send_frame(can_id, payload_function((uint32_t)uid, fn, on?1:0), 6);
+            send_cs2_frame(can_id, payload_function((uint32_t)uid, fn, on?1:0), 6);
         }
         res.set_content("{\"status\":\"ok\"}", "application/json");
     });
@@ -1047,12 +1192,12 @@ int main(int argc, char** argv) {
                 uid = g_switches[idx].uid;
             }
             uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_SWITCH, 0, 0);
-            udp_send_frame(can_id, payload_switch((uint32_t)uid, pos, 1), 6);
+            send_cs2_frame(can_id, payload_switch((uint32_t)uid, pos, 1), 6);
             int switch_delay_ms = 200; // default delay before auto-reset
             if (g_switches[idx].switch_delay > 0) { switch_delay_ms = g_switches[idx].switch_delay; }
             std::thread([can_id, uid, pos, switch_delay_ms]{
                 std::this_thread::sleep_for(std::chrono::milliseconds(switch_delay_ms));
-                udp_send_frame(can_id, payload_switch((uint32_t)uid, pos, 0), 6);
+                send_cs2_frame(can_id, payload_switch((uint32_t)uid, pos, 0), 6);
             }).detach();
         }
         res.set_content("{\"status\":\"ok\"}", "application/json");
@@ -1066,7 +1211,7 @@ int main(int argc, char** argv) {
         publish_event(system_event_json());
         {
             uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_SYSTEM, 0, 0);
-            udp_send_frame(can_id, payload_system_state((uint32_t)g_device_uid, state), 5);
+            send_cs2_frame(can_id, payload_system_state((uint32_t)g_device_uid, state), 5);
         }
         res.set_content("{\"status\":\"ok\"}", "application/json");
     });
@@ -1088,7 +1233,7 @@ int main(int argc, char** argv) {
         if (loco_id < 0) { res.status=400; res.set_content("{\"status\":\"error\",\"message\":\"loco_id fehlt\"}", "application/json"); return; }
         // Reuse control_event logic
         uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_FUNCTION, 0, 0);
-        udp_send_frame(can_id, payload_function((uint32_t)loco_id, fn, (value!=0)?1:0), 6);
+        send_cs2_frame(can_id, payload_function((uint32_t)loco_id, fn, (value!=0)?1:0), 6);
         res.set_content("{\"status\":\"ok\"}", "application/json");
     });
 
@@ -1184,15 +1329,18 @@ int main(int argc, char** argv) {
     }
     printf("Listening on %s:%d (config=%s)\n", g_bind_host.c_str(), g_http_port, g_config_dir.c_str());
     if (g_verbose) {
+#if defined(MSWEBAPP_WITH_CAN) && defined(__linux__)
+        if (g_use_can)
+            printf("CAN interface: %s device_uid=%d (hash=%04X)\n", g_can_interface.c_str(), g_device_uid, generate_hash((uint32_t)g_device_uid));
+        else
+#endif
         printf("UDP target %s tx=%d rx=%d device_uid=%d (hash=%04X)\n", g_udp_ip.c_str(), g_udp_tx, g_udp_rx, g_device_uid, generate_hash((uint32_t)g_device_uid));
     }
 
-    // Watcher thread for lokomotive.cs2 reloads (inotify on Linux/macOS, disabled on Windows)
+    // Watcher thread for lokomotive.cs2 reloads (inotify on Linux, disabled elsewhere)
     std::thread watcher([&](){
         fs::path lokfile = fs::path(g_config_dir)/"config"/"lokomotive.cs2";
-#ifdef _WIN32
-        (void)lokfile;
-#else
+#if defined(__linux__)
         int fd = inotify_init1(IN_NONBLOCK);
         if (fd < 0) return;
         int wd = inotify_add_watch(fd, lokfile.string().c_str(), IN_CLOSE_WRITE | IN_MOVED_TO | IN_DELETE_SELF | IN_ATTRIB);
@@ -1219,6 +1367,8 @@ int main(int argc, char** argv) {
             }
         }
         close(fd);
+#else
+        (void)lokfile;
 #endif
     });
 
@@ -1228,6 +1378,10 @@ int main(int argc, char** argv) {
     stop_flag.store(true);
     if (watcher.joinable()) watcher.join();
     rx.join();
+
+#if defined(MSWEBAPP_WITH_CAN) && defined(__linux__)
+    if (g_can_fd >= 0) { close(g_can_fd); g_can_fd = -1; }
+#endif
 
 #ifdef _WIN32
     WSACleanup();
