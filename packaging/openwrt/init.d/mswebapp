@@ -13,6 +13,7 @@ CONFIG_DIR="/www"
 HOST="0.0.0.0"
 PORT=6020
 UDP_IP="127.0.0.1"
+CAN_IF="can0"
 WWW_DIR="/usr/share/mswebapp/www" # frontend
 DEFAULTS_DIR="/usr/share/mswebapp/var" # packaged default data (mirrors repo /var)
 
@@ -44,10 +45,14 @@ ensure_data() {
 start_service() {
     ensure_data
     if [ -x "$PROG_CPP" ]; then
+        if ! ip link show "$CAN_IF" >/dev/null 2>&1; then
+            echo "mswebapp: CAN interface $CAN_IF not found" >&2
+            return 1
+        fi
         procd_open_instance
         procd_set_param command "$PROG_CPP" \
             --config "$CONFIG_DIR" \
-            --udp-ip "$UDP_IP" \
+            --can "$CAN_IF" \
             --host "$HOST" \
             --port "$PORT" \
             --www "$WWW_DIR"
