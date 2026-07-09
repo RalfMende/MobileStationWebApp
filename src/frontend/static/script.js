@@ -850,6 +850,7 @@ function switchLocoByOffset(offset) {
 
 // Maximum number of locomotives shown in the bottom dock.
 var LOCO_DOCK_MAX = 10;
+var hasPersistedDockState = localStorage.getItem('dockLocoUids') !== null;
 var dockLocoUids = loadUidArrayFromStorage('dockLocoUids');
 var pinnedLocoUids = loadUidArrayFromStorage('pinnedLocoUids');
 var dockScrollTargetUid = null;
@@ -867,6 +868,7 @@ function loadUidArrayFromStorage(key) {
 function saveDockState() {
   localStorage.setItem('dockLocoUids', JSON.stringify(dockLocoUids));
   localStorage.setItem('pinnedLocoUids', JSON.stringify(pinnedLocoUids));
+  hasPersistedDockState = true;
 }
 
 /**
@@ -884,8 +886,9 @@ function syncDockWithAvailableLoks(allUids) {
   pinnedLocoUids = pinnedLocoUids.filter(function(uid){
     return !!available[uid] && dockLocoUids.indexOf(uid) !== -1;
   });
-  if (dockLocoUids.length === 0) {
-    dockLocoUids = allUids.slice(0, LOCO_DOCK_MAX).map(function(uid){ return String(uid); });
+  if (dockLocoUids.length === 0 && !hasPersistedDockState) {
+    var firstUid = allUids.length > 0 ? String(allUids[0]) : null;
+    dockLocoUids = firstUid ? [firstUid] : [];
   }
   saveDockState();
 }
