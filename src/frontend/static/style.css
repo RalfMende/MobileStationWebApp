@@ -602,6 +602,40 @@ textarea {
   --radius: calc(var(--top-btn-h) * 0.20);
   --kb-page-btn-pad-x: calc(var(--kb-header-h) * 0.1);
 }
+#dockActionMenu {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius, 8px);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
+  display: none;
+  flex-direction: column;
+  font-family: inherit;
+  gap: 4px;
+  min-width: 160px;
+  padding: 6px;
+  position: fixed;
+  z-index: 1200;
+}
+#dockActionMenu button {
+  align-items: center;
+  background: #f0f0f0;
+  border: none;
+  border-radius: calc(var(--radius, 8px) * 0.8);
+  color: #1f2937;
+  cursor: pointer;
+  display: flex;
+  font-family: inherit;
+  font-size: var(--control-font, 14px);
+  font-weight: 600;
+  height: var(--top-btn-h, 44px);
+  padding: 0 14px;
+  text-align: left;
+  width: 100%;
+}
+#dockActionMenu button:hover,
+#dockActionMenu button:active {
+  background: #d8d8d8;
+}
 html, body {
   background: black;
   color: white;

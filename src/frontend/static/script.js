@@ -52,6 +52,8 @@ const infoModalClose = document.getElementById('infoModalClose');
 let keyboardPageBtns = null; // will be set after dynamic build
 let toastEl = null;
 let toastHideTimer = null;
+let dockActionMenuEl = null;
+let dockActionMenuUid = null;
 
 function ensureToastElement() {
   if (toastEl && document.body.contains(toastEl)) return toastEl;
@@ -141,7 +143,11 @@ const I18N = {
       searchPlaceholder: 'Search…',
     },
     locoDock: {
-      noSlotFree: 'No free slot, because all locomotives are either pinned or active'
+      noSlotFree: 'No free slot, because all locomotives are either pinned or active',
+      menuPin: 'Pin',
+      menuUnpin: 'Unpin',
+      menuRelease: 'Release',
+      locoStillActive: 'Locomotive is still active.'
     },
     keyboard: {
       headerPrefix: 'Keyboard Page ',
@@ -177,7 +183,11 @@ const I18N = {
       searchPlaceholder: 'Suche…',
     },
     locoDock: {
-      noSlotFree: 'Kein Slot frei, da alle Loks entweder gepinnt oder aktiv sind'
+      noSlotFree: 'Kein Slot frei, da alle Loks entweder gepinnt oder aktiv sind',
+      menuPin: 'Pinnen',
+      menuUnpin: 'Entpinnen',
+      menuRelease: 'Freigeben',
+      locoStillActive: 'Lokomotive ist noch aktiv.'
     },
     keyboard: {
       headerPrefix: 'Keyboard Seite ',
@@ -952,6 +962,196 @@ function toggleLocoPinned(uidStr) {
   renderLocoList();
 }
 
+function setLocoPinned(uidStr, pinned) {
+  if (!uidStr || dockLocoUids.indexOf(uidStr) === -1) return;
+  var idx = pinnedLocoUids.indexOf(uidStr);
+  if (pinned && idx === -1) pinnedLocoUids.push(uidStr);
+  if (!pinned && idx !== -1) pinnedLocoUids.splice(idx, 1);
+  saveDockState();
+  _dockRenderedUids = null; // force full rebuild so pin styling is re-applied
+  renderLocoList();
+}
+
+function clearLocoControlUI() {
+  currentLocoUid = null;
+  localStorage.removeItem('currentLocoUid');
+  if (locoDesc) locoDesc.textContent = '';
+  if (locoImg) { locoImg.onerror = null; locoImg.src = ''; }
+  if (leftCol) leftCol.innerHTML = '';
+  if (rightCol) rightCol.innerHTML = '';
+  if (speedSlider) speedSlider.value = 0;
+  if (speedFill) speedFill.style.height = '0%';
+  if (speedValue) speedValue.textContent = '';
+  updateDirectionUI(Direction.FORWARD);
+}
+
+function releaseLocoFromDock(uidStr) {
+  if (!uidStr || dockLocoUids.indexOf(uidStr) === -1) return;
+  var locoUidNum = Number(uidStr);
+  fetch('/api/loco_state?loco_id=' + locoUidNum)
+    .then(function(r) { return r.json(); })
+    .then(function(state) {
+      var speed = state ? Number(state.speed || 0) : 0;
+      if (isFinite(speed) && speed > 0) {
+        showToast(getDockText('locoStillActive', 'Locomotive is still active.'));
+        return;
+      }
+      _doReleaseLocoFromDock(uidStr);
+    })
+    .catch(function() {
+      _doReleaseLocoFromDock(uidStr);
+    });
+}
+
+function _doReleaseLocoFromDock(uidStr) {
+  var idx = dockLocoUids.indexOf(uidStr);
+  if (idx === -1) return;
+  var wasActive = String(currentLocoUid) === uidStr;
+
+  var displayedBefore = getDisplayedDockUids();
+  var displayIdx = displayedBefore.indexOf(uidStr);
+
+  dockLocoUids.splice(idx, 1);
+  pinnedLocoUids = pinnedLocoUids.filter(function(uid){ return uid !== uidStr; });
+  saveDockState();
+  _dockRenderedUids = null;
+
+  if (wasActive && dockLocoUids.length > 0) {
+    var remaining = displayedBefore.filter(function(u) { return u !== uidStr; });
+    var neighborIdx = displayIdx > 0 ? displayIdx - 1 : 0;
+    var neighborUid = remaining[Math.min(neighborIdx, remaining.length - 1)];
+    selectLoco(neighborUid); // selectLoco calls renderLocoList internally
+    return;
+  }
+
+  if (wasActive) {
+    clearLocoControlUI();
+  }
+  renderLocoList();
+}
+
+function getDockText(key, fallback) {
+  return (I18N[CURRENT_LANG] && I18N[CURRENT_LANG].locoDock && I18N[CURRENT_LANG].locoDock[key])
+    || (I18N.en && I18N.en.locoDock && I18N.en.locoDock[key])
+    || fallback;
+}
+
+function ensureDockActionMenuElement() {
+  if (dockActionMenuEl && document.body.contains(dockActionMenuEl)) return dockActionMenuEl;
+
+  var el = document.createElement('div');
+  el.id = 'dockActionMenu';
+  el.style.position = 'fixed';
+  el.style.zIndex = '1200';
+  el.style.minWidth = '150px';
+  el.style.padding = '6px';
+  el.style.borderRadius = '10px';
+  el.style.border = '1px solid rgba(0, 0, 0, 0.15)';
+  el.style.background = '#ffffff';
+  el.style.boxShadow = '0 10px 26px rgba(0, 0, 0, 0.22)';
+  el.style.display = 'none';
+  el.style.flexDirection = 'column';
+  el.style.gap = '4px';
+  el.style.fontFamily = 'inherit';
+
+  function makeItem(action) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.setAttribute('data-action', action);
+    btn.style.width = '100%';
+    btn.style.border = 'none';
+    btn.style.borderRadius = '8px';
+    btn.style.padding = '10px 12px';
+    btn.style.textAlign = 'left';
+    btn.style.background = '#f7f7f7';
+    btn.style.color = '#1f2937';
+    btn.style.fontWeight = '600';
+    btn.style.cursor = 'pointer';
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var uid = dockActionMenuUid;
+      var currentAction = btn.getAttribute('data-action');
+      hideDockActionMenu();
+      if (!uid) return;
+      if (currentAction === 'pin') {
+        setLocoPinned(uid, true);
+      } else if (currentAction === 'unpin') {
+        setLocoPinned(uid, false);
+      } else if (currentAction === 'release') {
+        releaseLocoFromDock(uid);
+      }
+      if (navigator && typeof navigator.vibrate === 'function') navigator.vibrate(12);
+    });
+    return btn;
+  }
+
+  var pinBtn = makeItem('pin');
+  var releaseBtn = makeItem('release');
+  el.appendChild(pinBtn);
+  el.appendChild(releaseBtn);
+  document.body.appendChild(el);
+  dockActionMenuEl = el;
+
+  document.addEventListener('click', function(ev) {
+    if (!dockActionMenuEl || dockActionMenuEl.style.display === 'none') return;
+    if (dockActionMenuEl.contains(ev.target)) return;
+    hideDockActionMenu();
+  });
+  document.addEventListener('keydown', function(ev) {
+    if (ev.key === 'Escape' || ev.key === 'Esc') hideDockActionMenu();
+  });
+  window.addEventListener('resize', hideDockActionMenu);
+  document.addEventListener('scroll', hideDockActionMenu, true);
+
+  return dockActionMenuEl;
+}
+
+function hideDockActionMenu() {
+  if (!dockActionMenuEl) return;
+  dockActionMenuEl.style.display = 'none';
+  dockActionMenuUid = null;
+}
+
+function openDockActionMenu(uidStr, anchorEvent, anchorEl) {
+  if (!uidStr) return;
+  var el = ensureDockActionMenuElement();
+  if (!el) return;
+  dockActionMenuUid = uidStr;
+
+  var isPinned = pinnedLocoUids.indexOf(uidStr) !== -1;
+  var pinBtn = el.querySelector('button[data-action="pin"], button[data-action="unpin"]');
+  var releaseBtn = el.querySelector('button[data-action="release"]');
+  if (pinBtn) {
+    pinBtn.setAttribute('data-action', isPinned ? 'unpin' : 'pin');
+    pinBtn.textContent = isPinned ? getDockText('menuUnpin', 'Unpin') : getDockText('menuPin', 'Pin');
+  }
+  if (releaseBtn) releaseBtn.textContent = getDockText('menuRelease', 'Release');
+
+  var left = 0;
+  var top = 0;
+  if (anchorEvent && typeof anchorEvent.clientX === 'number' && typeof anchorEvent.clientY === 'number') {
+    left = anchorEvent.clientX;
+    top = anchorEvent.clientY;
+  } else if (anchorEl && anchorEl.getBoundingClientRect) {
+    var rect = anchorEl.getBoundingClientRect();
+    left = rect.left + (rect.width / 2);
+    top = rect.top;
+  }
+
+  el.style.display = 'flex';
+  var menuRect = el.getBoundingClientRect();
+  var margin = 10;
+  var maxLeft = Math.max(margin, window.innerWidth - menuRect.width - margin);
+  var maxTop = Math.max(margin, window.innerHeight - menuRect.height - margin);
+  var placedLeft = Math.min(maxLeft, Math.max(margin, left - (menuRect.width / 2)));
+  var placedTop = top - menuRect.height - 8;
+  if (placedTop < margin) {
+    placedTop = Math.min(maxTop, top + 8);
+  }
+  el.style.left = Math.round(placedLeft) + 'px';
+  el.style.top = Math.round(Math.max(margin, Math.min(maxTop, placedTop))) + 'px';
+}
+
 function scrollDockToUid(listEl, uidStr) {
   if (!listEl || !uidStr) return;
   var targetEl = listEl.querySelector('.loco-dock-item[data-loco-uid="' + uidStr + '"]');
@@ -977,12 +1177,18 @@ function wireDockClickAndPinHandlers(imgEl, uidStr) {
   imgEl.style.webkitTouchCallout = 'none';
   imgEl.style.webkitUserSelect = 'none';
   imgEl.style.userSelect = 'none';
-  imgEl.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+  imgEl.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+    openDockActionMenu(uidStr, e, imgEl);
+  });
   wireSingleOrDoubleClick(
     imgEl,
-    function() { selectLoco(uidStr); },
     function() {
-      toggleLocoPinned(uidStr);
+      hideDockActionMenu();
+      selectLoco(uidStr);
+    },
+    function(e) {
+      openDockActionMenu(uidStr, e, imgEl);
       if (navigator && typeof navigator.vibrate === 'function') navigator.vibrate(12);
     },
     280
