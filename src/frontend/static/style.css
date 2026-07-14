@@ -36,9 +36,28 @@
   display: flex;
   flex-direction: column;
   gap: 0;
+  overflow: hidden;
   padding-bottom: 0;
   padding-top: 0;
+  position: relative;
+  touch-action: none;
   width: var(--func-btn-size);
+}
+/* Vertical sliding track holding up to two "pages" of 8 function buttons each.
+   Swiping a function column up/down (only possible when a locomotive declares
+   more than 16 functions) moves this track to reveal the next/previous page. */
+.fn-track {
+  display: flex;
+  flex-direction: column;
+  transition: transform 220ms ease;
+}
+.fn-track.no-anim {
+  transition: none;
+}
+.fn-page {
+  display: flex;
+  flex: none;
+  flex-direction: column;
 }
 .functions-side button {
   align-items: center;

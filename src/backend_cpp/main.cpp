@@ -56,6 +56,7 @@ struct Loco {
     int symbol = 0;
     int tachomax = 0;
     std::map<int,int> fn_typ; // function index -> type id
+    int fn_count = 0; // number of declared function slots (0..32), based on highest .funktionen(_2) ..nr seen
 };
 static std::map<int, Loco> g_locos; // uid -> loco
 static std::map<int, int> g_loco_speed; // uid -> 0..1023
@@ -175,6 +176,7 @@ static std::string loco_list_json() {
         os << "\"icon\":\"" << json_escape(icon_eff) << "\",";
         os << "\"tachomax\":" << l.tachomax;
         os << ",\"symbol\":" << l.symbol;
+        os << ",\"fn_count\":" << l.fn_count;
         if (!l.fn_typ.empty()) {
             os << ",\"funktionen\":{";
             bool ffirst = true;
@@ -350,6 +352,9 @@ static void parse_lokomotive_cs2(const fs::path &p) {
                 std::string val = trim(line.substr(pos+1));
                 if (key == "nr") {
                     fn_nr = parse_int_auto(val);
+                    // Track the highest function slot number seen (0..31), regardless of whether
+                    // a .typ follows, so the frontend knows how many function slots to render.
+                    if (fn_nr >= 0 && fn_nr < 32 && fn_nr + 1 > cur.fn_count) cur.fn_count = fn_nr + 1;
                 } else if (key == "typ" || key == "type") {
                     fn_typ = parse_int_auto(val);
                 }

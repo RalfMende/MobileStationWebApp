@@ -801,10 +801,8 @@ function selectLoco(uid, options) {
   locoDesc.textContent = loco ? (loco.name || '') : '';
   setLocoImageWithSymbolFallback(locoImg, loco);
 
-  if (leftCol) leftCol.innerHTML = '';
-  if (rightCol) rightCol.innerHTML = '';
-  setupLocoFunctionButtons(leftCol, 0);
-  setupLocoFunctionButtons(rightCol, 8);
+  const fnCount = (loco && Number(loco.fn_count) > 0) ? Number(loco.fn_count) : 16;
+  rebuildLocoFunctionButtons(fnCount);
 
   fetchAndApplyLocoState(currentLocoUid);
   localStorage.setItem('currentLocoUid', String(currentLocoUid));
@@ -1758,24 +1756,18 @@ function createLocoFunctionButton(idx) {
 }
 
 /**
- * Append eight locomotive function buttons to a column element.
+ * Attach delegated click and pointer handlers to a function column.
  *
- * Each locomotive has up to 28 functions.  In the UI these are split
- * between two columns.  This helper populates a column (left or
- * right) with eight buttons starting at the given offset.  It also
- * attaches a delegated click handler once per column to minimise
- * individual listeners.
+ * Each locomotive has up to 32 functions, rendered across up to two
+ * "pages" per column (see {@link buildFunctionSidePages}). This helper
+ * wires the click handler (toggle functions) and pointer handlers
+ * (momentary functions, type > 128) once per column, regardless of how
+ * many buttons/pages it currently contains, since delegation is used.
  *
  * @param {HTMLElement} col – the container column (left or right)
- * @param {number} offset – starting index for the eight buttons
  */
-function setupLocoFunctionButtons(col, offset) {
-  const frag = document.createDocumentFragment();
-  for (let i = 0; i < 8; i++) {
-    const idx = offset + i;
-    frag.appendChild(createLocoFunctionButton(idx));
-  }
-  col.appendChild(frag);
+function wireLocoFunctionColumnEvents(col) {
+  if (!col) return;
   if (!col.dataset.fnDelegated) {
     col.addEventListener('click', handleLocoFunctionButtonClick);
     col.dataset.fnDelegated = '1';
@@ -1786,39 +1778,13 @@ function setupLocoFunctionButtons(col, offset) {
       const btn = ev.target instanceof Element ? ev.target.closest('button.fn-btn') : null;
       if (!btn || !col.contains(btn)) return;
       if (btn.dataset.momentary !== '1') return;
-      const idx = Number(btn.dataset.index);
-      const imgid = Number(btn.dataset.imgid);
-      // Visual feedback: show active icon while pressed
-      const img = btn.querySelector('img');
-      if (img) setFunctionIcon(img, 'ge', imgid, idx);
-      btn.dataset.active = '1';
-      btn.setAttribute('aria-pressed', 'true');
-      try {
-        fetch('/api/control_event', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ loco_id: currentLocoUid, fn: idx, value: 1 })
-        });
-      } catch(e) { /* ignore */ }
+      activateMomentaryFunctionButton(btn);
     };
     const onPointerUpOrCancel = (ev) => {
       const btn = ev.target instanceof Element ? ev.target.closest('button.fn-btn') : null;
       if (!btn || !col.contains(btn)) return;
       if (btn.dataset.momentary !== '1') return;
-      const idx = Number(btn.dataset.index);
-      const imgid = Number(btn.dataset.imgid);
-      // Revert icon/state on release
-      const img = btn.querySelector('img');
-      if (img) setFunctionIcon(img, 'we', imgid, idx);
-      btn.dataset.active = '0';
-      btn.setAttribute('aria-pressed', 'false');
-      try {
-        fetch('/api/control_event', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ loco_id: currentLocoUid, fn: idx, value: 0 })
-        });
-      } catch(e) { /* ignore */ }
+      deactivateMomentaryFunctionButton(btn);
     };
     col.addEventListener('pointerdown', onPointerDown);
     col.addEventListener('pointerup', onPointerUpOrCancel);
@@ -1828,9 +1794,242 @@ function setupLocoFunctionButtons(col, offset) {
   }
 }
 
+/**
+ * Send the "on" (value=1) command for a momentary function button and
+ * update its visual state. Used both for the normal press-and-hold
+ * interaction and to be reverted via {@link deactivateMomentaryFunctionButton}.
+ *
+ * @param {HTMLButtonElement} btn
+ */
+function activateMomentaryFunctionButton(btn) {
+  const idx = Number(btn.dataset.index);
+  const imgid = Number(btn.dataset.imgid);
+  const img = btn.querySelector('img');
+  if (img) setFunctionIcon(img, 'ge', imgid, idx);
+  btn.dataset.active = '1';
+  btn.setAttribute('aria-pressed', 'true');
+  try {
+    fetch('/api/control_event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ loco_id: currentLocoUid, fn: idx, value: 1 })
+    });
+  } catch(e) { /* ignore */ }
+}
+
+/**
+ * Send the "off" (value=0) command for a momentary function button and
+ * update its visual state.
+ *
+ * @param {HTMLButtonElement} btn
+ */
+function deactivateMomentaryFunctionButton(btn) {
+  const idx = Number(btn.dataset.index);
+  const imgid = Number(btn.dataset.imgid);
+  const img = btn.querySelector('img');
+  if (img) setFunctionIcon(img, 'we', imgid, idx);
+  btn.dataset.active = '0';
+  btn.setAttribute('aria-pressed', 'false');
+  try {
+    fetch('/api/control_event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ loco_id: currentLocoUid, fn: idx, value: 0 })
+    });
+  } catch(e) { /* ignore */ }
+}
+
+/**
+ * If the given button is a momentary function currently pressed, revert
+ * it (send value=0 and restore its "off" icon). Used when a press turns
+ * out to be the start of a page-swipe gesture rather than a tap.
+ *
+ * @param {HTMLButtonElement|null} btn
+ */
+function cancelMomentaryPressIfAny(btn) {
+  if (!btn || btn.dataset.momentary !== '1' || btn.dataset.active !== '1') return;
+  deactivateMomentaryFunctionButton(btn);
+}
+
+/**
+ * Build the (up to two) function "pages" for one column and append them,
+ * wrapped in a sliding track element, to the column.
+ *
+ * Page 0 always holds functions [baseOffset .. baseOffset+7]. When the
+ * locomotive declares more than 16 functions, page 1 holds functions
+ * [baseOffset+16 .. baseOffset+23] (i.e. the same column offset, shifted
+ * by 16). Swiping either column vertically moves both tracks together
+ * between page 0 and page 1 (see {@link wireFunctionSwipeEvents}).
+ *
+ * @param {HTMLElement} col – the container column (left or right)
+ * @param {number} baseOffset – starting index for the column (0 for left, 8 for right)
+ */
+function buildFunctionSidePages(col, baseOffset) {
+  if (!col) return;
+  const track = document.createElement('div');
+  track.className = 'fn-track';
+
+  const page0 = document.createElement('div');
+  page0.className = 'fn-page';
+  for (let i = 0; i < 8; i++) page0.appendChild(createLocoFunctionButton(baseOffset + i));
+  track.appendChild(page0);
+
+  if (fnMaxPage >= 1) {
+    const page1 = document.createElement('div');
+    page1.className = 'fn-page';
+    for (let i = 0; i < 8; i++) page1.appendChild(createLocoFunctionButton(baseOffset + 16 + i));
+    track.appendChild(page1);
+  }
+
+  col.appendChild(track);
+  wireLocoFunctionColumnEvents(col);
+  wireFunctionSwipeEvents(col);
+}
+
+/**
+ * Move both function columns to the given page (0 or 1), keeping them
+ * perfectly in sync since the same locomotive functions are split
+ * across both columns.
+ *
+ * @param {number} page – target page index (clamped to [0, fnMaxPage])
+ * @param {boolean} animate – whether to animate the transition
+ */
+function setFunctionsPage(page, animate) {
+  fnCurrentPage = Math.max(0, Math.min(fnMaxPage, page));
+  [leftCol, rightCol].forEach(function(col) {
+    if (!col) return;
+    const track = col.querySelector('.fn-track');
+    if (!track) return;
+    track.classList.toggle('no-anim', animate === false);
+    const pageHeight = col.clientHeight || 0;
+    track.style.transform = 'translateY(' + (-fnCurrentPage * pageHeight) + 'px)';
+  });
+}
+
+/**
+ * Wire up a vertical drag/swipe gesture on a function column that pages
+ * both columns between the first 16 and the next 16 functions. Only has
+ * an effect once the locomotive declares more than 16 functions
+ * (fnMaxPage >= 1); otherwise the gesture is a no-op so normal button
+ * taps/momentary presses behave exactly as before.
+ *
+ * @param {HTMLElement} col – the container column (left or right)
+ */
+function wireFunctionSwipeEvents(col) {
+  if (!col || col.dataset.fnSwipeWired) return;
+  col.dataset.fnSwipeWired = '1';
+
+  const SWIPE_START_PX = 10;   // movement (px) before a press is considered a vertical swipe
+  const SWIPE_COMMIT_PX = 40;  // movement (px) needed to actually change page on release
+
+  function endDrag(ev) {
+    if (!fnDrag || ev.pointerId !== fnDrag.pointerId) return;
+    const wasSwiping = fnDrag.isSwiping;
+    const dy = ev.clientY - fnDrag.startY;
+    fnDrag = null;
+    [leftCol, rightCol].forEach(function(c) {
+      const t = c && c.querySelector('.fn-track');
+      if (t) t.classList.remove('no-anim');
+    });
+    if (!wasSwiping) return;
+    let targetPage = fnCurrentPage;
+    if (dy <= -SWIPE_COMMIT_PX) targetPage = fnCurrentPage + 1;
+    else if (dy >= SWIPE_COMMIT_PX) targetPage = fnCurrentPage - 1;
+    setFunctionsPage(targetPage, true);
+    suppressNextFnClick = true;
+  }
+
+  col.addEventListener('pointerdown', (ev) => {
+    if (fnMaxPage < 1) return;
+    if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+    fnDrag = {
+      pointerId: ev.pointerId,
+      startX: ev.clientX,
+      startY: ev.clientY,
+      isSwiping: false,
+      startPage: fnCurrentPage,
+      startedBtn: ev.target instanceof Element ? ev.target.closest('button.fn-btn') : null
+    };
+  });
+
+  col.addEventListener('pointermove', (ev) => {
+    if (!fnDrag || ev.pointerId !== fnDrag.pointerId) return;
+    const dx = ev.clientX - fnDrag.startX;
+    const dy = ev.clientY - fnDrag.startY;
+    if (!fnDrag.isSwiping) {
+      if (Math.abs(dy) < SWIPE_START_PX || Math.abs(dy) <= Math.abs(dx)) return;
+      fnDrag.isSwiping = true;
+      // Only capture the pointer once we know this is really a vertical swipe (not a tap),
+      // otherwise capturing on every pointerdown re-targets the trailing click event to the
+      // column div instead of the button, breaking normal taps.
+      try { col.setPointerCapture(ev.pointerId); } catch (e) { /* ignore */ }
+      cancelMomentaryPressIfAny(fnDrag.startedBtn);
+      [leftCol, rightCol].forEach(function(c) {
+        const t = c && c.querySelector('.fn-track');
+        if (t) t.classList.add('no-anim');
+      });
+    }
+    ev.preventDefault();
+    const pageHeight = col.clientHeight || 0;
+    const base = -fnDrag.startPage * pageHeight;
+    const min = -fnMaxPage * pageHeight;
+    let next = base + dy;
+    if (next > 0) next = 0;
+    if (next < min) next = min;
+    [leftCol, rightCol].forEach(function(c) {
+      const t = c && c.querySelector('.fn-track');
+      if (t) t.style.transform = 'translateY(' + next + 'px)';
+    });
+  });
+
+  col.addEventListener('pointerup', endDrag);
+  col.addEventListener('pointercancel', endDrag);
+}
+
+/**
+ * (Re)build the locomotive function buttons for both columns, sizing
+ * the number of pages to the locomotive's declared function count.
+ *
+ * Locomotives may declare anywhere from a few up to 32 functions
+ * (see the `fn_count` field from the backend). Up to 16 functions are
+ * shown on a single page (8 per column, as before). When more than 16
+ * are declared, a second page is added and can be reached by swiping
+ * either function column vertically; both columns always move together.
+ *
+ * @param {number} fnCount – number of function slots declared by the locomotive
+ */
+function rebuildLocoFunctionButtons(fnCount) {
+  let count = Number(fnCount);
+  if (!isFinite(count) || count <= 0) count = 16;
+  count = Math.min(32, Math.max(1, count));
+  fnMaxPage = count > 16 ? 1 : 0;
+  fnCurrentPage = 0;
+  fnDrag = null;
+
+  if (leftCol) leftCol.innerHTML = '';
+  if (rightCol) rightCol.innerHTML = '';
+
+  buildFunctionSidePages(leftCol, 0);
+  buildFunctionSidePages(rightCol, 8);
+
+  setFunctionsPage(0, false);
+}
+
+// Global paging state for locomotive function columns (up to 32 functions -> up to 2 pages)
+let fnMaxPage = 0;      // 0 = only 16 functions declared, 1 = up to 32 (second page reachable via swipe)
+let fnCurrentPage = 0;  // currently visible page (0 or 1)
+let fnDrag = null;      // in-progress vertical swipe/drag state, or null
+let suppressNextFnClick = false; // set right after a committed swipe so the trailing click is ignored
+
 // Create and attach the locomotive function buttons on initial load
-setupLocoFunctionButtons(leftCol, 0);
-setupLocoFunctionButtons(rightCol, 8);
+rebuildLocoFunctionButtons(16);
+
+// Re-align the function columns to the current page (without animating) whenever the
+// viewport size changes (e.g. orientation change), since the page offset is computed
+// in pixels from the column's rendered height.
+window.addEventListener('resize', function() {
+  if (fnMaxPage >= 1) setFunctionsPage(fnCurrentPage, false);
+});
 
 /**
  * Handle clicks on locomotive function buttons via event delegation.
@@ -1843,6 +2042,10 @@ setupLocoFunctionButtons(rightCol, 8);
  * @param {MouseEvent} ev – the click event
  */
 function handleLocoFunctionButtonClick(ev) {
+  if (suppressNextFnClick) {
+    suppressNextFnClick = false;
+    return;
+  }
   const btn = ev.target instanceof Element ? ev.target.closest('button.fn-btn') : null;
   if (!btn) return;
   // For momentary buttons (type > 128), clicks should not toggle state
