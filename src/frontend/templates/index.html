@@ -46,11 +46,6 @@
           <b><span data-i18n="info.backend">Backend:</span></b> <span id="backendType">loading…</span><br>
           <br>
         </div>
-        <div style="font-size:clamp(1rem,calc(var(--top-btn-h)*0.40),1.3rem); font-weight:normal; text-align:center;" data-i18n="info.controlsHeader">SRSEII locomotive list controls:</div>
-        <button class="event-btn" id="eventBtn1" data-i18n="info.btn.refresh" style="height:var(--top-btn-h); min-height:0; font-size:clamp(0.8rem,calc(var(--top-btn-h)*0.30),1.1rem); padding-inline:clamp(0.7rem,calc(var(--top-btn-h)*0.40),2rem); width:50vw; max-width:320px; display:block; margin:0 auto;">Refresh locomotive list</button>
-        <button class="event-btn" id="eventBtn2" data-i18n="info.btn.import" style="height:var(--top-btn-h); min-height:0; font-size:clamp(0.8rem,calc(var(--top-btn-h)*0.30),1.1rem); padding-inline:clamp(0.7rem,calc(var(--top-btn-h)*0.40),2rem); width:50vw; max-width:320px; display:block; margin:0 auto;">Import locomotive list from Railcontrol</button>
-        <button class="event-btn" id="eventBtn3" data-i18n="info.btn.restart" style="height:var(--top-btn-h); min-height:0; font-size:clamp(0.8rem,calc(var(--top-btn-h)*0.30),1.1rem); padding-inline:clamp(0.7rem,calc(var(--top-btn-h)*0.40),2rem); width:50vw; max-width:320px; display:block; margin:0 auto;">Restart Railcontrol</button>
-        <button class="event-btn" id="eventBtn4" data-i18n="info.btn.reload" style="height:var(--top-btn-h); min-height:0; font-size:clamp(0.8rem,calc(var(--top-btn-h)*0.30),1.1rem); padding-inline:clamp(0.7rem,calc(var(--top-btn-h)*0.40),2rem); width:50vw; max-width:320px; display:block; margin:0 auto;">Reload locomotive list</button>
       </div>
     </div>
   </div>
@@ -104,10 +99,14 @@
     <div class="modal-backdrop"></div>
     <div class="bottom-sheet-content">
       <div class="modal-header">
-        <h2 id="locoPickerTitle" data-i18n="locoPicker.title">Select Locomotive</h2>
+        <h2 id="locoPickerTitle" data-i18n="locoPicker.title">Loco List</h2>
         <button id="locoPickerClose" class="modal-close" aria-label="Close" data-i18n="common.close" data-i18n-attr="aria-label">×</button>
       </div>
       <div class="modal-body">
+        <div class="loco-picker-actions">
+          <button class="loco-list-btn loco-picker-action" id="refreshBtn" data-i18n="info.btn.refresh">Refresh</button>
+          <button class="loco-list-btn loco-picker-action" id="reloadBtn" data-i18n="info.btn.reload">Reload</button>
+        </div>
         <input type="text" id="locoPickerFilter" placeholder="Search…" class="modal-filter" data-i18n="locoPicker.searchPlaceholder" data-i18n-attr="placeholder" autocomplete="off" />
         <div id="locoPickerList" class="loco-picker-list" aria-live="polite"></div>
       </div>

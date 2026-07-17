@@ -17,26 +17,6 @@ const locoId = 1;
 function byId(id) { return document.getElementById(id); }
 const isInModal = !!byId('infoModal');
 
-// Wire event buttons only if present (works in standalone page and in modal)
-[
-  { id: 'eventBtn1', fn: 0 },
-  { id: 'eventBtn2', fn: 1 },
-  { id: 'eventBtn3', fn: 2 },
-  { id: 'eventBtn4', fn: 4 },
-].forEach(({ id, fn }) => {
-  const el = byId(id);
-  if (el && !el._wired) {
-    el.addEventListener('click', function() {
-      fetch('/api/info_events', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ loco_id: locoId, function: fn, value: 1 })
-      });
-    });
-    el._wired = true;
-  }
-});
-
 // Back/Close handler: prefer closing modal if available, else navigate home
 (function(){
   const back = byId('backBtn') || byId('infoModalClose');

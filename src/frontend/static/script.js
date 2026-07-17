@@ -127,10 +127,10 @@ const I18N = {
       issues: 'For questions, bug reports, or feature requests, please open an issue on GitHub.',
       controlsHeader: 'SRSEII locomotive list controls:',
       btn: {
-        refresh: 'Refresh locomotive list',
+        refresh: 'Refresh',
         'import': 'Import locomotive list from Railcontrol',
         restart: 'Restart Railcontrol',
-        reload: 'Reload locomotive list'
+        reload: 'Reload'
       }
     },
     icon: {
@@ -139,7 +139,7 @@ const I18N = {
       cancel: 'Cancel',
     },
     locoPicker: {
-      title: 'Select Locomotive',
+      title: 'Loco List',
       searchPlaceholder: 'Search…',
     },
     locoDock: {
@@ -167,10 +167,10 @@ const I18N = {
       issues: 'Für Fragen, Bug-Reports oder Feature-Wünsche bitte ein Issue auf GitHub eröffnen.',
       controlsHeader: 'Steuerung der SRSEII-Lokliste:',
       btn: {
-        refresh: 'Lokliste aktualisieren',
+        refresh: 'Aktualisieren',
         'import': 'Loklistenimport Railcontrol',
         restart: 'Railcontrol neu starten',
-        reload: 'Lokliste neu einlesen'
+        reload: 'Neu einlesen'
       }
     },
     icon: {
@@ -179,7 +179,7 @@ const I18N = {
       cancel: 'Abbrechen',
     },
     locoPicker: {
-      title: 'Lok auswählen',
+      title: 'Lokliste',
       searchPlaceholder: 'Suche…',
     },
     locoDock: {
@@ -354,7 +354,6 @@ document.addEventListener('DOMContentLoaded', function() {
 // info modal if available. Fall back to navigating to /info if the modal markup is not present.
 function initInfoUI() {
   if (!infoModal) return;
-  const byId = (id) => document.getElementById(id);
   // Close handlers
   if (infoModalClose && !infoModalClose._wired) {
     infoModalClose.addEventListener('click', () => infoModal.classList.add('hidden'));
@@ -373,26 +372,6 @@ function initInfoUI() {
     });
     infoModal._wiredBackdrop = true;
   }
-  // Wire event buttons
-  const locoId = 1;
-  [
-    { id: 'eventBtn1', fn: 0 },
-    { id: 'eventBtn2', fn: 1 },
-    { id: 'eventBtn3', fn: 2 },
-    { id: 'eventBtn4', fn: 4 },
-  ].forEach(({ id, fn }) => {
-    const el = byId(id);
-    if (el && !el._wired) {
-      el.addEventListener('click', function() {
-        fetch('/api/info_events', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ loco_id: locoId, "function": fn, value: 1 })
-        });
-      });
-      el._wired = true;
-    }
-  });
 }
 
 async function refreshHealthInfo() {
@@ -1300,6 +1279,27 @@ function renderLocoList() {
 //  LOCO PICKER (Bottom Sheet)
 // =====================
 
+function wireLocoListButtons() {
+  const byId = (id) => document.getElementById(id);
+  const locoId = 1;
+  [
+    { id: 'refreshBtn', fn: 0 },
+    { id: 'reloadBtn', fn: 4 },
+  ].forEach(({ id, fn }) => {
+    const el = byId(id);
+    if (el && !el._wired) {
+      el.addEventListener('click', function() {
+        fetch('/api/info_events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ loco_id: locoId, "function": fn, value: 1 })
+        });
+      });
+      el._wired = true;
+    }
+  });
+}
+
 /**
  * Open the loco picker bottom sheet and render all available locomotives
  * in static backend order.
@@ -1380,6 +1380,8 @@ function renderLocoPicker(filter) {
 
 // Wire add button to open the loco picker
 (function initLocoPickerUI() {
+  wireLocoListButtons();
+
   var addBtn = document.getElementById('locoAddBtn');
   if (addBtn) {
     addBtn.addEventListener('click', function(e) {

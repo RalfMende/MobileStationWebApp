@@ -365,6 +365,17 @@ textarea {
   border-radius: var(--radius) var(--radius) 0 0;
   flex-shrink: 0;
 }
+#locoPickerModal .modal-header {
+  justify-content: flex-end;
+  position: relative;
+}
+#locoPickerTitle {
+  left: 50%;
+  margin: 0;
+  position: absolute;
+  text-align: center;
+  transform: translateX(-50%);
+}
 .bottom-sheet-content .modal-body {
   display: flex;
   flex: 1;
@@ -388,6 +399,34 @@ textarea {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+.loco-list-btn {
+  background: #2b2b2b;
+  border: 1px solid #555;
+  border-radius: var(--radius);
+  color: #fff;
+  cursor: pointer;
+  font-size: clamp(0.9rem, calc(var(--top-btn-h) * 0.40), 1.2rem);
+  height: var(--top-btn-h);
+  padding: 0 0.7rem;
+}
+.loco-list-btn:hover,
+.loco-list-btn:active {
+  background: #3a3a3a;
+}
+.loco-picker-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+.loco-picker-action {
+  flex: 1;
+  width: 100%;
+}
+#locoPickerModal .modal-filter,
+#locoPickerModal .modal-filter::placeholder {
+  font-size: clamp(0.9rem, calc(var(--top-btn-h) * 0.40), 1.2rem);
 }
 .loco-picker-item {
   align-items: center;
