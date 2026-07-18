@@ -130,7 +130,7 @@ const I18N = {
         refresh: 'Refresh',
         'import': 'Import locomotive list from Railcontrol',
         restart: 'Restart Railcontrol',
-        reload: 'Reload'
+        reload: 'Reset'
       }
     },
     icon: {
@@ -170,7 +170,7 @@ const I18N = {
         refresh: 'Aktualisieren',
         'import': 'Loklistenimport Railcontrol',
         restart: 'Railcontrol neu starten',
-        reload: 'Neu einlesen'
+        reload: 'Zurücksetzen'
       }
     },
     icon: {
@@ -1284,7 +1284,7 @@ function wireLocoListButtons() {
   const locoId = 1;
   [
     { id: 'refreshBtn', fn: 0 },
-    { id: 'reloadBtn', fn: 4 },
+    { id: 'resetBtn', fn: 4 },
   ].forEach(({ id, fn }) => {
     const el = byId(id);
     if (el && !el._wired) {
