@@ -1,0 +1,2648 @@
+/*
+ THE BEER-WARE LICENSE (Revision 42)
+
+<mende.r@hotmail.de> wrote this file. As long as you retain this notice you can do whatever you want with this
+ stuff. If we meet someday, and you think this stuff is worth it, you can
+ buy me a beer in return.
+ Ralf Mende
+*/
+
+// Number of switch groups per keyboard page (each group has 2 buttons).
+// Portrait: 8 groups/page (pages 1a..4b), Landscape: 16 groups/page (pages 1..4).
+let keyboardGroupCnt = 8;
+
+let locList = {};
+let switchList = {};
+let locoState = {};
+
+let isRunning = false;
+let currentActiveContainer = 'control'; // Keeps selected page, in case of returning to website
+let currentLocoUid = null; // Keeps selected locomotive from control page (via UID)
+let currentKeyboardId = 0; // Keeps selected keyboard ID from keyboard page
+const debounce_udp_message = 10; // Timer in ms
+
+let isDragging = false;
+let dragTimeout = null;
+
+const Direction = Object.freeze({
+  FORWARD: 1,
+  REVERSE: 2,
+});
+
+const stopBtn = document.getElementById('stopBtn');
+const speedSlider = document.getElementById('speedSlider');
+const speedFill = document.getElementById('speedFill');
+const speedValue = document.getElementById('speedValue');
+const speedBar = document.getElementById('speedBar');
+const reverseBtn = document.getElementById('reverseBtn');
+const forwardBtn = document.getElementById('forwardBtn');
+const locoDesc = document.getElementById('locoDesc');
+const locoImg = document.getElementById('locoImg');
+const locoList = document.getElementById('locoList');
+const leftCol = document.getElementById('leftFunctions');
+const rightCol = document.getElementById('rightFunctions');
+const keyboardTab = document.getElementById('keyboardTab');
+const controlTab = document.getElementById('controlTab');
+const controlPage = document.getElementById('controlPage');
+const keyboardPage = document.getElementById('keyboardPage');
+const infoBtn = document.getElementById('infoBtn');
+const infoModal = document.getElementById('infoModal');
+const infoModalClose = document.getElementById('infoModalClose');
+// Keyboard buttons and page buttons are built dynamically; query as needed
+let keyboardPageBtns = null; // will be set after dynamic build
+let toastEl = null;
+let toastHideTimer = null;
+let dockActionMenuEl = null;
+let dockActionMenuUid = null;
+
+function ensureToastElement() {
+  if (toastEl && document.body.contains(toastEl)) return toastEl;
+  toastEl = document.getElementById('appToast');
+  if (toastEl) return toastEl;
+
+  const el = document.createElement('div');
+  el.id = 'appToast';
+  el.className = 'app-toast';
+  el.setAttribute('role', 'status');
+  el.setAttribute('aria-live', 'polite');
+  document.body.appendChild(el);
+  toastEl = el;
+  return toastEl;
+}
+
+function showToast(message, durationMs) {
+  const text = String(message || '').trim();
+  if (!text) return;
+
+  const el = ensureToastElement();
+  el.textContent = text;
+  el.classList.add('show');
+
+  if (toastHideTimer) clearTimeout(toastHideTimer);
+  toastHideTimer = setTimeout(function() {
+    el.classList.remove('show');
+  }, Number(durationMs) > 0 ? Number(durationMs) : 3000);
+}
+
+function detectKeyboardGroupCnt() {
+  try {
+    if (window.matchMedia && window.matchMedia('(orientation: landscape)').matches) return 16;
+  } catch (e) {
+    // ignore and use fallback below
+  }
+  return (window.innerWidth > window.innerHeight) ? 16 : 8;
+}
+
+// CONFIG_PATH is injected by the backend into index.html. Be tolerant if it's missing
+// and fall back to the default public config base used by the servers ("/cfg").
+const DEFAULT_CONFIG_BASE = '/cfg';
+const STATIC_BASE = String(window.CONFIG_PATH || DEFAULT_CONFIG_BASE).replace(/\/$/, '');
+function asset(rel) {
+  if (!rel.startsWith('/')) rel = '/' + rel;
+  return STATIC_BASE + rel;
+}
+
+// ==========================
+//  I18N (internationalization)
+// ==========================
+// Rules:
+// - Default language is English (en)
+// - Detect browser language and map to 'de' when it starts with 'de'
+// - Apply to elements with data-i18n, using innerText by default
+// - If data-i18n-attr is set, translate that attribute instead
+// - Do NOT change stopBtn, infoBtn, controlTab, keyboardTab
+
+const I18N = {
+  en: {
+    common: {
+      close: 'Close'
+    },
+    info: {
+      title: 'Info',
+      aboutHtml: 'The source code of this WebApp is publicly available on <a href="https://github.com/RalfMende/MobileStationWebApp" target="_blank">GitHub</a>.<br>There you\'ll also find the license terms (see LICENSE) and the latest release.',
+      docsHtml: '<a href="https://ralfmende.github.io/MobileStationWebApp/index.html" target="_blank">Online documentation & FAQ</a>',
+      version: 'Version:',
+      backend: 'Backend:',
+      author: 'Author: Ralf Mende',
+      issues: 'For questions, bug reports, or feature requests, please open an issue on GitHub.',
+      controlsHeader: 'SRSEII locomotive list controls:',
+      btn: {
+        refresh: 'Refresh',
+        'import': 'Import locomotive list from Railcontrol',
+        restart: 'Restart Railcontrol',
+        reload: 'Reset'
+      }
+    },
+    icon: {
+      title: 'Select Icon',
+      filterPlaceholder: 'Filter…',
+      cancel: 'Cancel',
+    },
+    locoPicker: {
+      title: 'Loco List',
+      searchPlaceholder: 'Search…',
+    },
+    locoDock: {
+      noSlotFree: 'No free slot, because all locomotives are either pinned or active',
+      menuPin: 'Pin',
+      menuUnpin: 'Unpin',
+      menuRelease: 'Release',
+      locoStillActive: 'Locomotive is still active.'
+    },
+    keyboard: {
+      headerPrefix: 'Keyboard Page ',
+    }
+  },
+  de: {
+    common: {
+      close: 'Schließen'
+    },
+    info: {
+      title: 'Info',
+      aboutHtml: 'Der Code dieser WebApp ist öffentlich verfügbar auf <a href="https://github.com/RalfMende/MobileStationWebApp" target="_blank">GitHub</a>.<br>Dort findest du auch die Lizenzbedingungen (siehe Datei LICENSE) und die jeweils aktuelle Version.',
+      docsHtml: '<a href="https://ralfmende.github.io/MobileStationWebApp/index.html" target="_blank">Online-Dokumentation & FAQ</a>',
+      version: 'Version:',
+      backend: 'Backend:',
+      author: 'Autor: Ralf Mende',
+      issues: 'Für Fragen, Bug-Reports oder Feature-Wünsche bitte ein Issue auf GitHub eröffnen.',
+      controlsHeader: 'Steuerung der SRSEII-Lokliste:',
+      btn: {
+        refresh: 'Aktualisieren',
+        'import': 'Loklistenimport Railcontrol',
+        restart: 'Railcontrol neu starten',
+        reload: 'Zurücksetzen'
+      }
+    },
+    icon: {
+      title: 'Icon wählen',
+      filterPlaceholder: 'Filter…',
+      cancel: 'Abbrechen',
+    },
+    locoPicker: {
+      title: 'Lokliste',
+      searchPlaceholder: 'Suche…',
+    },
+    locoDock: {
+      noSlotFree: 'Kein Slot frei, da alle Loks entweder gepinnt oder aktiv sind',
+      menuPin: 'Pinnen',
+      menuUnpin: 'Entpinnen',
+      menuRelease: 'Freigeben',
+      locoStillActive: 'Lokomotive ist noch aktiv.'
+    },
+    keyboard: {
+      headerPrefix: 'Keyboard Seite ',
+    }
+  }
+};
+
+function detectLang() {
+  const nav = navigator;
+  let lang = (nav.languages && nav.languages[0]) || nav.language || 'en';
+  lang = String(lang).toLowerCase();
+  if (lang.startsWith('de')) return 'de';
+  return 'en';
+}
+
+let CURRENT_LANG = detectLang();
+let T = I18N[CURRENT_LANG] || I18N.en;
+
+function applyI18n() {
+  T = I18N[CURRENT_LANG] || I18N.en;
+  // Apply static translations
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const attr = el.getAttribute('data-i18n-attr');
+    const parts = key.split('.');
+    let val = T;
+    for (const p of parts) {
+      if (val && typeof val === 'object' && p in val) val = val[p]; else { val = null; break; }
+    }
+    if (val == null) return;
+    if (attr) {
+      el.setAttribute(attr, String(val));
+    } else {
+      // Allow HTML in some strings (introHtml/moreHtml)
+      if (/Html$/.test(parts[parts.length-1])) el.innerHTML = String(val);
+      else el.textContent = String(val);
+    }
+  });
+  // Update dynamic keyboard header
+  updateKeyboardHeaderText();
+}
+
+// Apply i18n once DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', applyI18n, { once: true });
+} else {
+  applyI18n();
+}
+
+// Tab navigation between control and keyboard panels.
+// The markup contains two tabs: one for the locomotive control view and one for the keyboard view.
+// Attach click listeners to each tab so that clicking a tab hides the inactive page, reveals the
+// chosen page and updates the 'active' CSS class on the tab.  This also updates the
+// `currentActiveContainer` global so other code knows which panel is showing.
+if (keyboardTab && controlTab && controlPage && keyboardPage) {
+  keyboardTab.addEventListener('click', function() {
+    controlPage.classList.add('hidden');
+    keyboardPage.classList.remove('hidden');
+    keyboardTab.classList.add('active');
+    controlTab.classList.remove('active');
+    currentActiveContainer = 'keyboard';
+  });
+  controlTab.addEventListener('click', function() {
+    keyboardPage.classList.add('hidden');
+    controlPage.classList.remove('hidden');
+    controlTab.classList.add('active');
+    keyboardTab.classList.remove('active');
+    currentActiveContainer = 'control';
+  });
+}
+
+/**
+ * Switch between the control and keyboard views.
+ *
+ * When the user navigates via the tab bar or when persisted state
+ * is restored on page load, the UI must show either the locomotive
+ * control panel or the keyboard panel.  This helper applies
+ * appropriate CSS classes to hide or reveal the pages and sets
+ * the `currentActiveContainer` global to reflect the new active
+ * view.
+ *
+ * @param {('control'|'keyboard')} container – which container to activate
+ */
+function activateContainer(container) {
+  if (container === 'keyboard') {
+    controlPage.classList.add('hidden');
+    keyboardPage.classList.remove('hidden');
+    keyboardTab.classList.add('active');
+    controlTab.classList.remove('active');
+    currentActiveContainer = 'keyboard';
+  } else {
+    keyboardPage.classList.add('hidden');
+    controlPage.classList.remove('hidden');
+    controlTab.classList.add('active');
+    keyboardTab.classList.remove('active');
+    currentActiveContainer = 'control';
+  }
+}
+
+// Restore persisted UI state and initialize accessory data on page load.
+// When the DOM content is ready, read persisted selections from localStorage (the active
+// keyboard page and last active container) and apply them. Then load the accessory (switch)
+// list and state from the backend so the keyboard view can be initialized correctly.
+document.addEventListener('DOMContentLoaded', function() {
+  let savedKeyboardId = localStorage.getItem('currentKeyboardId');
+  let savedContainer = localStorage.getItem('currentActiveContainer');
+  if (savedKeyboardId) {
+    activateKeyboardBtnById(Number(savedKeyboardId));
+  } else {
+    activateKeyboardBtnById(0);
+  }
+  if (savedContainer === 'keyboard') {
+    activateContainer('keyboard');
+  } else {
+    activateContainer('control');
+  }
+  updateKeyboardHeaderText();
+  updateKeyboardGroupLabels();
+  // Load accessory (switch) list
+  fetch('/api/switch_list')
+    .then(response => response.json())
+    .then(data => {
+      switchList = data;
+      updateKeyboardGroupLabels();
+    })
+    .catch(() => {
+      switchList = {};
+      updateKeyboardGroupLabels();
+    });
+  // Load and initialize keyboard switch states
+  fetch('/api/switch_state')
+    .then(response => response.json())
+    .then(data => {
+      const switchState = data && data.switch_state ? data.switch_state : [];
+      initializeKeyboardButtons(switchState);
+    })
+    .catch(() => {
+      initializeKeyboardButtons([]);
+    });
+
+  // Hint browser to lazy load and decode loco list images asynchronously (initial paint faster)
+  const locoListEl = document.getElementById('locoList');
+  if (locoListEl) {
+    // apply after render loop
+    requestAnimationFrame(function(){
+      locoListEl.querySelectorAll('img').forEach(function(img){
+        img.loading = 'lazy';
+        img.decoding = 'async';
+      });
+    });
+  }
+});
+
+//
+// ==========================
+//  INFO BUTTON SECTION
+// ==========================
+//
+// The functions in this section handle the behavior of the global
+// "INFO" button. With this button you leave the current view and
+// navigate to the info page.
+
+// When the user clicks the info button, persist the current UI state and open the in-page
+// info modal if available. Fall back to navigating to /info if the modal markup is not present.
+function initInfoUI() {
+  if (!infoModal) return;
+  // Close handlers
+  if (infoModalClose && !infoModalClose._wired) {
+    infoModalClose.addEventListener('click', () => infoModal.classList.add('hidden'));
+    infoModalClose._wired = true;
+  }
+  if (!infoModal._wiredBackdrop) {
+    infoModal.addEventListener('click', (e) => {
+      if (e.target.classList && e.target.classList.contains('modal-backdrop')) {
+        infoModal.classList.add('hidden');
+      }
+    });
+    document.addEventListener('keydown', (e) => {
+      if (!infoModal.classList.contains('hidden') && (e.key === 'Escape' || e.key === 'Esc')) {
+        infoModal.classList.add('hidden');
+      }
+    });
+    infoModal._wiredBackdrop = true;
+  }
+}
+
+async function refreshHealthInfo() {
+  try {
+    const res = await fetch('/api/health', { cache: 'no-store' });
+    if (!res.ok) throw new Error('health fetch failed');
+    const data = await res.json();
+    const ver = (data && (data.version || data.Version)) || 'unknown';
+    const dv = document.getElementById('appVersion'); if (dv) dv.textContent = ver;
+    const backend = data && typeof data.system_state !== 'undefined' ? 'active' : 'unknown';
+    const db = document.getElementById('backendType'); if (db) db.textContent = `HTTP OK (${backend})`;
+  } catch (e) {
+    const dv = document.getElementById('appVersion'); if (dv) dv.textContent = 'unavailable';
+    const db = document.getElementById('backendType'); if (db) db.textContent = 'unavailable';
+  }
+}
+
+if (infoBtn) {
+  infoBtn.onclick = function() {
+    localStorage.setItem('currentActiveContainer', currentActiveContainer);
+    
+    if (currentLocoUid != null) {
+      localStorage.setItem('currentLocoUid', currentLocoUid);
+    }
+    localStorage.setItem('currentKeyboardId', currentKeyboardId);
+
+    if (infoModal) {
+      initInfoUI();
+      infoModal.classList.remove('hidden');
+      refreshHealthInfo();
+    } else {
+      // Backward-compatible behavior
+      window.location.href = '/info';
+    }
+  };
+}
+
+//
+// ==========================
+//  STOP BUTTON SECTION
+// ==========================
+//
+// The functions in this section handle the behaviour of the global
+// "STOP" button.  This button toggles the overall system state
+// (start/stop) and updates its own appearance based on that state.
+// Grouping these together makes it easier to reason about the
+// stop‑button behavior independently of locomotive control or
+// keyboard logic.
+
+/**
+ * Update the visual state of the stop button.
+ *
+ * The stop button toggles between a running and a stopped state.
+ * Whenever the server reports a change in the overall system status,
+ * this function adjusts the CSS class and label accordingly.  It
+ * encapsulates DOM manipulation so that other parts of the code
+ * simply call {@link updateStopButtonUI} without worrying about how
+ * the styling or text is applied.
+ */
+function updateStopButtonUI() {
+  stopBtn.className = isRunning ? 'stop tab' : 'go tab';
+  stopBtn.textContent = isRunning ? 'STOP' : 'GO';
+}
+
+// Handle clicks on the stop button by toggling the overall system state.
+// The new desired state is sent to the server; the isRunning flag is only updated when
+// the server broadcasts a system event via SSE.
+stopBtn.addEventListener('click', () => {
+  fetch('/api/stop_button', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ state: !isRunning })
+  });
+  // isRunning and updateStopButtonUI() are only set via SSE!
+});
+
+// Subscribe to Server‑Sent Events (SSE) with cautious reconnect logic.
+// Avoid creating multiple parallel connections, which can starve the server.
+let evtSource = null;
+function connectSSE() {
+  // If there's an existing open (or connecting) EventSource, keep it.
+  if (evtSource && evtSource.readyState !== EventSource.CLOSED) {
+    return;
+  }
+  evtSource = new EventSource('/api/events');
+  evtSource.onmessage = handleSSEMessage;
+}
+
+function handleSSEMessage(event) {
+  const data = JSON.parse(event.data);
+  if (data.type === 'loco_list_reloaded') {
+    // Backend indicates that lokomotive.cs2 changed. Reload list and UI using the shared path.
+    loadAndRenderLocoList({ preserveSelection: true });
+    return;
+  }
+  if (data.type === 'system') {
+      isRunning = data.status;
+    updateStopButtonUI();
+  }
+  if (currentLocoUid == data.loc_id) {
+    if (data.type === 'direction') {
+      const v = (data.value === 'reverse' || data.value === 2 || data.value === '2')
+        ? Direction.REVERSE
+        : Direction.FORWARD;
+      updateDirectionUI(v);
+    }
+    if (data.type === 'speed') {
+      speedSlider.value = data.value;
+      updateSpeedUI(data.value);
+    }
+    if (data.type === 'function') {
+      updateLocoFunctionButton(data.fn, data.value);
+    }
+  }
+  if (data.type === 'switch' && typeof data.idx === 'number' && typeof data.value !== 'undefined') {
+  // idx: 0-63
+  // Back-calculate: keyboardId = Math.floor(idxNum/keyboardGroupCnt), groupIdx = (idxNum%keyboardGroupCnt)
+  const idxNum = Number(data.idx);
+  const valueNum = Number(data.value);
+  const keyboardId = Math.floor(idxNum / keyboardGroupCnt);
+  const groupIdx = idxNum % keyboardGroupCnt;
+    // Only if the current page is affected:
+    if (keyboardId === currentKeyboardId) {
+      // Find the two buttons of the group
+      const btn1 = document.querySelectorAll('.keyboard-btn')[groupIdx * 2];
+      const btn2 = document.querySelectorAll('.keyboard-btn')[groupIdx * 2 + 1];
+      if (btn1 && btn2) {
+        updateSwitchUI(btn1, btn2, valueNum);
+      }
+    }
+  }
+}
+
+// Kick off SSE and re-establish on visibility/pageshow
+connectSSE();
+window.addEventListener('pageshow', function(){
+  // Reconnect only if the previous connection is closed.
+  if (!evtSource || evtSource.readyState === EventSource.CLOSED) connectSSE();
+});
+document.addEventListener('visibilitychange', function(){
+  if (document.visibilityState === 'visible') {
+    if (!evtSource || evtSource.readyState === EventSource.CLOSED) connectSSE();
+  }
+});
+
+//
+// ==========================
+//  UI NAVIGATION SECTION
+// ==========================
+//
+// Cross-view navigation helpers (tabs, swipe gestures, and page switching)
+// are grouped here because they affect both control and keyboard views.
+
+function switchKeyboardPageByOffset(offset) {
+  if (!keyboardPageBtns || keyboardPageBtns.length === 0) return;
+  var next = currentKeyboardId + offset;
+  if (next < 0 || next >= keyboardPageBtns.length) return;
+  var visualDir = offset > 0 ? -1 : 1; // next -> slide left, previous -> slide right
+  if (isKeyboardSwipeAnimating) return;
+  isKeyboardSwipeAnimating = true;
+  var contentEl = keyboardPage ? keyboardPage.querySelector('.keyboard-area') : null;
+  animateHorizontalSwap(
+    contentEl,
+    visualDir,
+    function() {
+      // Reuse existing click handler path so labels/state refresh are identical.
+      keyboardPageBtns[next].click();
+    },
+    function() {
+      isKeyboardSwipeAnimating = false;
+    }
+  );
+}
+
+function installHorizontalSwipeNavigation() {
+  var SWIPE_MIN_X = 70;
+  var SWIPE_MAX_Y = 45;
+
+  function bindSwipe(containerEl, onSwipeLeft, onSwipeRight) {
+    if (!containerEl) return;
+    var startX = 0;
+    var startY = 0;
+    var tracking = false;
+
+    containerEl.addEventListener('touchstart', function(e) {
+      if (!e.touches || e.touches.length !== 1) return;
+      var target = e.target;
+      if (target && target.closest && target.closest('button, input, textarea, #locoList, .modal, .bottom-sheet')) {
+        tracking = false;
+        return;
+      }
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      tracking = true;
+    }, { passive: true });
+
+    containerEl.addEventListener('touchend', function(e) {
+      if (!tracking || !e.changedTouches || e.changedTouches.length !== 1) return;
+      tracking = false;
+      var dx = e.changedTouches[0].clientX - startX;
+      var dy = e.changedTouches[0].clientY - startY;
+      if (Math.abs(dx) < SWIPE_MIN_X || Math.abs(dy) > SWIPE_MAX_Y || Math.abs(dy) > Math.abs(dx)) return;
+      if (dx < 0) onSwipeLeft();
+      else onSwipeRight();
+    }, { passive: true });
+
+    containerEl.addEventListener('touchcancel', function() {
+      tracking = false;
+    }, { passive: true });
+  }
+
+  // Control view: swipe left/right to switch between dock locomotives.
+  bindSwipe(controlPage, function() { switchLocoByOffset(1); }, function() { switchLocoByOffset(-1); });
+  // Keyboard view: swipe left/right to switch keyboard pages.
+  bindSwipe(keyboardPage, function() { switchKeyboardPageByOffset(1); }, function() { switchKeyboardPageByOffset(-1); });
+}
+
+var isControlSwipeAnimating = false;
+var isKeyboardSwipeAnimating = false;
+
+function animateHorizontalSwap(contentEl, visualDir, applyChange, onDone) {
+  if (!contentEl) {
+    applyChange();
+    if (typeof onDone === 'function') onDone();
+    return;
+  }
+
+  var reduceMotion = false;
+  try {
+    reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  } catch (e) {
+    reduceMotion = false;
+  }
+  if (reduceMotion) {
+    applyChange();
+    if (typeof onDone === 'function') onDone();
+    return;
+  }
+
+  var width = Math.max(1, contentEl.clientWidth || contentEl.offsetWidth || 1);
+  var outX = (visualDir < 0 ? -1 : 1) * width;
+  var inX = -outX;
+  var durationMs = 280;
+  var easing = 'cubic-bezier(0.22, 0.61, 0.36, 1)';
+
+  var outgoing = contentEl.cloneNode(true);
+  outgoing.style.position = 'absolute';
+  outgoing.style.left = '0';
+  outgoing.style.top = '0';
+  outgoing.style.width = '100%';
+  outgoing.style.height = '100%';
+  outgoing.style.margin = '0';
+  outgoing.style.pointerEvents = 'none';
+  outgoing.style.zIndex = '12';
+  outgoing.style.willChange = 'transform';
+  outgoing.style.transform = 'translateX(0px)';
+  outgoing.style.transition = 'none';
+  outgoing.setAttribute('aria-hidden', 'true');
+
+  var parent = contentEl.parentElement;
+  if (!parent) {
+    applyChange();
+    if (typeof onDone === 'function') onDone();
+    return;
+  }
+
+  var oldParentPosition = parent.style.position;
+  var oldParentOverflow = parent.style.overflow;
+  if (window.getComputedStyle(parent).position === 'static') {
+    parent.style.position = 'relative';
+  }
+  parent.style.overflow = 'hidden';
+  parent.appendChild(outgoing);
+
+  contentEl.style.willChange = 'transform';
+  contentEl.style.transition = 'none';
+  contentEl.style.transform = 'translateX(' + inX + 'px)';
+
+  // Apply the data/UI change while incoming view is offscreen.
+  applyChange();
+
+  // Force reflow to ensure both layers have their start positions before animating.
+  outgoing.offsetWidth;
+  contentEl.offsetWidth;
+
+  outgoing.style.transition = 'transform ' + durationMs + 'ms ' + easing;
+  contentEl.style.transition = 'transform ' + durationMs + 'ms ' + easing;
+
+  requestAnimationFrame(function() {
+    outgoing.style.transform = 'translateX(' + outX + 'px)';
+    contentEl.style.transform = 'translateX(0px)';
+  });
+
+  function finalize() {
+    if (outgoing && outgoing.parentNode) outgoing.parentNode.removeChild(outgoing);
+    contentEl.style.transition = '';
+    contentEl.style.transform = '';
+    contentEl.style.willChange = '';
+    if (oldParentPosition) parent.style.position = oldParentPosition; else parent.style.position = '';
+    if (oldParentOverflow) parent.style.overflow = oldParentOverflow; else parent.style.overflow = '';
+    if (typeof onDone === 'function') onDone();
+  }
+
+  setTimeout(finalize, durationMs + 30);
+}
+
+function wireSingleOrDoubleClick(el, onSingle, onDouble, delayMs) {
+  if (!el) return;
+  var delay = Number(delayMs) > 0 ? Number(delayMs) : 280;
+  var clickTimer = null;
+  var suppressClickUntil = 0;
+
+  function runSingle(e) {
+    if (typeof onSingle === 'function') onSingle(e);
+  }
+
+  function runDouble(e) {
+    if (typeof onDouble === 'function') onDouble(e);
+  }
+
+  function queueSingle(e) {
+    clickTimer = setTimeout(function() {
+      clickTimer = null;
+      runSingle(e);
+    }, delay);
+  }
+
+  function handleTap(e) {
+    if (clickTimer) {
+      clearTimeout(clickTimer);
+      clickTimer = null;
+      e.preventDefault();
+      e.stopPropagation();
+      runDouble(e);
+      return;
+    }
+    queueSingle(e);
+  }
+
+  // Hint browsers to avoid double-tap zoom heuristics on this element.
+  el.style.touchAction = 'manipulation';
+
+  // iOS Safari/Firefox: detect double-tap from touch events directly.
+  el.addEventListener('touchend', function(e) {
+    suppressClickUntil = Date.now() + 700;
+    if (e.cancelable) e.preventDefault();
+    handleTap(e);
+  }, { passive: false });
+
+  // Desktop/mouse fallback and non-touch environments.
+  el.addEventListener('click', function(e) {
+    if (Date.now() < suppressClickUntil) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    handleTap(e);
+  });
+}
+
+//
+// ==========================
+//  LOCOMOTIVE CONTROL SECTION
+// ==========================
+//
+// The functions in this section manipulate a single locomotive.  They
+// send commands to the backend (speed, direction, functions) and
+// reflect state changes in the UI.  Naming is normalised to start
+// with "setLoco…" for actions that send commands to the server, and
+// "update…" for pure UI updates.  Fetch functions that only read
+// state are prefixed with "fetchAnd…".
+
+// Helper: select a locomotive by uid, update UI and fetch state
+// Unified image fallback: icon -> sym_<Symbol>.png -> leeres Gleis.png
+function setLocoImageWithSymbolFallback(imgEl, loco) {
+  if (!imgEl) return;
+  const iconName = loco && loco.icon;
+  const symbolVal = loco && loco.symbol;
+  let stage = 0; // 0: try icon, 1: try symbol, 2: final fallback
+  imgEl.onerror = function onErr() {
+    if (stage === 0 && Number.isFinite(Number(symbolVal))) {
+      stage = 1;
+      imgEl.src = `/static/grafics/sym_${Number(symbolVal)}.png`;
+    } else if (stage <= 1) {
+      stage = 2;
+      imgEl.onerror = null;
+      imgEl.src = asset('icons/leeres Gleis.png');
+    }
+  };
+  if (iconName) {
+    imgEl.src = asset(`icons/${iconName}.png`);
+  } else if (Number.isFinite(Number(symbolVal))) {
+    stage = 1; // next error -> fallback
+    imgEl.src = `/static/grafics/sym_${Number(symbolVal)}.png`;
+  } else {
+    imgEl.onerror = null; // no need for chain
+    imgEl.src = asset('icons/leeres Gleis.png');
+  }
+}
+
+function selectLoco(uid, options) {
+  var opts = Object.assign({ ensureDock: false, scrollDock: false }, options || {});
+  currentLocoUid = Number(uid);
+  if (!isFinite(currentLocoUid)) return;
+  const loco = locList[String(currentLocoUid)] || locList[currentLocoUid];
+  locoDesc.textContent = loco ? (loco.name || '') : '';
+  setLocoImageWithSymbolFallback(locoImg, loco);
+
+  const fnCount = (loco && Number(loco.fn_count) > 0) ? Number(loco.fn_count) : 16;
+  rebuildLocoFunctionButtons(fnCount);
+
+  fetchAndApplyLocoState(currentLocoUid);
+  localStorage.setItem('currentLocoUid', String(currentLocoUid));
+  if (opts.ensureDock) {
+    if (opts.scrollDock) dockScrollTargetUid = String(currentLocoUid);
+    ensureLocoInDock(String(currentLocoUid)).then(function() {
+      renderLocoList();
+    });
+    return;
+  }
+  renderLocoList();
+}
+
+function getDisplayedDockUids() {
+  var dockUids = dockLocoUids.slice(0, LOCO_DOCK_MAX);
+  dockUids.sort(function(a, b) {
+    var aPin = pinnedLocoUids.indexOf(a) !== -1 ? 0 : 1;
+    var bPin = pinnedLocoUids.indexOf(b) !== -1 ? 0 : 1;
+    return aPin - bPin;
+  });
+  return dockUids;
+}
+
+function switchLocoByOffset(offset) {
+  var currentStr = currentLocoUid !== null ? String(currentLocoUid) : null;
+  if (!currentStr) return;
+  var ordered = getDisplayedDockUids();
+  if (!ordered.length) return;
+  var idx = ordered.indexOf(currentStr);
+  if (idx === -1) return;
+  var nextIdx = idx + offset;
+  if (nextIdx < 0 || nextIdx >= ordered.length) return;
+  var targetUid = ordered[nextIdx];
+  var visualDir = offset > 0 ? -1 : 1; // next -> slide left, previous -> slide right
+  if (isControlSwipeAnimating) return;
+  isControlSwipeAnimating = true;
+  var contentEl = controlPage ? controlPage.querySelector('.main-content') : null;
+  animateHorizontalSwap(
+    contentEl,
+    visualDir,
+    function() {
+      selectLoco(targetUid);
+    },
+    function() {
+      isControlSwipeAnimating = false;
+    }
+  );
+}
+
+// =====================
+//  LOCO DOCK & PICKER
+// =====================
+
+// Maximum number of locomotives shown in the bottom dock.
+var LOCO_DOCK_MAX = 10;
+var hasPersistedDockState = localStorage.getItem('dockLocoUids') !== null;
+var dockLocoUids = loadUidArrayFromStorage('dockLocoUids');
+var pinnedLocoUids = loadUidArrayFromStorage('pinnedLocoUids');
+var dockScrollTargetUid = null;
+
+function loadUidArrayFromStorage(key) {
+  try {
+    var v = JSON.parse(localStorage.getItem(key));
+    if (!Array.isArray(v)) return [];
+    return v.map(function(u){ return String(u); });
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveDockState() {
+  localStorage.setItem('dockLocoUids', JSON.stringify(dockLocoUids));
+  localStorage.setItem('pinnedLocoUids', JSON.stringify(pinnedLocoUids));
+  hasPersistedDockState = true;
+}
+
+/**
+ * Return all loco UIDs in static backend order.
+ * @returns {string[]}
+ */
+function getSortedLocoUids() {
+  return Object.keys(locList);
+}
+
+function syncDockWithAvailableLoks(allUids) {
+  var available = {};
+  for (var i = 0; i < allUids.length; i++) available[String(allUids[i])] = true;
+  dockLocoUids = dockLocoUids.filter(function(uid){ return !!available[uid]; });
+  pinnedLocoUids = pinnedLocoUids.filter(function(uid){
+    return !!available[uid] && dockLocoUids.indexOf(uid) !== -1;
+  });
+  if (dockLocoUids.length === 0 && !hasPersistedDockState) {
+    var firstUid = allUids.length > 0 ? String(allUids[0]) : null;
+    dockLocoUids = firstUid ? [firstUid] : [];
+  }
+  saveDockState();
+}
+
+function ensureLocoInDock(uidStr) {
+  if (!uidStr) return Promise.resolve(false);
+  if (dockLocoUids.indexOf(uidStr) !== -1) return Promise.resolve(false);
+  if (dockLocoUids.length < LOCO_DOCK_MAX) {
+    dockLocoUids.push(uidStr);
+    saveDockState();
+    return Promise.resolve(true);
+  }
+
+  return fetch('/api/loco_state')
+    .then(function(r) { return r.json(); })
+    .then(function(allStates) {
+      var removeIdx = -1;
+      for (var i = 0; i < dockLocoUids.length; i++) {
+        var candidateUid = dockLocoUids[i];
+        if (pinnedLocoUids.indexOf(candidateUid) !== -1) continue;
+        var state = allStates ? allStates[candidateUid] : null;
+        var speed = state ? Number(state.speed || 0) : 0;
+        var isActive = isFinite(speed) && speed > 0;
+        if (!isActive) {
+          removeIdx = i;
+          break;
+        }
+      }
+
+      if (removeIdx === -1) {
+        var msg = (I18N[CURRENT_LANG] && I18N[CURRENT_LANG].locoDock && I18N[CURRENT_LANG].locoDock.noSlotFree)
+          || (I18N.en && I18N.en.locoDock && I18N.en.locoDock.noSlotFree)
+          || 'No free slot, because all locomotives are either pinned or active';
+        showToast(msg);
+        return false;
+      }
+
+      var removedUid = dockLocoUids.splice(removeIdx, 1)[0];
+      pinnedLocoUids = pinnedLocoUids.filter(function(uid){ return uid !== removedUid; });
+      dockLocoUids.push(uidStr);
+      saveDockState();
+      return true;
+    })
+    .catch(function(err) {
+      console.warn('Failed to resolve dock replacement candidates:', err);
+      var msg = (I18N[CURRENT_LANG] && I18N[CURRENT_LANG].locoDock && I18N[CURRENT_LANG].locoDock.noSlotFree)
+        || (I18N.en && I18N.en.locoDock && I18N.en.locoDock.noSlotFree)
+        || 'No free slot, because all locomotives are either pinned or active';
+      showToast(msg);
+      return false;
+    });
+}
+
+function toggleLocoPinned(uidStr) {
+  if (!uidStr || dockLocoUids.indexOf(uidStr) === -1) return;
+  var idx = pinnedLocoUids.indexOf(uidStr);
+  if (idx === -1) pinnedLocoUids.push(uidStr);
+  else pinnedLocoUids.splice(idx, 1);
+  saveDockState();
+  _dockRenderedUids = null; // force full rebuild so pin styling is re-applied
+  renderLocoList();
+}
+
+function setLocoPinned(uidStr, pinned) {
+  if (!uidStr || dockLocoUids.indexOf(uidStr) === -1) return;
+  var idx = pinnedLocoUids.indexOf(uidStr);
+  if (pinned && idx === -1) pinnedLocoUids.push(uidStr);
+  if (!pinned && idx !== -1) pinnedLocoUids.splice(idx, 1);
+  saveDockState();
+  _dockRenderedUids = null; // force full rebuild so pin styling is re-applied
+  renderLocoList();
+}
+
+function clearLocoControlUI() {
+  currentLocoUid = null;
+  localStorage.removeItem('currentLocoUid');
+  if (locoDesc) locoDesc.textContent = '';
+  if (locoImg) { locoImg.onerror = null; locoImg.src = ''; }
+  if (leftCol) leftCol.innerHTML = '';
+  if (rightCol) rightCol.innerHTML = '';
+  if (speedSlider) speedSlider.value = 0;
+  if (speedFill) speedFill.style.height = '0%';
+  if (speedValue) speedValue.textContent = '';
+  updateDirectionUI(Direction.FORWARD);
+}
+
+function releaseLocoFromDock(uidStr) {
+  if (!uidStr || dockLocoUids.indexOf(uidStr) === -1) return;
+  var locoUidNum = Number(uidStr);
+  fetch('/api/loco_state?loco_id=' + locoUidNum)
+    .then(function(r) { return r.json(); })
+    .then(function(state) {
+      var speed = state ? Number(state.speed || 0) : 0;
+      if (isFinite(speed) && speed > 0) {
+        showToast(getDockText('locoStillActive', 'Locomotive is still active.'));
+        return;
+      }
+      _doReleaseLocoFromDock(uidStr);
+    })
+    .catch(function() {
+      _doReleaseLocoFromDock(uidStr);
+    });
+}
+
+function _doReleaseLocoFromDock(uidStr) {
+  var idx = dockLocoUids.indexOf(uidStr);
+  if (idx === -1) return;
+  var wasActive = String(currentLocoUid) === uidStr;
+
+  var displayedBefore = getDisplayedDockUids();
+  var displayIdx = displayedBefore.indexOf(uidStr);
+
+  dockLocoUids.splice(idx, 1);
+  pinnedLocoUids = pinnedLocoUids.filter(function(uid){ return uid !== uidStr; });
+  saveDockState();
+  _dockRenderedUids = null;
+
+  if (wasActive && dockLocoUids.length > 0) {
+    var remaining = displayedBefore.filter(function(u) { return u !== uidStr; });
+    var neighborIdx = displayIdx > 0 ? displayIdx - 1 : 0;
+    var neighborUid = remaining[Math.min(neighborIdx, remaining.length - 1)];
+    selectLoco(neighborUid); // selectLoco calls renderLocoList internally
+    return;
+  }
+
+  if (wasActive) {
+    clearLocoControlUI();
+  }
+  renderLocoList();
+}
+
+function getDockText(key, fallback) {
+  return (I18N[CURRENT_LANG] && I18N[CURRENT_LANG].locoDock && I18N[CURRENT_LANG].locoDock[key])
+    || (I18N.en && I18N.en.locoDock && I18N.en.locoDock[key])
+    || fallback;
+}
+
+function ensureDockActionMenuElement() {
+  if (dockActionMenuEl && document.body.contains(dockActionMenuEl)) return dockActionMenuEl;
+
+  var el = document.createElement('div');
+  el.id = 'dockActionMenu';
+  el.style.position = 'fixed';
+  el.style.zIndex = '1200';
+  el.style.minWidth = '150px';
+  el.style.padding = '6px';
+  el.style.borderRadius = '10px';
+  el.style.border = '1px solid rgba(0, 0, 0, 0.15)';
+  el.style.background = '#ffffff';
+  el.style.boxShadow = '0 10px 26px rgba(0, 0, 0, 0.22)';
+  el.style.display = 'none';
+  el.style.flexDirection = 'column';
+  el.style.gap = '4px';
+  el.style.fontFamily = 'inherit';
+
+  function makeItem(action) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.setAttribute('data-action', action);
+    btn.style.width = '100%';
+    btn.style.border = 'none';
+    btn.style.borderRadius = '8px';
+    btn.style.padding = '10px 12px';
+    btn.style.textAlign = 'left';
+    btn.style.background = '#f7f7f7';
+    btn.style.color = '#1f2937';
+    btn.style.fontWeight = '600';
+    btn.style.cursor = 'pointer';
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var uid = dockActionMenuUid;
+      var currentAction = btn.getAttribute('data-action');
+      hideDockActionMenu();
+      if (!uid) return;
+      if (currentAction === 'pin') {
+        setLocoPinned(uid, true);
+      } else if (currentAction === 'unpin') {
+        setLocoPinned(uid, false);
+      } else if (currentAction === 'release') {
+        releaseLocoFromDock(uid);
+      }
+      if (navigator && typeof navigator.vibrate === 'function') navigator.vibrate(12);
+    });
+    return btn;
+  }
+
+  var pinBtn = makeItem('pin');
+  var releaseBtn = makeItem('release');
+  el.appendChild(pinBtn);
+  el.appendChild(releaseBtn);
+  document.body.appendChild(el);
+  dockActionMenuEl = el;
+
+  document.addEventListener('click', function(ev) {
+    if (!dockActionMenuEl || dockActionMenuEl.style.display === 'none') return;
+    if (dockActionMenuEl.contains(ev.target)) return;
+    hideDockActionMenu();
+  });
+  document.addEventListener('keydown', function(ev) {
+    if (ev.key === 'Escape' || ev.key === 'Esc') hideDockActionMenu();
+  });
+  window.addEventListener('resize', hideDockActionMenu);
+  document.addEventListener('scroll', hideDockActionMenu, true);
+
+  return dockActionMenuEl;
+}
+
+function hideDockActionMenu() {
+  if (!dockActionMenuEl) return;
+  dockActionMenuEl.style.display = 'none';
+  dockActionMenuUid = null;
+}
+
+function openDockActionMenu(uidStr, anchorEvent, anchorEl) {
+  if (!uidStr) return;
+  var el = ensureDockActionMenuElement();
+  if (!el) return;
+  dockActionMenuUid = uidStr;
+
+  var isPinned = pinnedLocoUids.indexOf(uidStr) !== -1;
+  var pinBtn = el.querySelector('button[data-action="pin"], button[data-action="unpin"]');
+  var releaseBtn = el.querySelector('button[data-action="release"]');
+  if (pinBtn) {
+    pinBtn.setAttribute('data-action', isPinned ? 'unpin' : 'pin');
+    pinBtn.textContent = isPinned ? getDockText('menuUnpin', 'Unpin') : getDockText('menuPin', 'Pin');
+  }
+  if (releaseBtn) releaseBtn.textContent = getDockText('menuRelease', 'Release');
+
+  var left = 0;
+  var top = 0;
+  if (anchorEvent && typeof anchorEvent.clientX === 'number' && typeof anchorEvent.clientY === 'number') {
+    left = anchorEvent.clientX;
+    top = anchorEvent.clientY;
+  } else if (anchorEl && anchorEl.getBoundingClientRect) {
+    var rect = anchorEl.getBoundingClientRect();
+    left = rect.left + (rect.width / 2);
+    top = rect.top;
+  }
+
+  el.style.display = 'flex';
+  var menuRect = el.getBoundingClientRect();
+  var margin = 10;
+  var maxLeft = Math.max(margin, window.innerWidth - menuRect.width - margin);
+  var maxTop = Math.max(margin, window.innerHeight - menuRect.height - margin);
+  var placedLeft = Math.min(maxLeft, Math.max(margin, left - (menuRect.width / 2)));
+  var placedTop = top - menuRect.height - 8;
+  if (placedTop < margin) {
+    placedTop = Math.min(maxTop, top + 8);
+  }
+  el.style.left = Math.round(placedLeft) + 'px';
+  el.style.top = Math.round(Math.max(margin, Math.min(maxTop, placedTop))) + 'px';
+}
+
+function scrollDockToUid(listEl, uidStr) {
+  if (!listEl || !uidStr) return;
+  var targetEl = listEl.querySelector('.loco-dock-item[data-loco-uid="' + uidStr + '"]');
+  if (!targetEl) targetEl = listEl.querySelector('img[data-loco-uid="' + uidStr + '"]');
+  if (!targetEl) return;
+  try {
+    var maxScrollLeft = Math.max(0, listEl.scrollWidth - listEl.clientWidth);
+    var centeredLeft = targetEl.offsetLeft - ((listEl.clientWidth - targetEl.offsetWidth) / 2);
+    var targetLeft = Math.max(0, Math.min(maxScrollLeft, centeredLeft));
+    if (typeof listEl.scrollTo === 'function') {
+      listEl.scrollTo({ left: targetLeft, behavior: 'smooth' });
+    } else {
+      listEl.scrollLeft = targetLeft;
+    }
+  } catch (e) {
+    targetEl.scrollIntoView();
+  }
+}
+
+function wireDockClickAndPinHandlers(imgEl, uidStr) {
+  if (!imgEl) return;
+  imgEl.setAttribute('draggable', 'false');
+  imgEl.style.webkitTouchCallout = 'none';
+  imgEl.style.webkitUserSelect = 'none';
+  imgEl.style.userSelect = 'none';
+  imgEl.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+    openDockActionMenu(uidStr, e, imgEl);
+  });
+  wireSingleOrDoubleClick(
+    imgEl,
+    function() {
+      hideDockActionMenu();
+      selectLoco(uidStr);
+    },
+    function(e) {
+      openDockActionMenu(uidStr, e, imgEl);
+      if (navigator && typeof navigator.vibrate === 'function') navigator.vibrate(12);
+    },
+    280
+  );
+}
+
+/**
+ * Rebuild the locomotive dock (horizontal scroll bar).
+ * Shows at most LOCO_DOCK_MAX entries in static backend order.
+ * The currently active locomotive is highlighted.
+ *
+ * When only the active/pinned state changes (same UIDs), the DOM is NOT
+ * rebuilt — only CSS classes are toggled.  This preserves scroll position
+ * without any save/restore tricks.  A full rebuild only happens when the
+ * set of displayed UIDs actually changes.
+ *
+ * @returns {string[]} all UIDs (not just the capped dock subset)
+ */
+var _dockRenderedUids = null; // last dock UIDs that were fully built into DOM
+
+function renderLocoList() {
+  var listEl = document.getElementById('locoList');
+  var allUids = getSortedLocoUids();
+  syncDockWithAvailableLoks(allUids);
+  var activeStr = currentLocoUid !== null ? String(currentLocoUid) : null;
+  var dockUids = dockLocoUids.slice(0, LOCO_DOCK_MAX);
+  dockUids.sort(function(a, b) {
+    var aPin = pinnedLocoUids.indexOf(a) !== -1 ? 0 : 1;
+    var bPin = pinnedLocoUids.indexOf(b) !== -1 ? 0 : 1;
+    return aPin - bPin;
+  });
+
+  // Check whether the dock UIDs are identical to the last full build
+  var needsFullRebuild = !_dockRenderedUids || _dockRenderedUids.length !== dockUids.length;
+  if (!needsFullRebuild) {
+    for (var ci = 0; ci < dockUids.length; ci++) {
+      if (_dockRenderedUids[ci] !== dockUids[ci]) { needsFullRebuild = true; break; }
+    }
+  }
+
+  if (!needsFullRebuild && listEl) {
+    // Fast path: only update CSS classes – scroll position is untouched
+    var imgs = listEl.querySelectorAll('img[data-loco-uid]');
+    for (var pi = 0; pi < imgs.length; pi++) {
+      var puid = imgs[pi].getAttribute('data-loco-uid');
+      imgs[pi].classList.toggle('loco-active', puid === activeStr);
+      imgs[pi].classList.toggle('loco-pinned', pinnedLocoUids.indexOf(puid) !== -1);
+    }
+
+    // Important: handle pending scroll requests even when no full rebuild
+    // happens (e.g. picker selection of a loco already in dock).
+    if (dockScrollTargetUid) {
+      var fastScrollTarget = dockScrollTargetUid;
+      dockScrollTargetUid = null;
+      scrollDockToUid(listEl, fastScrollTarget);
+    }
+
+    return allUids;
+  }
+
+  // Full rebuild (dock composition changed)
+  var prevScrollLeft = listEl ? listEl.scrollLeft : 0;
+  if (listEl) listEl.innerHTML = '';
+  _dockRenderedUids = dockUids.slice();
+
+  for (var i = 0; i < dockUids.length; i++) {
+    var uid = dockUids[i];
+    var loco = locList[uid];
+    if (!loco) continue;
+
+    var wrapper = document.createElement('div');
+    wrapper.className = 'loco-dock-item';
+    wrapper.setAttribute('data-loco-uid', uid);
+
+    var img = new Image();
+    img.alt = loco.name;
+    img.title = loco.name;
+    img.setAttribute('data-loco-uid', uid);
+    if (uid === activeStr) img.classList.add('loco-active');
+    if (pinnedLocoUids.indexOf(uid) !== -1) img.classList.add('loco-pinned');
+    setLocoImageWithSymbolFallback(img, loco);
+    wrapper.appendChild(img);
+
+    // Pin badge: small overlay in the top-right corner
+    if (pinnedLocoUids.indexOf(uid) !== -1) {
+      var badge = document.createElement('span');
+      badge.className = 'loco-pin-badge';
+      badge.textContent = '📌';
+      wrapper.appendChild(badge);
+    }
+
+    wireDockClickAndPinHandlers(img, uid);
+    if (listEl) listEl.appendChild(wrapper);
+  }
+  if (listEl) {
+    if (dockScrollTargetUid) {
+      // New loco added from picker – scroll to it once images have painted
+      var scrollTarget = dockScrollTargetUid;
+      dockScrollTargetUid = null;
+      requestAnimationFrame(function() {
+        scrollDockToUid(listEl, scrollTarget);
+      });
+    } else {
+      listEl.scrollLeft = prevScrollLeft;
+    }
+  }
+  return allUids;
+}
+
+// =====================
+//  LOCO PICKER (Bottom Sheet)
+// =====================
+
+function wireLocoListButtons() {
+  const byId = (id) => document.getElementById(id);
+  const locoId = 1;
+  [
+    { id: 'refreshBtn', fn: 0 },
+    { id: 'resetBtn', fn: 4 },
+  ].forEach(({ id, fn }) => {
+    const el = byId(id);
+    if (el && !el._wired) {
+      el.addEventListener('click', function() {
+        fetch('/api/info_events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ loco_id: locoId, "function": fn, value: 1 })
+        });
+      });
+      el._wired = true;
+    }
+  });
+}
+
+/**
+ * Open the loco picker bottom sheet and render all available locomotives
+ * in static backend order.
+ */
+function openLocoPicker() {
+  var modal = document.getElementById('locoPickerModal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  var filterEl = document.getElementById('locoPickerFilter');
+  if (filterEl) {
+    filterEl.value = '';
+    filterEl.oninput = function() {
+      renderLocoPicker(filterEl.value.trim().toLowerCase());
+    };
+  }
+  renderLocoPicker('');
+  // Focus the search field after a brief delay so the keyboard appears
+  if (filterEl) setTimeout(function() { filterEl.focus(); }, 80);
+}
+
+/**
+ * Close the loco picker bottom sheet.
+ */
+function closeLocoPicker() {
+  var modal = document.getElementById('locoPickerModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+/**
+ * Render the loco list inside the bottom sheet, optionally filtered.
+ * Items keep static backend order. The active loco is highlighted.
+ * @param {string} filter - lowercase search string (name, uid/address)
+ */
+function renderLocoPicker(filter) {
+  var listEl = document.getElementById('locoPickerList');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+  var allUids = getSortedLocoUids();
+  var activeStr = currentLocoUid !== null ? String(currentLocoUid) : null;
+  for (var i = 0; i < allUids.length; i++) {
+    var uid = allUids[i];
+    var loco = locList[uid];
+    if (!loco) continue;
+    var name = (loco.name || '').toLowerCase();
+    var addr = String(loco.uid || uid);
+    if (filter && name.indexOf(filter) === -1 && addr.indexOf(filter) === -1) continue;
+    var item = document.createElement('div');
+    item.className = 'loco-picker-item';
+    if (uid === activeStr) item.classList.add('loco-picker-active');
+    var thumb = new Image();
+    thumb.alt = loco.name || uid;
+    thumb.className = 'loco-picker-thumb';
+    setLocoImageWithSymbolFallback(thumb, loco);
+    var label = document.createElement('div');
+    label.className = 'loco-picker-label';
+    var nameEl = document.createElement('span');
+    nameEl.className = 'loco-picker-name';
+    nameEl.textContent = loco.name || uid;
+    var addrEl = document.createElement('span');
+    addrEl.className = 'loco-picker-addr';
+    addrEl.textContent = addr;
+    label.appendChild(nameEl);
+    label.appendChild(addrEl);
+    item.appendChild(thumb);
+    item.appendChild(label);
+    (function(locoUid) {
+      item.onclick = function() {
+        selectLoco(locoUid, { ensureDock: true, scrollDock: true });
+        closeLocoPicker();
+      };
+    })(uid);
+    listEl.appendChild(item);
+  }
+}
+
+// Wire add button to open the loco picker
+(function initLocoPickerUI() {
+  wireLocoListButtons();
+
+  var addBtn = document.getElementById('locoAddBtn');
+  if (addBtn) {
+    addBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      openLocoPicker();
+    });
+  }
+  var modal = document.getElementById('locoPickerModal');
+  var closeBtn = document.getElementById('locoPickerClose');
+  if (closeBtn) closeBtn.onclick = closeLocoPicker;
+  if (modal) {
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal || e.target.classList.contains('modal-backdrop')) closeLocoPicker();
+    });
+  }
+})();
+
+// Unified loader: fetch loco_list (and optionally loco_state), render UI, and choose selection
+function loadAndRenderLocoList(options) {
+  const opts = Object.assign({ preserveSelection: false, alsoLoadStateMap: false }, options || {});
+  const prevUid = opts.preserveSelection ? currentLocoUid : null;
+  return fetch('/api/loco_list')
+    .then(r => r.json())
+    .then(newList => {
+      locList = newList || {};
+      const statePromise = opts.alsoLoadStateMap
+        ? fetch('/api/loco_state').then(r => r.json()).then(s => { locoState = s || {}; }).catch(() => { locoState = {}; })
+        : Promise.resolve();
+      return statePromise.then(() => {
+        const uids = renderLocoList();
+        let selected = null;
+        if (prevUid && (locList[String(prevUid)] || locList[prevUid])) {
+          selected = Number(prevUid);
+        } else {
+          // Try localStorage
+          const saved = localStorage.getItem('currentLocoUid');
+          if (saved && (locList[saved] || locList[Number(saved)])) selected = Number(saved);
+        }
+        if (selected == null) {
+          const firstUid = uids[0];
+          if (firstUid) {
+            var entry = locList[firstUid];
+            var uidVal = entry && entry.uid;
+            selected = (uidVal !== undefined && uidVal !== null) ? Number(uidVal) : Number(firstUid);
+          }
+        }
+        if (selected != null) selectLoco(selected);
+      });
+    })
+    .catch(err => console.warn('Failed to load loco list:', err));
+}
+
+// Load the list of available locomotives and initialise their UI elements.
+// This call retrieves the locomotive metadata, populates the locomotive list with icons and
+// names, restores the previously selected locomotive if present and applies its state to the
+// UI.  It also fetches the overall state once to mirror the authoritative state from the server.
+// Initial load using unified path
+loadAndRenderLocoList({ preserveSelection: true, alsoLoadStateMap: true });
+
+/**
+ * Update the direction buttons in the UI.
+ *
+ * The direction buttons (forward/reverse) use different images to
+ * indicate which one is active.  This function takes a direction
+ * string and swaps the corresponding images.  The value may come
+ * either from the server (state update) or from user interaction.
+ *
+ * @param {1|2} dir – direction enum (Direction.FORWARD or Direction.REVERSE)
+ */
+function updateDirectionUI(dir) {
+  if (dir === Direction.FORWARD) {
+    forwardBtn.src = '/static/grafics/dir_right_active.png';
+    reverseBtn.src = '/static/grafics/dir_left_inactive.png';
+  } else {
+    forwardBtn.src = '/static/grafics/dir_right_inactive.png';
+    reverseBtn.src = '/static/grafics/dir_left_active.png';
+  }
+}
+
+/**
+ * Send a direction command for the current locomotive.
+ *
+ * Converts a human‑friendly string ('forward'/'reverse') into the
+ * numeric values understood by the backend (1 for forward, 2 for
+ * reverse) and posts the update via fetch.  Logging is kept for
+ * debugging purposes.
+ *
+ * @param {1|2} dir – direction enum (Direction.FORWARD or Direction.REVERSE)
+ */
+function setLocoDirection(dir) {
+  console.log('Sending direction for loco_id:', currentLocoUid, 'direction:', dir);
+  fetch('/api/control_event', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      loco_id: currentLocoUid,
+   direction: dir
+    })
+  });
+}
+
+/**
+ * Update the speed readout and bar in the UI.
+ *
+ * The protocol expresses speed from 0–1000.  The UI displays a bar
+ * scaled 0–100 % and a textual km/h value based on each
+ * locomotive's maximum.  This function performs both calculations.
+ *
+ * @param {number} val – the raw speed value (0–1000)
+ */
+function updateSpeedUI(val) {
+  speedFill.style.height = `${(val / 1000) * 100}%`;
+  // Each locomotive may declare its own max speed in km/h.  If not
+  // provided, default to 200.  Convert the protocol value to km/h.
+  const tachomax = locList[currentLocoUid].tachomax;
+  if (tachomax > 0) {
+    const kmh = Math.round(val * tachomax / 1000);
+    speedValue.textContent = `${kmh} km/h`;
+  }
+}
+
+/**
+ * Fetch the current state for a given locomotive and update the UI.
+ *
+ * This function reads the latest speed, direction and function states
+ * from the backend without sending any commands.  It then applies
+ * those values to the controls.  Use this after selecting a new
+ * locomotive or when you need to mirror server state on page load.
+ *
+ * @param {number} locoUid – the unique id of the locomotive
+ */
+function fetchAndApplyLocoState(locoUid) {
+  fetch(`/api/loco_state?loco_id=${locoUid}`)
+    .then(r => r.json())
+    .then(state => {
+      const s = state || {};
+      const spd = Number(s.speed || 0);
+      speedSlider.value = spd;
+      updateSpeedUI(spd);
+      const dir = (s.direction === 'reverse' || s.direction === 2 || s.direction === '2')
+        ? Direction.REVERSE
+        : Direction.FORWARD;
+      updateDirectionUI(dir);
+      updateAllLocoFunctionButtons(s.functions || {});
+    })
+    .catch(err => console.warn('Failed to fetch state:', err));
+}
+
+
+//
+// Pointer event handling for the vertical speed bar.  When the user
+// presses and drags on the speed bar, update the slider value
+// continuously; on click release, send a final update.  These
+// handlers operate on the global `speedBar` element defined in
+// the markup.  They are grouped here because they tie directly into
+// speed setting for the locomotive.
+speedBar.addEventListener('pointerdown', (e) => {
+  isDragging = false;
+  let cancelledByHorizontalSwipe = false;
+  const startX = e.clientX;
+  let startY = e.clientY;
+  let startVal = Math.min(1000, Math.max(0, Number(speedSlider.value) || 0));
+  const dragThreshold = 4; // px threshold to decide drag vs tap
+  const horizontalCancelThreshold = 18; // px: treat as page swipe, not speed interaction
+
+  // Prevent text selection while interacting with the speed bar
+  document.body.classList.add('no-select');
+
+  speedBar.setPointerCapture(e.pointerId);
+
+  // Cache geometry once per interaction to avoid repeated DOM reads
+  const rect = speedBar.getBoundingClientRect();
+  const barHeight = rect.height;
+  const scale = 1000 / barHeight; // px -> value mapping
+  let lastValue = startVal;
+
+  const onMove = (e) => {
+    e.preventDefault();
+    const dx = e.clientX - startX;
+    const dy = startY - e.clientY; // moving up increases speed
+
+    // If horizontal movement dominates, abort speed handling for this gesture
+    // so page-swipe gestures do not change speed accidentally.
+    if (!isDragging && !cancelledByHorizontalSwipe) {
+      if (Math.abs(dx) >= horizontalCancelThreshold && Math.abs(dx) > Math.abs(dy)) {
+        cancelledByHorizontalSwipe = true;
+        return;
+      }
+    }
+
+    if (cancelledByHorizontalSwipe) return;
+    if (!isDragging && Math.abs(dy) >= dragThreshold) {
+      isDragging = true;
+    }
+    if (!isDragging) return;
+    // Delta‑drag: adjust previous value by vertical movement proportionally to bar height
+    const value = Math.round(Math.min(1000, Math.max(0, startVal + dy * scale)));
+    if (value !== lastValue) {
+      setLocoSpeed(value);
+      lastValue = value;
+    }
+    if (value === 0 || value === 1000) {
+      // Freeze at edge without accumulating overshoot; immediately respond on reverse
+      startY = e.clientY;
+      startVal = value;
+    }
+  };
+
+  const onUp = (e) => {
+    speedBar.releasePointerCapture(e.pointerId);
+    speedBar.removeEventListener('pointermove', onMove);
+    speedBar.removeEventListener('pointerup', onUp);
+    speedBar.removeEventListener('pointercancel', onUp);
+
+    // Re-enable text selection after interaction ends
+    document.body.classList.remove('no-select');
+
+    if (cancelledByHorizontalSwipe) return;
+
+    // Tap: set absolute value at the final pointer position
+    if (!isDragging) {
+      const rect = speedBar.getBoundingClientRect();
+      const y = e.clientY - rect.top;
+      const percent = 1 - (y / rect.height);
+      const value = Math.min(1000, Math.max(0, Math.round(percent * 1000)));
+      setLocoSpeed(value);
+    }
+  };
+
+  speedBar.addEventListener('pointermove', onMove);
+  speedBar.addEventListener('pointerup', onUp);
+  speedBar.addEventListener('pointercancel', onUp);
+});
+
+/**
+ * Set the speed of the current locomotive.
+ *
+ * Writes the speed slider value back to the UI (so the bar and
+ * readout update) and posts the new speed to the server.  A
+ * debounce could be added here but is commented out for now.
+ *
+ * @param {number} val – the raw speed (0–1000)
+ */
+function setLocoSpeed(val) {
+  fetch('/api/control_event', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      loco_id: currentLocoUid,
+      speed: val
+    })
+  });
+}
+
+/**
+ * Format an icon id as two digits (e.g., 1 → "01").
+ *
+ * The server provides icon identifiers as numbers.  Many of the
+ * filenames on disk expect two‑character numeric strings.  This helper
+ * pads single‑digit numbers with a leading zero.  It is kept near
+ * the stop‑button group because icons are also used in several UI
+ * elements and having this utility here aids readability.
+ *
+ * @param {number|string} v – the numeric value to pad
+ * @returns {string} the zero‑padded string
+ */
+function pad2(v) {
+  const s = String((v === null || v === undefined) ? '' : v);
+  return s.length >= 2 ? s : s.padStart(2, '0');
+}
+
+/**
+ * Set a function icon with fallbacks (browser‑safe, no filesystem).
+ *
+ * Each locomotive function (e.g. headlights, horn) is represented by
+ * an icon. Icons may differ across locomotives, so this helper
+ * constructs URLs for a primary function icon and two fallbacks:
+ *
+ *   1) Config‑based primary icon under STATIC_BASE/fcticons
+ *   2) Per‑id fallback under /static/grafics/fct_${iconPrefix}_${id}.png
+ *   3) Per‑index fallback under /static/grafics/fct_${iconPrefix}_${index}.png
+ *
+ * The browser preloads each candidate and falls through on error.
+ * The function does not return a meaningful value; it mutates `img.src`
+ * asynchronously once a working URL is found.
+ *
+ * @param {HTMLImageElement} img – the DOM image element to mutate
+ * @param {string} iconPrefix – 'we' for inactive or 'ge' for active
+ * @param {number} id – the icon identifier
+ * @param {number} index – the function index (used for fallback)
+ */
+function setFunctionIcon(img, iconPrefix, id, index) {
+  const primary  = asset(`fcticons/FktIcon_a_${iconPrefix}_${pad2(id)}.png`);
+  const secondary = `/static/grafics/fct_${iconPrefix}_${id}.png`;
+  const fallback  = `/static/grafics/fct_${iconPrefix}_${50 + index}.png`;
+
+  function trySetIcon(urls) {
+    if (!urls.length) return;
+    const probe = new Image();
+    probe.onload = () => { img.src = probe.src; };
+    probe.onerror = () => { trySetIcon(urls.slice(1)); };
+    probe.src = urls[0];
+  }
+  trySetIcon([primary, secondary, fallback]);
+}
+
+/**
+ * Look up the configured icon type for a function index on the
+ * currently selected locomotive.
+ *
+ * Locomotives advertise their available functions (e.g. headlights,
+ * horn) via the `funktionen` array.  This helper retrieves the
+ * `typ`/`type` property for the given index, falling back to null if
+ * missing.  By encapsulating this lookup, the UI can remain agnostic
+ * about the underlying data structures.
+ *
+ * @param {number} idx – the numeric function index
+ * @returns {number|null} the function type id or null
+ */
+function getFunctionTypeFromLocList(idx) {
+  try {
+    const loco = locList[currentLocoUid];
+    if (!loco || !loco.funktionen) return null;
+    let entry = loco.funktionen[idx];
+    if (entry === undefined) entry = loco.funktionen[String(idx)];
+    if (!entry) return null;
+    if (entry.typ !== undefined) return entry.typ;
+    if (entry.type !== undefined) return entry.type;
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Create a function button element for a locomotive.
+ *
+ * Locomotives may have many auxiliary functions (F0–F28 etc.).  This
+ * helper constructs a button with the correct icon and state
+ * attributes.  The returned button does not yet have a click
+ * handler; event delegation is set up separately.  See
+ * {@link handleLocoFunctionButtonClick} for click handling.
+ *
+ * @param {number} idx – the function index (0–27)
+ * @returns {HTMLButtonElement} the newly created button
+ */
+function createLocoFunctionButton(idx) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'fn-btn';
+  btn.style.border = 'none';
+  btn.style.outline = 'none';
+  btn.style.boxShadow = 'none';
+  btn.style.background = 'transparent';
+  btn.style.padding = '0';
+  btn.dataset.index = String(idx);
+  let rawType = getFunctionTypeFromLocList(idx);
+  let imgid = rawType;
+  let isMomentary = false;
+  if (Number(imgid) > 128) {
+    isMomentary = true;
+    imgid = Number(imgid) - 128;
+  }
+  if (imgid == null) imgid = 50 + idx;
+  btn.dataset.imgid = String(imgid);
+  btn.dataset.momentary = isMomentary ? '1' : '0';
+  btn.setAttribute('aria-pressed', 'false');
+  btn.dataset.active = '0';
+  const img = document.createElement('img');
+  img.alt = `Function ${idx}`;
+  setFunctionIcon(img, 'we', imgid, idx);
+  btn.appendChild(img);
+  return btn;
+}
+
+/**
+ * Attach delegated click and pointer handlers to a function column.
+ *
+ * Each locomotive has up to 32 functions, rendered across up to two
+ * "pages" per column (see {@link buildFunctionSidePages}). This helper
+ * wires the click handler (toggle functions) and pointer handlers
+ * (momentary functions, type > 128) once per column, regardless of how
+ * many buttons/pages it currently contains, since delegation is used.
+ *
+ * @param {HTMLElement} col – the container column (left or right)
+ */
+function wireLocoFunctionColumnEvents(col) {
+  if (!col) return;
+  if (!col.dataset.fnDelegated) {
+    col.addEventListener('click', handleLocoFunctionButtonClick);
+    col.dataset.fnDelegated = '1';
+  }
+  // Add delegated pointer handlers for momentary functions (type > 128)
+  if (!col.dataset.fnPointerDelegated) {
+    const onPointerDown = (ev) => {
+      const btn = ev.target instanceof Element ? ev.target.closest('button.fn-btn') : null;
+      if (!btn || !col.contains(btn)) return;
+      if (btn.dataset.momentary !== '1') return;
+      activateMomentaryFunctionButton(btn);
+    };
+    const onPointerUpOrCancel = (ev) => {
+      const btn = ev.target instanceof Element ? ev.target.closest('button.fn-btn') : null;
+      if (!btn || !col.contains(btn)) return;
+      if (btn.dataset.momentary !== '1') return;
+      deactivateMomentaryFunctionButton(btn);
+    };
+    col.addEventListener('pointerdown', onPointerDown);
+    col.addEventListener('pointerup', onPointerUpOrCancel);
+    col.addEventListener('pointercancel', onPointerUpOrCancel);
+    col.addEventListener('pointerleave', onPointerUpOrCancel);
+    col.dataset.fnPointerDelegated = '1';
+  }
+}
+
+/**
+ * Send the "on" (value=1) command for a momentary function button and
+ * update its visual state. Used both for the normal press-and-hold
+ * interaction and to be reverted via {@link deactivateMomentaryFunctionButton}.
+ *
+ * @param {HTMLButtonElement} btn
+ */
+function activateMomentaryFunctionButton(btn) {
+  const idx = Number(btn.dataset.index);
+  const imgid = Number(btn.dataset.imgid);
+  const img = btn.querySelector('img');
+  if (img) setFunctionIcon(img, 'ge', imgid, idx);
+  btn.dataset.active = '1';
+  btn.setAttribute('aria-pressed', 'true');
+  try {
+    fetch('/api/control_event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ loco_id: currentLocoUid, fn: idx, value: 1 })
+    });
+  } catch(e) { /* ignore */ }
+}
+
+/**
+ * Send the "off" (value=0) command for a momentary function button and
+ * update its visual state.
+ *
+ * @param {HTMLButtonElement} btn
+ */
+function deactivateMomentaryFunctionButton(btn) {
+  const idx = Number(btn.dataset.index);
+  const imgid = Number(btn.dataset.imgid);
+  const img = btn.querySelector('img');
+  if (img) setFunctionIcon(img, 'we', imgid, idx);
+  btn.dataset.active = '0';
+  btn.setAttribute('aria-pressed', 'false');
+  try {
+    fetch('/api/control_event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ loco_id: currentLocoUid, fn: idx, value: 0 })
+    });
+  } catch(e) { /* ignore */ }
+}
+
+/**
+ * If the given button is a momentary function currently pressed, revert
+ * it (send value=0 and restore its "off" icon). Used when a press turns
+ * out to be the start of a page-swipe gesture rather than a tap.
+ *
+ * @param {HTMLButtonElement|null} btn
+ */
+function cancelMomentaryPressIfAny(btn) {
+  if (!btn || btn.dataset.momentary !== '1' || btn.dataset.active !== '1') return;
+  deactivateMomentaryFunctionButton(btn);
+}
+
+/**
+ * Build the (up to two) function "pages" for one column and append them,
+ * wrapped in a sliding track element, to the column.
+ *
+ * Page 0 always holds functions [baseOffset .. baseOffset+7]. When the
+ * locomotive declares more than 16 functions, page 1 holds functions
+ * [baseOffset+16 .. baseOffset+23] (i.e. the same column offset, shifted
+ * by 16). Swiping either column vertically moves both tracks together
+ * between page 0 and page 1 (see {@link wireFunctionSwipeEvents}).
+ *
+ * @param {HTMLElement} col – the container column (left or right)
+ * @param {number} baseOffset – starting index for the column (0 for left, 8 for right)
+ */
+function buildFunctionSidePages(col, baseOffset) {
+  if (!col) return;
+  const track = document.createElement('div');
+  track.className = 'fn-track';
+
+  const page0 = document.createElement('div');
+  page0.className = 'fn-page';
+  for (let i = 0; i < 8; i++) page0.appendChild(createLocoFunctionButton(baseOffset + i));
+  track.appendChild(page0);
+
+  if (fnMaxPage >= 1) {
+    const page1 = document.createElement('div');
+    page1.className = 'fn-page';
+    for (let i = 0; i < 8; i++) page1.appendChild(createLocoFunctionButton(baseOffset + 16 + i));
+    track.appendChild(page1);
+  }
+
+  col.appendChild(track);
+  wireLocoFunctionColumnEvents(col);
+  wireFunctionSwipeEvents(col);
+}
+
+/**
+ * Move both function columns to the given page (0 or 1), keeping them
+ * perfectly in sync since the same locomotive functions are split
+ * across both columns.
+ *
+ * @param {number} page – target page index (clamped to [0, fnMaxPage])
+ * @param {boolean} animate – whether to animate the transition
+ */
+function setFunctionsPage(page, animate) {
+  fnCurrentPage = Math.max(0, Math.min(fnMaxPage, page));
+  [leftCol, rightCol].forEach(function(col) {
+    if (!col) return;
+    const track = col.querySelector('.fn-track');
+    if (!track) return;
+    track.classList.toggle('no-anim', animate === false);
+    const pageHeight = col.clientHeight || 0;
+    track.style.transform = 'translateY(' + (-fnCurrentPage * pageHeight) + 'px)';
+  });
+}
+
+/**
+ * Wire up a vertical drag/swipe gesture on a function column that pages
+ * both columns between the first 16 and the next 16 functions. Only has
+ * an effect once the locomotive declares more than 16 functions
+ * (fnMaxPage >= 1); otherwise the gesture is a no-op so normal button
+ * taps/momentary presses behave exactly as before.
+ *
+ * @param {HTMLElement} col – the container column (left or right)
+ */
+function wireFunctionSwipeEvents(col) {
+  if (!col || col.dataset.fnSwipeWired) return;
+  col.dataset.fnSwipeWired = '1';
+
+  const SWIPE_START_PX = 10;   // movement (px) before a press is considered a vertical swipe
+  const SWIPE_COMMIT_PX = 40;  // movement (px) needed to actually change page on release
+
+  function endDrag(ev) {
+    if (!fnDrag || ev.pointerId !== fnDrag.pointerId) return;
+    const wasSwiping = fnDrag.isSwiping;
+    const dy = ev.clientY - fnDrag.startY;
+    fnDrag = null;
+    [leftCol, rightCol].forEach(function(c) {
+      const t = c && c.querySelector('.fn-track');
+      if (t) t.classList.remove('no-anim');
+    });
+    if (!wasSwiping) return;
+    let targetPage = fnCurrentPage;
+    if (dy <= -SWIPE_COMMIT_PX) targetPage = fnCurrentPage + 1;
+    else if (dy >= SWIPE_COMMIT_PX) targetPage = fnCurrentPage - 1;
+    setFunctionsPage(targetPage, true);
+    suppressNextFnClick = true;
+  }
+
+  col.addEventListener('pointerdown', (ev) => {
+    if (fnMaxPage < 1) return;
+    if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+    fnDrag = {
+      pointerId: ev.pointerId,
+      startX: ev.clientX,
+      startY: ev.clientY,
+      isSwiping: false,
+      startPage: fnCurrentPage,
+      startedBtn: ev.target instanceof Element ? ev.target.closest('button.fn-btn') : null
+    };
+  });
+
+  col.addEventListener('pointermove', (ev) => {
+    if (!fnDrag || ev.pointerId !== fnDrag.pointerId) return;
+    const dx = ev.clientX - fnDrag.startX;
+    const dy = ev.clientY - fnDrag.startY;
+    if (!fnDrag.isSwiping) {
+      if (Math.abs(dy) < SWIPE_START_PX || Math.abs(dy) <= Math.abs(dx)) return;
+      fnDrag.isSwiping = true;
+      // Only capture the pointer once we know this is really a vertical swipe (not a tap),
+      // otherwise capturing on every pointerdown re-targets the trailing click event to the
+      // column div instead of the button, breaking normal taps.
+      try { col.setPointerCapture(ev.pointerId); } catch (e) { /* ignore */ }
+      cancelMomentaryPressIfAny(fnDrag.startedBtn);
+      [leftCol, rightCol].forEach(function(c) {
+        const t = c && c.querySelector('.fn-track');
+        if (t) t.classList.add('no-anim');
+      });
+    }
+    ev.preventDefault();
+    const pageHeight = col.clientHeight || 0;
+    const base = -fnDrag.startPage * pageHeight;
+    const min = -fnMaxPage * pageHeight;
+    let next = base + dy;
+    if (next > 0) next = 0;
+    if (next < min) next = min;
+    [leftCol, rightCol].forEach(function(c) {
+      const t = c && c.querySelector('.fn-track');
+      if (t) t.style.transform = 'translateY(' + next + 'px)';
+    });
+  });
+
+  col.addEventListener('pointerup', endDrag);
+  col.addEventListener('pointercancel', endDrag);
+}
+
+/**
+ * (Re)build the locomotive function buttons for both columns, sizing
+ * the number of pages to the locomotive's declared function count.
+ *
+ * Locomotives may declare anywhere from a few up to 32 functions
+ * (see the `fn_count` field from the backend). Up to 16 functions are
+ * shown on a single page (8 per column, as before). When more than 16
+ * are declared, a second page is added and can be reached by swiping
+ * either function column vertically; both columns always move together.
+ *
+ * @param {number} fnCount – number of function slots declared by the locomotive
+ */
+function rebuildLocoFunctionButtons(fnCount) {
+  let count = Number(fnCount);
+  if (!isFinite(count) || count <= 0) count = 16;
+  count = Math.min(32, Math.max(1, count));
+  fnMaxPage = count > 16 ? 1 : 0;
+  fnCurrentPage = 0;
+  fnDrag = null;
+
+  if (leftCol) leftCol.innerHTML = '';
+  if (rightCol) rightCol.innerHTML = '';
+
+  buildFunctionSidePages(leftCol, 0);
+  buildFunctionSidePages(rightCol, 8);
+
+  setFunctionsPage(0, false);
+}
+
+// Global paging state for locomotive function columns (up to 32 functions -> up to 2 pages)
+let fnMaxPage = 0;      // 0 = only 16 functions declared, 1 = up to 32 (second page reachable via swipe)
+let fnCurrentPage = 0;  // currently visible page (0 or 1)
+let fnDrag = null;      // in-progress vertical swipe/drag state, or null
+let suppressNextFnClick = false; // set right after a committed swipe so the trailing click is ignored
+
+// Create and attach the locomotive function buttons on initial load
+rebuildLocoFunctionButtons(16);
+
+// Re-align the function columns to the current page (without animating) whenever the
+// viewport size changes (e.g. orientation change), since the page offset is computed
+// in pixels from the column's rendered height.
+window.addEventListener('resize', function() {
+  if (fnMaxPage >= 1) setFunctionsPage(fnCurrentPage, false);
+});
+
+/**
+ * Handle clicks on locomotive function buttons via event delegation.
+ *
+ * Determines which button was clicked, toggles its active state,
+ * updates its icon and notifies the server.  Event delegation is
+ * preferred here because it avoids attaching individual listeners
+ * for each function button and simplifies dynamic DOM insertion.
+ *
+ * @param {MouseEvent} ev – the click event
+ */
+function handleLocoFunctionButtonClick(ev) {
+  if (suppressNextFnClick) {
+    suppressNextFnClick = false;
+    return;
+  }
+  const btn = ev.target instanceof Element ? ev.target.closest('button.fn-btn') : null;
+  if (!btn) return;
+  // For momentary buttons (type > 128), clicks should not toggle state
+  if (btn.dataset.momentary === '1') return;
+  const idx = Number(btn.dataset.index);
+  let imgid = getFunctionTypeFromLocList(idx);
+  if (imgid == null) imgid = Number(btn.dataset.imgid) || (50 + idx);
+  if (Number(imgid) > 128) imgid = Number(imgid) - 128;
+  btn.dataset.imgid = String(imgid);
+  const wasActive = btn.dataset.active === '1' || btn.getAttribute('aria-pressed') === 'true';
+  const nowActive = !wasActive;
+  btn.dataset.active = nowActive ? '1' : '0';
+  btn.setAttribute('aria-pressed', nowActive ? 'true' : 'false');
+  const iconPrefix = nowActive ? 'ge' : 'we';
+  const img = btn.querySelector('img');
+  if (img) setFunctionIcon(img, iconPrefix, imgid, idx);
+  try {
+  fetch('/api/control_event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        loco_id: currentLocoUid,
+        fn: idx,
+        value: nowActive ? 1 : 0
+      })
+    });
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+/**
+ * Apply the visual state to a locomotive function button.
+ *
+ * Chooses the correct icon for the button based on whether it is
+ * active or inactive, records the active state via data attributes
+ * and aria flags, and updates the image.  This helper is used by
+ * both the bulk updater and the SSE handler for individual changes.
+ *
+ * @param {HTMLButtonElement} btn – the button to update
+ * @param {number} idx – the function index
+ * @param {boolean|number} active – whether the function is active
+ */
+function applyLocoFunctionButtonState(btn, idx, active) {
+  let imgid = getFunctionTypeFromLocList(idx);
+  if (imgid == null) imgid = Number(btn.dataset.imgid) || (50 + idx);
+  let isMomentary = false;
+  if (Number(imgid) > 128) { isMomentary = true; imgid = Number(imgid) - 128; }
+  btn.dataset.momentary = isMomentary ? '1' : '0';
+  btn.dataset.imgid = String(imgid);
+  btn.dataset.active = active ? '1' : '0';
+  btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  const iconPrefix = active ? 'ge' : 'we';
+  const img = btn.querySelector('img');
+  if (img) setFunctionIcon(img, iconPrefix, imgid, idx);
+}
+
+/**
+ * Update a single locomotive function button from server state.
+ *
+ * When the backend broadcasts a function state change (e.g. via SSE)
+ * this helper locates the corresponding button in either column and
+ * applies the active/inactive visual state.  See also
+ * {@link updateAllLocoFunctionButtons} for bulk updates.
+ *
+ * @param {number} idx – the function index
+ * @param {boolean|number} value – whether the function is active
+ */
+function updateLocoFunctionButton(idx, value) {
+  const btn = document.querySelector(`#leftFunctions button.fn-btn[data-index="${idx}"]`) ||
+              document.querySelector(`#rightFunctions button.fn-btn[data-index="${idx}"]`);
+  if (!btn) return;
+  applyLocoFunctionButtonState(btn, idx, value);
+}
+
+/**
+ * Update all function buttons based on a functions dictionary.
+ *
+ * Takes an object keyed by function index (0–27) with truthy values
+ * indicating active functions.  Iterates over all buttons in both
+ * columns and applies each state accordingly.  This is invoked
+ * whenever a new locomotive is selected or when a bulk state update
+ * arrives from the server.
+ *
+ * @param {Object.<number,boolean>} functions – mapping of active functions
+ */
+function updateAllLocoFunctionButtons(functions) {
+  const buttons = document.querySelectorAll('#leftFunctions button.fn-btn, #rightFunctions button.fn-btn');
+  buttons.forEach((btn) => {
+    const idx = Number(btn.dataset.index);
+    const active = !!(functions && functions[idx]);
+    applyLocoFunctionButtonState(btn, idx, active);
+  });
+}
+
+//
+// ==========================
+//  SWITCH KEYBOARD SECTION
+// ==========================
+//
+// Functions and handlers related to the keyboard view live here.
+// The keyboard allows control of switches or accessories via groups
+// of paired buttons.  State is mirrored from the backend and
+// displayed visually.  Naming is normalised to start with
+// "initializeKeyboard…", "updateKeyboard…" and so on.
+
+/**
+ * Update the group labels under each pair of keyboard buttons.
+ *
+ * Switch groups correspond to entries in the `switchList.artikel`
+ * array returned from the backend.  For each group, this helper
+ * retrieves the configured name and falls back to numbering when no
+ * name is set.  It is called on page load and whenever the
+ * keyboard page index changes.
+ */
+function updateKeyboardGroupLabels() {
+  const labels = document.querySelectorAll('.keyboard-btn-group-label');
+  labels.forEach((label, groupIdx) => {
+  const eventIdx = (currentKeyboardId * keyboardGroupCnt) + groupIdx;
+    let name = '';
+    if (switchList && switchList.artikel && Array.isArray(switchList.artikel)) {
+      const entry = switchList.artikel[eventIdx];
+      if (entry && entry.name) {
+        name = entry.name;
+      }
+    }
+    label.textContent = name ? name : (eventIdx + 1);
+  });
+}
+
+/**
+ * Update the dynamic header text on the keyboard page.
+ *
+ * The header indicates which keyboard page is currently active.  This
+ * function inspects the `.keyboard-page-btn.active` element and
+ * sets the header text to "Keyboard Seite" followed by the label
+ * of the active page.  When no button is active, it defaults to
+ * "1a" to match the first page.
+ */
+function updateKeyboardHeaderText() {
+  const header = document.getElementById('keyboardHeaderText');
+  if (!header) return;
+  const btn = document.querySelector('.keyboard-page-btn.active');
+  const prefix = (I18N[CURRENT_LANG] || I18N.en).keyboard.headerPrefix;
+  const fallbackLabel = (keyboardGroupCnt === 16) ? '1' : '1a';
+  header.textContent = prefix + (btn ? btn.textContent : fallbackLabel);
+}
+
+/**
+ * Activate a keyboard page button by index.
+ *
+ * This helper assigns the 'active' class to the selected page
+ * button, removes it from others, updates the global
+ * `currentKeyboardId` and refreshes the header to reflect the
+ * selection.  It is called on page load to restore the persisted
+ * state and when the user clicks a page selector.
+ *
+ * @param {number} id – zero‑based index of the keyboard page
+ */
+function activateKeyboardBtnById(id) {
+  if (keyboardPageBtns.length > 0 && id >= 0 && id < keyboardPageBtns.length) {
+    keyboardPageBtns.forEach(b => b.classList.remove('active'));
+    keyboardPageBtns[id].classList.add('active');
+    currentKeyboardId = id;
+    updateKeyboardHeaderText();
+  }
+}
+
+/**
+ * Build the keyboard bottom bar buttons according to keyboardGroupCnt.
+ *
+ * Creates page selector buttons inside the '.keyboard-bottom-bar' container and
+ * refreshes the global NodeList reference 'keyboardPageBtns'. When
+ * keyboardGroupCnt is 8, it renders pages 1a..4b; when 16, it renders pages
+ * 1..4. For other values, it derives a simple numeric pagination assuming 64
+ * total groups.
+ *
+ * Side effects:
+ * - Mutates the DOM under '.keyboard-bottom-bar'.
+ * - Updates the 'keyboardPageBtns' NodeList used by other helpers.
+ */
+function buildKeyboardBottomBar() {
+  const bar = document.querySelector('.keyboard-bottom-bar');
+  if (!bar) return;
+  bar.innerHTML = '';
+  let labels = [];
+  if (keyboardGroupCnt === 8) {
+    labels = ['1a','1b','2a','2b','3a','3b','4a','4b'];
+  } else if (keyboardGroupCnt === 16) {
+    labels = ['1','2','3','4'];
+  } else {
+    // Fallback: derive a simple numeric page count (assume 64 total groups)
+    const totalGroups = 64;
+    const pages = Math.max(1, Math.floor(totalGroups / Math.max(1, keyboardGroupCnt)));
+    labels = Array.from({ length: pages }, (_, i) => String(i + 1));
+  }
+  labels.forEach((label, idx) => {
+    const b = document.createElement('button');
+    b.className = 'keyboard-page-btn';
+    b.textContent = label;
+    bar.appendChild(b);
+  });
+  // Refresh NodeList reference after (re)building
+  keyboardPageBtns = document.querySelectorAll('.keyboard-page-btn');
+}
+
+// Rebuild keyboard UI according to current orientation.
+function applyKeyboardLayout(preservePosition) {
+  const oldCnt = keyboardGroupCnt;
+  const absoluteGroup = (preservePosition ? (currentKeyboardId * oldCnt) : 0);
+  keyboardGroupCnt = detectKeyboardGroupCnt();
+
+  buildKeyboardBottomBar();
+  buildKeyboardGrid();
+  wireKeyboardPageButtons();
+
+  const targetPage = Math.floor(absoluteGroup / keyboardGroupCnt);
+  activateKeyboardBtnById(targetPage);
+  if (!keyboardPageBtns || keyboardPageBtns.length === 0) {
+    currentKeyboardId = 0;
+  }
+  updateKeyboardGroupLabels();
+
+  fetch('/api/switch_state')
+    .then(response => response.json())
+    .then(data => {
+      const switchState = data && data.switch_state ? data.switch_state : [];
+      initializeKeyboardButtons(switchState);
+    })
+    .catch(() => {
+      initializeKeyboardButtons([]);
+    });
+}
+
+/**
+ * Build the keyboard grid (groups with 2 buttons each) based on keyboardGroupCnt.
+ *
+ * Renders 'keyboardGroupCnt' switch groups for the current page arranged in a
+ * two-row layout. Each group consists of a text label and two adjacent
+ * buttons with a 1-based 'data-key' per page. Existing grid content is cleared
+ * before rebuilding.
+ *
+ * Side effects:
+ * - Mutates the DOM under '.keyboard-grid'.
+ */
+
+function buildKeyboardGrid() {
+  const grid = document.querySelector('.keyboard-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  const colsPerRow = Math.max(1, Math.ceil(keyboardGroupCnt / 2));
+  const rows = Math.ceil(keyboardGroupCnt / colsPerRow);
+  let groupIndex = 0;
+  for (let r = 0; r < rows; r++) {
+    const row = document.createElement('div');
+    row.className = 'keyboard-row';
+    row.style.gridTemplateColumns = `repeat(${colsPerRow}, minmax(0, 1fr))`;
+    for (let c = 0; c < colsPerRow && groupIndex < keyboardGroupCnt; c++, groupIndex++) {
+      const col = document.createElement('div');
+      col.className = 'keyboard-btn-col';
+      const label = document.createElement('span');
+      label.className = 'keyboard-btn-group-label';
+      col.appendChild(label);
+      const group = document.createElement('div');
+      group.className = 'keyboard-btn-group';
+      const btn1 = document.createElement('button');
+      btn1.className = 'keyboard-btn';
+      btn1.setAttribute('data-key', String(groupIndex * 2 + 1));
+      const btn2 = document.createElement('button');
+      btn2.className = 'keyboard-btn';
+      btn2.setAttribute('data-key', String(groupIndex * 2 + 2));
+      group.appendChild(btn1);
+      group.appendChild(btn2);
+      col.appendChild(group);
+      row.appendChild(col);
+    }
+    grid.appendChild(row);
+  }
+}
+
+/**
+ * Wire click handlers for keyboard page selector buttons.
+ *
+ * Attaches a click listener to each '.keyboard-page-btn'. On click it sets the
+ * active state, updates 'currentKeyboardId', refreshes the page header and
+ * group labels, and fetches '/api/switch_state' to hydrate the visible switch
+ * pairs on the newly selected page.
+ *
+ * Assumptions:
+ * - buildKeyboardBottomBar() has been called to (re)create page buttons.
+ * - buildKeyboardGrid() has created the grid elements for the page.
+ */
+function wireKeyboardPageButtons() {
+  if (!keyboardPageBtns) return;
+  keyboardPageBtns.forEach((btn, idx) => {
+    btn.addEventListener('click', function() {
+      keyboardPageBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentKeyboardId = idx;
+      updateKeyboardHeaderText();
+      // Update group labels when switching keyboard page
+      updateKeyboardGroupLabels();
+      fetch('/api/switch_state')
+        .then(response => response.json())
+        .then(data => {
+          if (data && data.switch_state) {
+            const keyboardBtns = document.querySelectorAll('.keyboard-btn');
+            for (let groupIdx = 0; groupIdx < keyboardGroupCnt; groupIdx++) {
+              const eventIdx = (currentKeyboardId * keyboardGroupCnt) + groupIdx;
+              const value = data.switch_state[eventIdx];
+              const btn1 = keyboardBtns[groupIdx * 2];
+              const btn2 = keyboardBtns[groupIdx * 2 + 1];
+              if (btn1 && btn2) {
+                updateSwitchUI(btn1, btn2, value);
+              }
+            }
+          }
+        });
+    });
+  });
+}
+
+// Initial build and responsive updates for orientation changes.
+applyKeyboardLayout(false);
+installHorizontalSwipeNavigation();
+
+function onKeyboardLayoutMaybeChanged() {
+  const nextCnt = detectKeyboardGroupCnt();
+  if (nextCnt !== keyboardGroupCnt) {
+    applyKeyboardLayout(true);
+  }
+}
+
+window.addEventListener('resize', onKeyboardLayoutMaybeChanged);
+window.addEventListener('orientationchange', onKeyboardLayoutMaybeChanged);
+
+/**
+ * Initialise keyboard buttons based on the current switch state.
+ *
+ * This helper prepares each keyboard button (16 per page) by
+ * removing borders, setting sizes and injecting an <img> element if
+ * necessary.  It also applies the current state (left/right
+ * positions) by delegating to {@link updateSwitchUI}.
+ *
+ * @param {number[]} switchState – array of switch positions from the server
+ */
+function initializeKeyboardButtons(switchState) {
+  const keyboardBtns = document.querySelectorAll('.keyboard-btn');
+  keyboardBtns.forEach((btn, idx) => {
+    // Style: No border, no filling
+    btn.style.border = '2px solid #ccc';
+    btn.style.background = '#fff';
+    btn.style.boxShadow = 'none';
+    btn.style.maxHeight = 'none';
+    let img = btn.querySelector('img');
+    if (!img) {
+      img = document.createElement('img');
+      btn.appendChild(img);
+    }
+    const groupIdx = Math.floor(idx / 2);
+    const btn1 = keyboardBtns[groupIdx * 2];
+    const btn2 = keyboardBtns[groupIdx * 2 + 1];
+    const eventIdx = (currentKeyboardId * keyboardGroupCnt) + groupIdx;
+    const valueNum = switchState && switchState.length > eventIdx ? switchState[eventIdx] : 0;
+    if (btn1 && btn2) {
+      updateSwitchUI(btn1, btn2, valueNum);
+    }
+    img.alt = 'SwitchBtn' + (idx + 1);
+    img.style.display = 'block';
+    img.style.margin = 'auto';
+    img.style.position = 'absolute';
+    img.style.top = '0';
+    img.style.left = '0';
+    img.style.transform = 'none';
+    img.style.width = '100%';
+    img.style.height = '100%';
+    btn.style.position = 'relative';
+  });
+}
+
+/**
+ * Apply the visual state to a pair of keyboard buttons.
+ *
+ * Switches are represented by two adjacent buttons: one for the
+ * straight (red) position and one for the diverging (green)
+ * position.  This helper marks the active button with the 'active'
+ * class and sets appropriate images on both buttons.  It is used
+ * both during initialisation and when switch events arrive from the
+ * server.
+ *
+ * @param {HTMLElement} btn1 – the left/straight button
+ * @param {HTMLElement} btn2 – the right/diverging button
+ * @param {number} valueNum – 0 if btn1 is active, 1 if btn2 is active
+ */
+function updateSwitchUI(btn1, btn2, valueNum) {
+  const img1 = btn1.querySelector('img');
+  const img2 = btn2.querySelector('img');
+  if (valueNum === 0) {
+    // btn1 active, btn2 inactive
+    btn1.classList.add('active');
+    btn2.classList.remove('active');
+    if (img1) img1.src = '/static/grafics/mag_re_active.png';
+    if (img2) img2.src = '/static/grafics/mag_gr_inactive.png';
+  } else {
+    // btn1 inactive, btn2 active
+    btn1.classList.remove('active');
+    btn2.classList.add('active');
+    if (img1) img1.src = '/static/grafics/mag_re_inactive.png';
+    if (img2) img2.src = '/static/grafics/mag_gr_active.png';
+  }
+}
+
+// Attach direction change handlers: clicking the reverse/forward arrows
+// sends the appropriate command to the backend via setLocoDirection().
+reverseBtn.addEventListener('click', () => setLocoDirection(Direction.REVERSE));
+forwardBtn.addEventListener('click', () => setLocoDirection(Direction.FORWARD));
+
+// UI logic for switch button pairs (delegated for dynamic content).
+// Each keyboard "switch" is represented by a pair of adjacent buttons. Clicking either
+// button sends a keyboard_event to the backend with the appropriate index and value (0 for
+// the left/straight button, 1 for the right/diverging button). We attach a single delegated
+// listener to the grid container so it works even after rebuilding the grid.
+const keyboardGrid = document.querySelector('.keyboard-grid');
+if (keyboardGrid) {
+  keyboardGrid.addEventListener('click', function(ev) {
+    const btn = ev.target instanceof Element ? ev.target.closest('.keyboard-btn') : null;
+    if (!btn || !keyboardGrid.contains(btn)) return;
+    const keyNum = Number(btn.getAttribute('data-key'));
+    if (!Number.isFinite(keyNum)) return;
+    // keyNum: 1-based within page; buttons are paired (1,2), (3,4), ...
+    const groupIdx = Math.floor((keyNum - 1) / 2);
+    const eventIdx = (currentKeyboardId * keyboardGroupCnt) + groupIdx;
+    const pos = (keyNum % 2 === 0) ? 1 : 0; // even -> right/diverging, odd -> left/straight
+    fetch('/api/keyboard_event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idx: eventIdx, pos })
+    });
+  });
+}
+
+
+// ==========================
+// ICON PICKER MODAL SECTION
+// ==========================
+// This section implements the icon picker dialog that opens when the central
+// locomotive image is clicked. It fetches all available icons from the backend
+// (GET /api/icons), displays them in a filterable grid along with their file
+// names, and lets the user either cancel or pick one. Selecting an icon sends
+// the choice to the backend (POST /api/loco_icon), which persists the icon
+// name (without file extension) into lokomotive.cs2 for the currently selected
+// locomotive. The modal can be dismissed via the close button, the Cancel
+// button, or by clicking on the backdrop.
+
+const iconPickerModal = document.getElementById('iconPickerModal');
+const iconPickerGrid = document.getElementById('iconPickerGrid');
+const iconPickerClose = document.getElementById('iconPickerClose');
+const iconPickerCancel = document.getElementById('iconPickerCancel');
+const iconFilter = document.getElementById('iconFilter');
+
+/**
+ * Open the icon picker modal and load icons from the backend.
+ *
+ * - Reveals the modal and disables background scrolling.
+ * - Requests the icon list via GET /api/icons.
+ * - Renders the grid and wires the filter input for client-side filtering.
+ */
+function openIconPicker() {
+  if (currentLocoUid === null || currentLocoUid === undefined) return;
+  if (!iconPickerModal) return;
+  iconPickerModal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  // Fetch icon list
+  fetch('/api/icons')
+    .then(r => r.json())
+    .then(list => {
+      renderIconGrid(list || []);
+      iconFilter.value = '';
+      iconFilter.oninput = function() {
+        const q = iconFilter.value.trim().toLowerCase();
+        const filtered = (list || []).filter(it => it.name.toLowerCase().includes(q));
+        renderIconGrid(filtered);
+      };
+    })
+    .catch(() => {
+      renderIconGrid([]);
+    });
+}
+
+/**
+ * Close the icon picker modal and restore page scrolling.
+ */
+function closeIconPicker() {
+  if (!iconPickerModal) return;
+  iconPickerModal.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+/**
+ * Render the icon grid inside the modal.
+ *
+ * Each item shows a preview image and its original filename (with extension).
+ * Clicking a card triggers chooseIconForCurrentLoco() with the filename stem.
+ *
+ * @param {{name:string, file:string}[]} items - icons returned by /api/icons
+ */
+function renderIconGrid(items) {
+  if (!iconPickerGrid) return;
+  iconPickerGrid.innerHTML = '';
+  if (!Array.isArray(items)) return;
+  items.forEach(it => {
+    const card = document.createElement('div');
+    card.className = 'icon-card';
+    const img = new Image();
+    img.alt = it.name;
+    img.src = asset(`icons/${it.name}.png`);
+    img.onerror = function() {
+      img.onerror = null; img.src = '/static/grafics/unknown_loco.png';
+    };
+    const cap = document.createElement('div');
+    cap.className = 'caption';
+    cap.textContent = it.file; // show original filename with extension
+    card.appendChild(img);
+    card.appendChild(cap);
+    card.onclick = function() { chooseIconForCurrentLoco(it.name); };
+    iconPickerGrid.appendChild(card);
+  });
+}
+
+/**
+ * Persist the selected icon for the current locomotive and update the UI.
+ *
+ * Sends POST /api/loco_icon with { loco_id, icon }, then updates the in-memory
+ * loco list and central image, re-renders the locomotive list, and closes the
+ * modal. The icon parameter must be the filename stem (without extension).
+ *
+ * @param {string} iconNameNoExt - chosen icon name without file extension
+ */
+function chooseIconForCurrentLoco(iconNameNoExt) {
+  if (currentLocoUid === null || currentLocoUid === undefined) return;
+  fetch('/api/loco_icon', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ loco_id: currentLocoUid, icon: iconNameNoExt })
+  })
+  .then(r => r.json())
+  .then(_ => {
+    // Update local locList and UI
+    if (locList[currentLocoUid]) locList[currentLocoUid].icon = iconNameNoExt;
+    else if (locList[String(currentLocoUid)]) locList[String(currentLocoUid)].icon = iconNameNoExt;
+    locoImg.src = asset(`icons/${iconNameNoExt}.png`);
+    closeIconPicker();
+    // Re-render loco list to reflect icon change
+    renderLocoList();
+  })
+  .catch(() => {
+    closeIconPicker();
+  });
+}
+
+// Wire modal interactions: open on central loco image, close via X/Cancel/backdrop.
+if (locoImg) {
+  locoImg.style.cursor = 'pointer';
+  locoImg.setAttribute('draggable', 'false');
+  locoImg.style.webkitTouchCallout = 'none';
+  locoImg.style.webkitUserSelect = 'none';
+  locoImg.style.userSelect = 'none';
+  locoImg.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+  wireSingleOrDoubleClick(locoImg, null, openIconPicker, 280);
+}
+if (iconPickerClose) iconPickerClose.onclick = closeIconPicker;
+if (iconPickerCancel) iconPickerCancel.onclick = closeIconPicker;
+if (iconPickerModal) {
+  iconPickerModal.addEventListener('click', function(e){
+    if (e.target === iconPickerModal || e.target.classList.contains('modal-backdrop')) closeIconPicker();
+  });
+}
+
+/**
+ * Viewport fallback for Chrome 71 and older browsers:
+ * If 100dvh is unsupported, set --vh to window.innerHeight in px.
+*/
+(function(){
+  try {
+    var supportsDvh = !!(window.CSS && CSS.supports && CSS.supports('height: 100dvh'));
+    if (!supportsDvh) {
+      var applyVh = function(){
+        var vh = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+        document.documentElement.style.setProperty('--vh', vh + 'px');
+      };
+      applyVh();
+      window.addEventListener('resize', applyVh);
+      window.addEventListener('orientationchange', applyVh);
+    }
+  } catch(e) {
+    // ignore
+  }
+})();
