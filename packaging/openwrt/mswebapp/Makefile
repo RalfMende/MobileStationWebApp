@@ -12,7 +12,7 @@ PKG_RELEASE:=1
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 PKG_BUILD_PARALLEL:=1
 
-MSWEBAPP_ROOT:=$(abspath $(call my-dir)/../../..)
+MSWEBAPP_ROOT:=/work/mswebapp
 MSWEBAPP_FILES:=$(abspath $(call my-dir)/files)
 
 include $(INCLUDE_DIR)/package.mk
@@ -31,8 +31,7 @@ define Package/$(PKG_NAME)/description
 endef
 
 define Build/Prepare
-	$(RM) -r $(PKG_BUILD_DIR)
-	$(MKDIR) $(PKG_BUILD_DIR)
+	$(call Build/Prepare/Default)
 	$(CP) $(MSWEBAPP_ROOT)/src/backend_cpp/. $(PKG_BUILD_DIR)/
 endef
 
@@ -41,13 +40,11 @@ CMAKE_OPTIONS += \
 
 define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/mswebapp_cpp $(1)/usr/bin/mswebapp_cpp
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/mswebapp_cpp $(1)/usr/bin/mswebapp
 	$(INSTALL_DIR) $(1)/usr/share/mswebapp/www
-	$(CP) $(MSWEBAPP_FILES)/usr/share/mswebapp/www/. $(1)/usr/share/mswebapp/www/
-	$(INSTALL_DIR) $(1)/usr/share/mswebapp/var
-	$(CP) $(MSWEBAPP_FILES)/usr/share/mswebapp/var/. $(1)/usr/share/mswebapp/var/
+	$(CP) ./files/usr/share/mswebapp/www/. $(1)/usr/share/mswebapp/www/
 	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) $(MSWEBAPP_FILES)/etc/init.d/mswebapp $(1)/etc/init.d/mswebapp
+	$(INSTALL_BIN) ./files/etc/init.d/mswebapp $(1)/etc/init.d/mswebapp
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
