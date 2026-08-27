@@ -13,7 +13,7 @@ PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 PKG_BUILD_PARALLEL:=1
 
 MSWEBAPP_ROOT:=$(abspath $(call my-dir)/../..)
-MSWEBAPP_FILES:=$(abspath $(call my-dir)/files)
+MSWEBAPP_FILES:=$(abspath $(call my-dir)/mswebapp/files)
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
