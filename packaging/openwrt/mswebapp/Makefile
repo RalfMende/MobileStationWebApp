@@ -12,7 +12,7 @@ PKG_RELEASE:=1
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 PKG_BUILD_PARALLEL:=1
 
-MSWEBAPP_ROOT:=$(abspath $(call my-dir)/../..)
+MSWEBAPP_ROOT:=$(abspath $(call my-dir)/../../..)
 MSWEBAPP_FILES:=$(abspath $(call my-dir)/files)
 
 include $(INCLUDE_DIR)/package.mk
