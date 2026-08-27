@@ -22,7 +22,7 @@ define Package/$(PKG_NAME)
   SECTION:=utils
   CATEGORY:=Utilities
   TITLE:=MobileStation Web App
-  DEPENDS:=+can2udp +libstdcpp
+  DEPENDS:=+libstdcpp
 endef
 
 define Package/$(PKG_NAME)/description
