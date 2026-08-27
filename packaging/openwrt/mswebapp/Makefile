@@ -9,11 +9,11 @@ PKG_NAME:=mswebapp
 PKG_VERSION:=1.1.9
 PKG_RELEASE:=1
 
-PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
+PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 PKG_BUILD_PARALLEL:=1
 
 MSWEBAPP_ROOT:=/work/mswebapp
-MSWEBAPP_FILES:=$(abspath $(call my-dir)/files)
+MSWEBAPP_FILES:=./files
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
@@ -42,9 +42,9 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/mswebapp_cpp $(1)/usr/bin/mswebapp
 	$(INSTALL_DIR) $(1)/usr/share/mswebapp/www
-	$(CP) ./files/usr/share/mswebapp/www/. $(1)/usr/share/mswebapp/www/
+	$(CP) $(MSWEBAPP_FILES)/usr/share/mswebapp/www/. $(1)/usr/share/mswebapp/www/
 	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) ./files/etc/init.d/mswebapp $(1)/etc/init.d/mswebapp
+	$(INSTALL_BIN) $(MSWEBAPP_FILES)/etc/init.d/mswebapp $(1)/etc/init.d/mswebapp
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
