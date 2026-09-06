@@ -40,7 +40,7 @@ CMAKE_OPTIONS += \
 
 define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/mswebapp_cpp $(1)/usr/bin/mswebapp
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/mswebapp $(1)/usr/bin/mswebapp
 	$(INSTALL_DIR) $(1)/usr/share/mswebapp/www
 	$(CP) $(MSWEBAPP_FILES)/usr/share/mswebapp/www/. $(1)/usr/share/mswebapp/www/
 	$(INSTALL_DIR) $(1)/etc/init.d

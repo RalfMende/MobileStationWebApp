@@ -865,7 +865,7 @@ int main(int argc, char** argv) {
         else if (a == "--can" || a == "-i") { g_can_interface = next(i); }
 #endif
         else if (a == "--help" || a == "-h") {
-            printf("Usage: mswebapp_cpp [options]\n");
+            printf("Usage: mswebapp [options]\n");
             printf("  --config <dir>     Path to config directory (contains config/, icons/, fcticons/, ...)\n");
             printf("  --udp-ip <ip|host> UDP target ip/host (default Gleisbox)\n");
             printf("  --host <addr>      HTTP bind host (default 0.0.0.0)\n");
@@ -946,7 +946,7 @@ int main(int argc, char** argv) {
     if (!g_frontend_dir_override.empty()) {
         frontend_dir = fs::path(g_frontend_dir_override);
     } else {
-        // Executable is typically at src/backend/build-*/.../mswebapp_cpp
+        // Executable is typically at src/backend/build-*/.../mswebapp
         // Go up 4 levels to reach src then append frontend
         auto base_dir = fs::path(argv[0]).parent_path().parent_path().parent_path().parent_path();
         frontend_dir = base_dir / "frontend";

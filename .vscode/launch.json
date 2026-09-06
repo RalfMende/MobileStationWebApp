@@ -6,7 +6,7 @@
       "name": "C++ Backend Debug (MSVC)",
       "type": "cppvsdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/src/backend/build-msvc/Debug/mswebapp_cpp.exe",
+      "program": "${workspaceFolder}/src/backend/build-msvc/Debug/mswebapp.exe",
       "args": [
         "--config", "${workspaceFolder}/var",
         "--udp-ip", "Gleisbox",
@@ -23,7 +23,7 @@
       "name": "C++ Backend Release (MSVC)",
       "type": "cppvsdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/src/backend/build-msvc/Release/mswebapp_cpp.exe",
+      "program": "${workspaceFolder}/src/backend/build-msvc/Release/mswebapp.exe",
       "args": [
         "--config", "${workspaceFolder}/var",
         "--udp-ip", "Gleisbox",
@@ -42,7 +42,7 @@
       "name": "C++ Backend Debug (MSVC ARM64)",
       "type": "cppvsdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/src/backend/build-msvc-arm64/Debug/mswebapp_cpp.exe",
+      "program": "${workspaceFolder}/src/backend/build-msvc-arm64/Debug/mswebapp.exe",
       "args": [
         "--config", "${workspaceFolder}/var",
         "--udp-ip", "Gleisbox",
@@ -60,7 +60,7 @@
       "name": "C++ Backend Release (MSVC ARM64)",
       "type": "cppvsdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/src/backend/build-msvc-arm64/Release/mswebapp_cpp.exe",
+      "program": "${workspaceFolder}/src/backend/build-msvc-arm64/Release/mswebapp.exe",
       "args": [
         "--config", "${workspaceFolder}/var",
         "--udp-ip", "Gleisbox",
@@ -79,7 +79,7 @@
   "name": "C++ Backend Debug (macOS)",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/src/backend/build-macos-debug/mswebapp_cpp",
+      "program": "${workspaceFolder}/src/backend/build-macos-debug/mswebapp",
       "args": [
         "--config", "${workspaceFolder}/var",
         "--udp-ip", "Gleisbox",
@@ -99,7 +99,7 @@
   "name": "C++ Backend Release (macOS)",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/src/backend/build-macos-release/mswebapp_cpp",
+      "program": "${workspaceFolder}/src/backend/build-macos-release/mswebapp",
       "args": [
         "--config", "${workspaceFolder}/var",
         "--udp-ip", "Gleisbox",

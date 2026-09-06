@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(mswebapp_cpp LANGUAGES CXX)
+project(mswebapp LANGUAGES CXX)
 
 # Ensure a modern macOS SDK target for libc++ filesystem on AppleClang
 if (APPLE)
@@ -15,34 +15,34 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(MSWEBAPP_WITH_OPENSSL "Enable HTTPS (requires OpenSSL)" OFF)
 option(MSWEBAPP_WITH_CAN "Enable CAN interface support (Linux only, requires SocketCAN)" OFF)
 
-add_executable(mswebapp_cpp
+add_executable(mswebapp
     main.cpp
 )
 
 # Link stdc++fs only for older GCC libstdc++ (not needed on AppleClang/libc++ or modern GCC)
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
-        target_link_libraries(mswebapp_cpp PRIVATE stdc++fs)
+        target_link_libraries(mswebapp PRIVATE stdc++fs)
     endif()
 endif()
 
-target_include_directories(mswebapp_cpp PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
+target_include_directories(mswebapp PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
 
 if (MSWEBAPP_WITH_OPENSSL)
     find_package(OpenSSL REQUIRED)
-    target_link_libraries(mswebapp_cpp PRIVATE OpenSSL::SSL OpenSSL::Crypto)
-    target_compile_definitions(mswebapp_cpp PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT)
+    target_link_libraries(mswebapp PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+    target_compile_definitions(mswebapp PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT)
 endif()
 
 if (MSWEBAPP_WITH_CAN)
     if (NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
         message(WARNING "MSWEBAPP_WITH_CAN is only supported on Linux (SocketCAN)")
     endif()
-    target_compile_definitions(mswebapp_cpp PRIVATE MSWEBAPP_WITH_CAN)
+    target_compile_definitions(mswebapp PRIVATE MSWEBAPP_WITH_CAN)
 endif()
 
 # Installation
-install(TARGETS mswebapp_cpp RUNTIME DESTINATION bin)
+install(TARGETS mswebapp RUNTIME DESTINATION bin)
 
 # Developer convenience: copy compile_commands.json to repository root if possible
 if (EXISTS "${CMAKE_BINARY_DIR}/compile_commands.json")
