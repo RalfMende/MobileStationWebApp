@@ -1331,6 +1331,32 @@ function closeLocoPicker() {
   document.body.style.overflow = '';
 }
 
+function formatLocoAddress(uid) {
+  var value = Number(uid);
+  if (!Number.isFinite(value)) return String(uid);
+
+  var protocol = null;
+  var base = 0;
+  if (value >= 0x0000 && value <= 0x03FF) {
+    protocol = 'MM2';
+    base = 0x0000;
+  } else if (value >= 0x0800 && value <= 0x0BFF) {
+    protocol = 'SX1';
+    base = 0x0800;
+  } else if (value >= 0x4000 && value <= 0x7FFF) {
+    protocol = 'MFX';
+    base = 0x4000;
+  } else if (value >= 0x8000 && value <= 0xBFFF) {
+    protocol = 'SX2';
+    base = 0x8000;
+  } else if (value >= 0xC000 && value <= 0xFFFF) {
+    protocol = 'DCC';
+    base = 0xC000;
+  }
+
+  return protocol ? (String(value - base) + '  ' + protocol) : String(value);
+}
+
 /**
  * Render the loco list inside the bottom sheet, optionally filtered.
  * Items keep static backend order. The active loco is highlighted.
@@ -1347,8 +1373,8 @@ function renderLocoPicker(filter) {
     var loco = locList[uid];
     if (!loco) continue;
     var name = (loco.name || '').toLowerCase();
-    var addr = String(loco.uid || uid);
-    if (filter && name.indexOf(filter) === -1 && addr.indexOf(filter) === -1) continue;
+    var addr = formatLocoAddress(loco.uid !== undefined ? loco.uid : uid);
+    if (filter && name.indexOf(filter) === -1 && addr.toLowerCase().indexOf(filter) === -1) continue;
     var item = document.createElement('div');
     item.className = 'loco-picker-item';
     if (uid === activeStr) item.classList.add('loco-picker-active');
