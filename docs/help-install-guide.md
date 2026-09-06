@@ -63,7 +63,7 @@ The flags below reflect the implementation in `src/backend/main.cpp`. On SRSEII,
 | `--udp-ip <ip\|host>` | `127.0.0.1` | Target CS2/CS3(+)/can2lan via  IPv4 or hostname |
 | `--host <addr>` | `0.0.0.0` | HTTP bind address |
 | `--port <port>` | `6020` | HTTP listen port |
-| `--www <dir>` | derived from executable | Frontend directory (templates/, static/, sw.js); optional override |
+| `--www <dir>` | derived from executable | Frontend directory (index.html, static/, sw.js); optional override |
 | `--bind[=<ms>]` | disabled (1000 ms when enabled) | Enable update of Locomotive.cs2 when ...ms after received MFX-BIND/READ_CONFIG |
 | `--verbose` or `-v` | off | Enable verbose logging |
 | `--help` or `-h` | — | Show usage and exit |

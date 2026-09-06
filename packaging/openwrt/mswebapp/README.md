@@ -41,7 +41,7 @@ You can add more files if beneficial.
 ## Packaging layout reminder
 Recommended paths inside the ipk:
 - Binary: `/usr/bin/mswebapp_cpp`
-- Frontend: `/usr/share/mswebapp/www` (contains `templates/` and `static/`)
+- Frontend: `/usr/share/mswebapp/www` (contains `index.html` and `static/`)
 - Existing SRSEII data: `/www` (contains `config/`, `icons/`, `fcticons/`, and `magicons_/`)
 - Init script: `/etc/init.d/mswebapp`
 

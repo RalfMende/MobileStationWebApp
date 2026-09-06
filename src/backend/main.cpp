@@ -81,7 +81,7 @@ static int g_http_port = 6020;
 static std::string g_bind_host = "0.0.0.0";
 static int g_device_uid = 0; // sender uid for CAN id hash
 static bool g_verbose = false;
-static std::string g_frontend_dir_override; // optional path to frontend dir (templates/static)
+static std::string g_frontend_dir_override; // optional path to frontend dir (index.html/static)
 static std::map<int, std::string> g_icon_overrides; // uid -> icon name (stem)
 static bool g_enable_bind_timer = false; // enable CMD_BIND timer only when --bind is passed
 static int g_bind_timeout_ms = 1000;     // timeout for MFX-BIND timer in milliseconds (default 1s)
@@ -870,7 +870,7 @@ int main(int argc, char** argv) {
             printf("  --udp-ip <ip|host> UDP target ip/host (default Gleisbox)\n");
             printf("  --host <addr>      HTTP bind host (default 0.0.0.0)\n");
             printf("  --port <port>      HTTP port (default 6020)\n");
-            printf("  --www <dir>        Frontend directory containing templates/ and static/\n");
+            printf("  --www <dir>        Frontend directory containing index.html and static/\n");
             printf("  --bind[=<ms>]      Enable requesting new loco config after MFX-BIND command automatically; optional timeout in ms (default %d)\n", g_bind_timeout_ms);
             printf("  --no-gzip          Disable serving precompressed .gz files (default is enabled)\n");
 #if defined(MSWEBAPP_WITH_CAN) && defined(__linux__)
@@ -952,9 +952,8 @@ int main(int argc, char** argv) {
         frontend_dir = base_dir / "frontend";
     }
     fs::path static_dir = frontend_dir / "static";
-    fs::path templates_dir = frontend_dir / "templates";
 
-    // Root: serve template with simple replacement and explicit no-cache
+    // Root: serve index.html with simple replacement and explicit no-cache
     auto serve_template = [&](const fs::path &p, httplib::Response &res){
         std::ifstream f(p, std::ios::binary);
         if (!f) { res.status = 404; return; }
@@ -972,7 +971,7 @@ int main(int argc, char** argv) {
     };
 
     svr.Get("/", [&](const httplib::Request&, httplib::Response &res){
-        serve_template(templates_dir/"index.html", res);
+        serve_template(frontend_dir/"index.html", res);
     });
     // Info page removed: info is now shown via in-page modal
 
