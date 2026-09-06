@@ -1,34 +1,12 @@
 {
   "version": "0.2.0",
   "configurations": [
-
-    {
-      "name": "Python Backend (Debug)",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/src/backend_py/server.py",
-      "args": [
-        "--config", "${workspaceFolder}/var",
-        "--udp-ip", "Gleisbox",
-        "--host", "0.0.0.0",
-        "--port", "6020",
-        "--www", "${workspaceFolder}/src/frontend"
-      ],
-      "console": "integratedTerminal",
-      "justMyCode": true,
-      "env": {
-        "FLASK_ENV": "development",
-        "PYTHONUNBUFFERED": "1"
-      },
-      "cwd": "${workspaceFolder}"
-    },
-
     // MSVC x64
     {
       "name": "C++ Backend Debug (MSVC)",
       "type": "cppvsdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/src/backend_cpp/build-msvc/Debug/mswebapp_cpp.exe",
+      "program": "${workspaceFolder}/src/backend/build-msvc/Debug/mswebapp_cpp.exe",
       "args": [
         "--config", "${workspaceFolder}/var",
         "--udp-ip", "Gleisbox",
@@ -45,7 +23,7 @@
       "name": "C++ Backend Release (MSVC)",
       "type": "cppvsdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/src/backend_cpp/build-msvc/Release/mswebapp_cpp.exe",
+      "program": "${workspaceFolder}/src/backend/build-msvc/Release/mswebapp_cpp.exe",
       "args": [
         "--config", "${workspaceFolder}/var",
         "--udp-ip", "Gleisbox",
@@ -64,7 +42,7 @@
       "name": "C++ Backend Debug (MSVC ARM64)",
       "type": "cppvsdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/src/backend_cpp/build-msvc-arm64/Debug/mswebapp_cpp.exe",
+      "program": "${workspaceFolder}/src/backend/build-msvc-arm64/Debug/mswebapp_cpp.exe",
       "args": [
         "--config", "${workspaceFolder}/var",
         "--udp-ip", "Gleisbox",
@@ -82,7 +60,7 @@
       "name": "C++ Backend Release (MSVC ARM64)",
       "type": "cppvsdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/src/backend_cpp/build-msvc-arm64/Release/mswebapp_cpp.exe",
+      "program": "${workspaceFolder}/src/backend/build-msvc-arm64/Release/mswebapp_cpp.exe",
       "args": [
         "--config", "${workspaceFolder}/var",
         "--udp-ip", "Gleisbox",
@@ -101,7 +79,7 @@
   "name": "C++ Backend Debug (macOS)",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/src/backend_cpp/build-macos-debug/mswebapp_cpp",
+      "program": "${workspaceFolder}/src/backend/build-macos-debug/mswebapp_cpp",
       "args": [
         "--config", "${workspaceFolder}/var",
         "--udp-ip", "Gleisbox",
@@ -121,7 +99,7 @@
   "name": "C++ Backend Release (macOS)",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/src/backend_cpp/build-macos-release/mswebapp_cpp",
+      "program": "${workspaceFolder}/src/backend/build-macos-release/mswebapp_cpp",
       "args": [
         "--config", "${workspaceFolder}/var",
         "--udp-ip", "Gleisbox",

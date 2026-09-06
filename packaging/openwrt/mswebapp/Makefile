@@ -32,7 +32,7 @@ endef
 
 define Build/Prepare
 	$(call Build/Prepare/Default)
-	$(CP) $(MSWEBAPP_ROOT)/src/backend_cpp/. $(PKG_BUILD_DIR)/
+	$(CP) $(MSWEBAPP_ROOT)/src/backend/. $(PKG_BUILD_DIR)/
 endef
 
 CMAKE_OPTIONS += \

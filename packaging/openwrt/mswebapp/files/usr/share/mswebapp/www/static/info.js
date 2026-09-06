@@ -41,7 +41,6 @@ const isInModal = !!byId('infoModal');
     const ver = (data && (data.version || data.Version)) || 'unknown';
     const dv = document.getElementById('appVersion');
     if (dv) dv.textContent = ver;
-    // Heuristic backend type: Python returns system_state as an enum/str; C++ returns plain string too; we can add hint by checking headers in future
     const backend = data && typeof data.system_state !== 'undefined' ? 'active' : 'unknown';
     const db = document.getElementById('backendType');
     if (db) db.textContent = `HTTP OK (${backend})`;

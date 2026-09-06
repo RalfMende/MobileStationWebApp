@@ -1,6 +1,6 @@
 # OpenWrt Packaging Notes
 
-This project is typically built in an OpenWrt SDK or Docker container that produces an `.ipk` for Omega2+/OpenWrt. The package definition is [Makefile](Makefile). Package runtime files are staged conventionally in [files](files), while the C++ sources remain under `src/backend_cpp`. To speed up the web UI on low-power devices, precompress static assets and ship both original and `.gz` files in the package.
+This project is typically built in an OpenWrt SDK or Docker container that produces an `.ipk` for Omega2+/OpenWrt. The package definition is [Makefile](Makefile). Package runtime files are staged conventionally in [files](files), while the C++ sources remain under `src/backend`. To speed up the web UI on low-power devices, precompress static assets and ship both original and `.gz` files in the package.
 
 ## Local feed setup
 

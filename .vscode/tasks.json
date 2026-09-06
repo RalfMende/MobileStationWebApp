@@ -7,9 +7,9 @@
 			"command": "cmake",
 			"args": [
 				"-S",
-				"${workspaceFolder}/src/backend_cpp",
+				"${workspaceFolder}/src/backend",
 				"-B",
-				"${workspaceFolder}/src/backend_cpp/build-msvc",
+				"${workspaceFolder}/src/backend/build-msvc",
 				"-G",
 				"Visual Studio 17 2022",
 				"-A",
@@ -26,7 +26,7 @@
 			"command": "cmake",
 			"args": [
 				"--build",
-				"${workspaceFolder}/src/backend_cpp/build-msvc",
+				"${workspaceFolder}/src/backend/build-msvc",
 				"--config",
 				"Debug"
 			],
@@ -44,7 +44,7 @@
 			"command": "cmake",
 			"args": [
 				"--build",
-				"${workspaceFolder}/src/backend_cpp/build-msvc",
+				"${workspaceFolder}/src/backend/build-msvc",
 				"--config",
 				"Release"
 			],
@@ -62,9 +62,9 @@
 			"command": "cmake",
 			"args": [
 				"-S",
-				"${workspaceFolder}/src/backend_cpp",
+				"${workspaceFolder}/src/backend",
 				"-B",
-				"${workspaceFolder}/src/backend_cpp/build-macos-debug",
+				"${workspaceFolder}/src/backend/build-macos-debug",
 				"-DCMAKE_BUILD_TYPE=Debug"
 			],
 			"options": {
@@ -78,7 +78,7 @@
 			"command": "cmake",
 			"args": [
 				"--build",
-				"${workspaceFolder}/src/backend_cpp/build-macos-debug"
+				"${workspaceFolder}/src/backend/build-macos-debug"
 			],
 			"options": {
 				"cwd": "${workspaceFolder}"
@@ -94,9 +94,9 @@
 			"command": "cmake",
 			"args": [
 				"-S",
-				"${workspaceFolder}/src/backend_cpp",
+				"${workspaceFolder}/src/backend",
 				"-B",
-				"${workspaceFolder}/src/backend_cpp/build-macos-release",
+				"${workspaceFolder}/src/backend/build-macos-release",
 				"-DCMAKE_BUILD_TYPE=Release"
 			],
 			"options": {
@@ -110,7 +110,7 @@
 			"command": "cmake",
 			"args": [
 				"--build",
-				"${workspaceFolder}/src/backend_cpp/build-macos-release"
+				"${workspaceFolder}/src/backend/build-macos-release"
 			],
 			"options": {
 				"cwd": "${workspaceFolder}"
@@ -126,9 +126,9 @@
 			"command": "cmake",
 			"args": [
 				"-S",
-				"${workspaceFolder}/src/backend_cpp",
+				"${workspaceFolder}/src/backend",
 				"-B",
-				"${workspaceFolder}/src/backend_cpp/build-msvc-arm64",
+				"${workspaceFolder}/src/backend/build-msvc-arm64",
 				"-G",
 				"Visual Studio 17 2022",
 				"-A",
@@ -145,7 +145,7 @@
 			"command": "cmake",
 			"args": [
 				"--build",
-				"${workspaceFolder}/src/backend_cpp/build-msvc-arm64",
+				"${workspaceFolder}/src/backend/build-msvc-arm64",
 				"--config",
 				"Debug"
 			],
@@ -163,7 +163,7 @@
 			"command": "cmake",
 			"args": [
 				"--build",
-				"${workspaceFolder}/src/backend_cpp/build-msvc-arm64",
+				"${workspaceFolder}/src/backend/build-msvc-arm64",
 				"--config",
 				"Release"
 			],

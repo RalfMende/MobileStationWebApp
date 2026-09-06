@@ -946,7 +946,7 @@ int main(int argc, char** argv) {
     if (!g_frontend_dir_override.empty()) {
         frontend_dir = fs::path(g_frontend_dir_override);
     } else {
-        // Executable is typically at src/backend_cpp/build-*/.../mswebapp_cpp
+        // Executable is typically at src/backend/build-*/.../mswebapp_cpp
         // Go up 4 levels to reach src then append frontend
         auto base_dir = fs::path(argv[0]).parent_path().parent_path().parent_path().parent_path();
         frontend_dir = base_dir / "frontend";

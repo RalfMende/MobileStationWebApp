@@ -27,9 +27,6 @@ An Online help is available under: [Online Help](docs/index.md)
 Original forum walkthrough (German):
 https://www.stummiforum.de/t56814f5-M-rklin-Mobile-Station-App-Schritt-f-r-Schritt.html
 
-## Development Notes
-The MobileStationWebApp is intended to use the C++ backend on the SRSEII. There is also an Python Backend, used for rapid development and testing of the frontend. It it not inteded to run on the SRSEII.
-
 ## License
 Beerware (see header in source files).
 

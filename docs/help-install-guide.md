@@ -55,7 +55,7 @@ You can adjust defaults by editing /etc/init.d/mswebapp (simplest) or integratin
 
 
 ## Command Line Options (C++ backend)
-The flags below reflect the implementation in `src/backend_cpp/main.cpp`. On SRSEII, the init script may override paths.
+The flags below reflect the implementation in `src/backend/main.cpp`. On SRSEII, the init script may override paths.
 
 | Flag | Default | Description |
 |------|---------|-------------|
