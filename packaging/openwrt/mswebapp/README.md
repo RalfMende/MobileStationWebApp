@@ -18,7 +18,7 @@ Then select `Utilities -> mswebapp` in `make menuconfig` and build with:
 make package/mswebapp/compile V=s
 ```
 
-The package Makefile copies the backend sources from this repository and installs the frontend, default data and init script from `files/`. It therefore needs to remain in this repository (or in a feed checkout that preserves the same relative layout).
+The package Makefile copies the backend sources from this repository and installs the frontend and init script from `files/`. It therefore needs to remain in this repository (or in a feed checkout that preserves the same relative layout).
 
 ## What changed
 - Backend now serves `/static/...` with ETag and long caching (immutable).
@@ -42,10 +42,10 @@ You can add more files if beneficial.
 Recommended paths inside the ipk:
 - Binary: `/usr/bin/mswebapp_cpp`
 - Frontend: `/usr/share/mswebapp/www` (contains `templates/` and `static/`)
-- Defaults (first-run seed): `/usr/share/mswebapp/var`
+- Existing SRSEII data: `/www` (contains `config/`, `icons/`, `fcticons/`, and `magicons_/`)
 - Init script: `/etc/init.d/mswebapp`
 
-The included init script ([files/etc/init.d/mswebapp](files/etc/init.d/mswebapp)) already points the backend to these locations.
+The included init script ([files/etc/init.d/mswebapp](files/etc/init.d/mswebapp)) passes `/www` as the backend configuration directory and does not modify its contents.
 
 ## Gotchas
 - Keep both compressed and uncompressed files in the package so legacy clients still work.

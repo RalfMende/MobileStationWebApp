@@ -15,35 +15,8 @@ PORT=6020
 UDP_IP="127.0.0.1"
 CAN_IF="can0"
 WWW_DIR="/usr/share/mswebapp/www" # frontend
-DEFAULTS_DIR="/usr/share/mswebapp/var" # packaged default data (mirrors repo /var)
-
-ensure_data() {
-    # Ensure base config directory exists
-    [ -d "$CONFIG_DIR" ] || mkdir -p "$CONFIG_DIR"
-
-    # Required subfolders under /www on SRSEII
-    for d in config fcticons icons magicons_; do
-        if [ ! -d "$CONFIG_DIR/$d" ]; then
-            if [ -d "$DEFAULTS_DIR/$d" ]; then
-                mkdir -p "$CONFIG_DIR/$d"
-                cp -r "$DEFAULTS_DIR/$d/." "$CONFIG_DIR/$d/"
-            else
-                mkdir -p "$CONFIG_DIR/$d"
-            fi
-        fi
-    done
-
-    # Seed default CS2 files if missing
-    if [ ! -f "$CONFIG_DIR/config/lokomotive.cs2" ] && [ -f "$DEFAULTS_DIR/config/lokomotive.cs2" ]; then
-        cp "$DEFAULTS_DIR/config/lokomotive.cs2" "$CONFIG_DIR/config/"
-    fi
-    if [ ! -f "$CONFIG_DIR/config/magnetartikel.cs2" ] && [ -f "$DEFAULTS_DIR/config/magnetartikel.cs2" ]; then
-        cp "$DEFAULTS_DIR/config/magnetartikel.cs2" "$CONFIG_DIR/config/"
-    fi
-}
 
 start_service() {
-    ensure_data
     if [ -x "$PROG_CPP" ]; then
         if ! ip link show "$CAN_IF" >/dev/null 2>&1; then
             echo "mswebapp: CAN interface $CAN_IF not found" >&2

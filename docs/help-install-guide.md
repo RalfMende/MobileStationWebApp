@@ -24,29 +24,13 @@ sha256sum /tmp/mswebapp.ipk
 opkg install /tmp/mswebapp.ipk
 ```
 
-4) Ensure the config directory exists (the init script will create missing subfolders on first start):
+4) Verify that the existing SRSEII data is available:
 
 ```
-ls -d /www/*/ || true
+ls -d /www/config /www/icons /www/fcticons /www/magicons_
 ```
 
-5) Update CS2 files if needed (current versions):
-
-```
-wget https://raw.githubusercontent.com/RalfMende/MobileStationWebApp/main/var/config/magnetartikel.cs2 -O /www/config/magnetartikel.cs2
-```
-
-(Optional) If icons or other assets are missing on the SRSEII, download the defaults:
-
-```
-wget https://github.com/RalfMende/MobileStationWebApp/archive/refs/heads/main.zip -O /tmp/mswebapp.zip
-unzip /tmp/mswebapp.zip -d /tmp/mswebapp/
-cp -r /tmp/mswebapp/MobileStationWebApp-main/var/* /www/
-rm -f /tmp/mswebapp.zip
-rm -rf /tmp/mswebapp/
-```
-
-6) Install the init script:
+5) Install the init script:
 
 ```
 wget https://raw.githubusercontent.com/RalfMende/MobileStationWebApp/main/packaging/openwrt/init.d/mswebapp -O /etc/init.d/mswebapp
@@ -56,16 +40,16 @@ Default arguments for the SRSEII:
 - Config dir: /www
 - Frontend dir: /usr/share/mswebapp/www
 
-You can adjust defaults by editing /etc/init.d/mswebapp (simplest) or integrating with UCI later. On first start, the init script seeds missing folders under /www (config, fcticons, icons, magicons_) and copies default CS2 files (lokomotive.cs2, magnetartikel.cs2) from the packaged defaults if present.
+You can adjust defaults by editing /etc/init.d/mswebapp (simplest) or integrating with UCI later. The service does not create or copy configuration files or icons; it uses the existing SRSEII data under `/www`.
 
-7) Enable and start the service:
+6) Enable and start the service:
 
 ```
 /etc/init.d/mswebapp enable
 /etc/init.d/mswebapp start
 ```
 
-6. Open the UI in the Browser:
+7. Open the UI in the Browser:
    
    http://gleisbox:6020 (hostname or ip of SRSEII)
 
