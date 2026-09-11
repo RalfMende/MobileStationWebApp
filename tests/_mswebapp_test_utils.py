@@ -104,9 +104,15 @@ class BackendServer:
             return json.loads(resp.read().decode("utf-8"))
 
     def post_json(self, path, payload):
-        """POST a JSON body; returns (status_code, parsed_json_or_None)."""
+        """POST a JSON body; returns (status_code, parsed_json_or_None).
+
+        Uses compact separators (no spaces) to match how the real frontend's
+        JSON.stringify() serializes bodies -- some handlers (e.g. stop_button)
+        do a naive literal substring search like `"state":true` that would
+        not match if spaces were inserted after ':'.
+        """
         import json
-        data = json.dumps(payload).encode("utf-8")
+        data = json.dumps(payload, separators=(",", ":")).encode("utf-8")
         req = urllib.request.Request(
             f"{self.base_url}{path}", data=data, method="POST",
             headers={"Content-Type": "application/json"})
