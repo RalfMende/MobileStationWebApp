@@ -1211,7 +1211,7 @@ int main(int argc, char** argv) {
             uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_SWITCH, 0, 0);
             send_cs2_frame(can_id, payload_switch((uint32_t)uid, pos, 1), 6);
             int switch_delay_ms = 200; // default delay before auto-reset
-            if (g_switches[idx].switch_delay > 0) { switch_delay_ms = g_switches[idx].switch_delay; }
+            if (idx < (int)g_switches.size() && g_switches[idx].switch_delay > 0) { switch_delay_ms = g_switches[idx].switch_delay; }
             std::thread([can_id, uid, pos, switch_delay_ms]{
                 std::this_thread::sleep_for(std::chrono::milliseconds(switch_delay_ms));
                 send_cs2_frame(can_id, payload_switch((uint32_t)uid, pos, 0), 6);

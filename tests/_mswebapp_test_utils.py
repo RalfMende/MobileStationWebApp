@@ -127,6 +127,18 @@ class BackendServer:
             except json.JSONDecodeError:
                 return exc.code, None
 
+    def post_raw(self, path, raw_body, content_type="application/json"):
+        """POST an arbitrary raw string body (e.g. malformed JSON); returns
+        (status_code, response_text)."""
+        req = urllib.request.Request(
+            f"{self.base_url}{path}", data=raw_body.encode("utf-8"), method="POST",
+            headers={"Content-Type": content_type})
+        try:
+            with urllib.request.urlopen(req, timeout=5.0) as resp:
+                return resp.status, resp.read().decode("utf-8")
+        except urllib.error.HTTPError as exc:
+            return exc.code, exc.read().decode("utf-8")
+
     def stop(self):
         if self.proc is not None:
             self.proc.terminate()
