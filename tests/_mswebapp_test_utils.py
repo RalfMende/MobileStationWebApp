@@ -103,6 +103,24 @@ class BackendServer:
                 raise RuntimeError(f"GET {path} returned status {resp.status}")
             return json.loads(resp.read().decode("utf-8"))
 
+    def post_json(self, path, payload):
+        """POST a JSON body; returns (status_code, parsed_json_or_None)."""
+        import json
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            f"{self.base_url}{path}", data=data, method="POST",
+            headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=5.0) as resp:
+                body = resp.read().decode("utf-8")
+                return resp.status, (json.loads(body) if body else None)
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8")
+            try:
+                return exc.code, json.loads(body) if body else None
+            except json.JSONDecodeError:
+                return exc.code, None
+
     def stop(self):
         if self.proc is not None:
             self.proc.terminate()
