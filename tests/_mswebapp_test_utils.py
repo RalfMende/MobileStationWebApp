@@ -13,10 +13,10 @@ CONFIG_SRC_DIR = REPO_ROOT / "var" / "config"
 FRONTEND_DIR = REPO_ROOT / "src" / "frontend"
 
 BACKEND_CANDIDATES = [
-    REPO_ROOT / "src" / "backend" / "build-macos-debug" / "mswebapp_cpp",
-    REPO_ROOT / "src" / "backend" / "build-macos-release" / "mswebapp_cpp",
     REPO_ROOT / "src" / "backend" / "build-macos-debug" / "mswebapp",
     REPO_ROOT / "src" / "backend" / "build-macos-release" / "mswebapp",
+    REPO_ROOT / "src" / "backend" / "build-macos-debug" / "mswebapp_cpp",
+    REPO_ROOT / "src" / "backend" / "build-macos-release" / "mswebapp_cpp",
 ]
 
 

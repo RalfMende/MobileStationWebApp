@@ -52,14 +52,11 @@ class ControlEventTest(unittest.TestCase):
         self.server.post_json("/api/control_event", {"loco_id": TEST_LOCO_UID, "speed": 0})
         self.assertEqual(self.loco_state()["speed"], 0)
 
-    def test_negative_speed_is_ignored_not_clamped(self):
-        """Backend quirk: the handler only clamps when speed>=0, so a negative
-        value falls through all branches (speed/direction/function) as a no-op
-        instead of being clamped to 0 -- state stays unchanged."""
+    def test_negative_speed_is_clamped_to_zero(self):
         self.server.post_json("/api/control_event", {"loco_id": TEST_LOCO_UID, "speed": 400})
         self.assertEqual(self.loco_state()["speed"], 400)
         self.server.post_json("/api/control_event", {"loco_id": TEST_LOCO_UID, "speed": -50})
-        self.assertEqual(self.loco_state()["speed"], 400)
+        self.assertEqual(self.loco_state()["speed"], 0)
 
     def test_direction_change_resets_speed(self):
         self.server.post_json("/api/control_event", {"loco_id": TEST_LOCO_UID, "speed": 700})

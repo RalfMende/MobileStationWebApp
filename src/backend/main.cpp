@@ -1161,7 +1161,9 @@ int main(int argc, char** argv) {
         fn = find_num("function"); if (fn<0) fn = find_num("fn");
         val = find_num("value"); if (val<0) val = find_num("val");
         if (uid<=0) { res.status=400; res.set_content("{\"status\":\"error\",\"message\":\"loco_id required\"}","application/json"); return; }
-        if (speed>=0) {
+        if (speed != -1) {
+            // Clamp to valid range; find_num() also returns negative numbers as-is (only
+            // -1 means "field absent"), so a negative speed like -50 must still be clamped here.
             int spd = std::max(0,std::min(1023,speed));
             g_loco_speed[uid] = spd; publish_event(speed_event_json(uid, spd));
             uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_SPEED, 0, 0);
