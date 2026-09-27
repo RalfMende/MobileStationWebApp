@@ -9,14 +9,16 @@ PKG_NAME:=mswebapp
 PKG_VERSION:=1.1.9
 PKG_RELEASE:=1
 
-PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
-PKG_BUILD_PARALLEL:=1
+PKG_SOURCE_PROTO:=git
+PKG_SOURCE_URL:=https://github.com/RalfMende/MobileStationWebApp.git
+PKG_SOURCE_VERSION:=main
 
-MSWEBAPP_ROOT:=/work/mswebapp
-MSWEBAPP_FILES:=./files
+PKG_BUILD_PARALLEL:=1
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
+
+CMAKE_SOURCE_DIR:=src/backend
 
 define Package/$(PKG_NAME)
   SECTION:=utils
@@ -30,21 +32,18 @@ define Package/$(PKG_NAME)/description
   accessories using CS2/CS3-style configuration files.
 endef
 
-define Build/Prepare
-	$(call Build/Prepare/Default)
-	$(CP) $(MSWEBAPP_ROOT)/src/backend/. $(PKG_BUILD_DIR)/
-endef
-
 CMAKE_OPTIONS += \
 	-DMSWEBAPP_WITH_CAN=ON
 
 define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/mswebapp $(1)/usr/bin/mswebapp
+
 	$(INSTALL_DIR) $(1)/usr/share/mswebapp/www
-	$(CP) $(MSWEBAPP_ROOT)/src/frontend/. $(1)/usr/share/mswebapp/www/
+	$(CP) $(PKG_BUILD_DIR)/src/frontend/. $(1)/usr/share/mswebapp/www/
+
 	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) $(MSWEBAPP_FILES)/etc/init.d/mswebapp $(1)/etc/init.d/mswebapp
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/packaging/openwrt/mswebapp/files/etc/init.d/mswebapp $(1)/etc/init.d/mswebapp
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
