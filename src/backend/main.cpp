@@ -85,7 +85,6 @@ static std::string g_frontend_dir_override; // optional path to frontend dir (in
 static std::map<int, std::string> g_icon_overrides; // uid -> icon name (stem)
 static bool g_enable_bind_timer = false; // enable CMD_BIND timer only when --bind is passed
 static int g_bind_timeout_ms = 1000;     // timeout for MFX-BIND timer in milliseconds (default 1s)
-static bool g_enable_precompressed_gzip = true; // serve .gz files for static assets when available
 static std::string g_can_interface; // CAN interface name (e.g. "can0"); empty = use UDP
 static bool g_use_can = false;      // true when CAN interface is open and in use
 #if defined(MSWEBAPP_WITH_CAN) && defined(__linux__)
@@ -860,7 +859,6 @@ int main(int argc, char** argv) {
             int v = parse_int_auto(nv); if (v > 0) g_bind_timeout_ms = v;
         }
         else if (a == "--verbose" || a == "-v") { g_verbose = true; }
-        else if (a == "--no-gzip") { g_enable_precompressed_gzip = false; }
 #if defined(MSWEBAPP_WITH_CAN) && defined(__linux__)
         else if (a == "--can" || a == "-i") { g_can_interface = next(i); }
 #endif
@@ -872,7 +870,6 @@ int main(int argc, char** argv) {
             printf("  --port <port>      HTTP port (default 6020)\n");
             printf("  --www <dir>        Frontend directory containing index.html and static/\n");
             printf("  --bind[=<ms>]      Enable requesting new loco config after MFX-BIND command automatically; optional timeout in ms (default %d)\n", g_bind_timeout_ms);
-            printf("  --no-gzip          Disable serving precompressed .gz files (default is enabled)\n");
 #if defined(MSWEBAPP_WITH_CAN) && defined(__linux__)
             printf("  --can/-i <iface>   CAN interface name (e.g. can0); routes CS2 traffic via SocketCAN instead of UDP\n");
 #endif
@@ -984,7 +981,7 @@ int main(int argc, char** argv) {
         res.set_header("Cache-Control", "no-cache");
     });
 
-    // Static: custom handler with ETag, long cache, and optional precompressed .gz delivery
+    // Static: custom handler with ETag and long cache
     auto mime_of = [](const std::string& ext)->const char*{
         if (ext==".css") return "text/css";
         if (ext==".js")  return "application/javascript";
@@ -1005,12 +1002,7 @@ int main(int argc, char** argv) {
     };
     svr.Get(R"(/static/(.*))", [&](const httplib::Request& req, httplib::Response &res){
         std::string rel = req.matches[1].str();
-        fs::path wanted = static_dir / rel;
-        // Prefer precompressed .gz if client accepts gzip
-        bool accept_gzip = req.has_header("Accept-Encoding") && req.get_header_value("Accept-Encoding").find("gzip") != std::string::npos;
-        fs::path gz = wanted; gz += ".gz";
-        bool use_gz = g_enable_precompressed_gzip && accept_gzip && fs::exists(gz);
-        fs::path file = use_gz ? gz : wanted;
+        fs::path file = static_dir / rel;
         std::error_code ec;
         if (!fs::exists(file, ec) || fs::is_directory(file, ec)) { res.status = 404; return; }
 
@@ -1020,19 +1012,16 @@ int main(int argc, char** argv) {
             res.status = 304;
             res.set_header("ETag", etag.c_str());
             res.set_header("Cache-Control", "public, max-age=86400");
-            res.set_header("Vary", "Accept-Encoding");
             return;
         }
 
         std::ifstream f(file, std::ios::binary);
         if (!f) { res.status = 500; return; }
         std::ostringstream buf; buf << f.rdbuf();
-        std::string ext = wanted.extension().string();
+        std::string ext = file.extension().string();
         res.set_content(buf.str(), mime_of(ext));
         res.set_header("ETag", etag.c_str());
         res.set_header("Cache-Control", "public, max-age=86400");
-        res.set_header("Vary", "Accept-Encoding");
-        if (use_gz) res.set_header("Content-Encoding", "gzip");
     });
 
     // Config assets under /cfg => map to g_config_dir

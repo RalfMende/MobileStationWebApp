@@ -1,6 +1,6 @@
 # OpenWrt Packaging Notes
 
-This project is typically built in an OpenWrt SDK or Docker container that produces an `.ipk` for Omega2+/OpenWrt. The package definition is [Makefile](Makefile). Package runtime files are staged conventionally in [files](files), while the C++ sources remain under `src/backend`. To speed up the web UI on low-power devices, precompress static assets and ship both original and `.gz` files in the package.
+This project is typically built in an OpenWrt SDK or Docker container that produces an `.ipk` for Omega2+/OpenWrt. The package definition is [Makefile](Makefile). Package runtime files are staged conventionally in [files](files), while the C++ sources remain under `src/backend`.
 
 ## Local feed setup
 
@@ -22,21 +22,7 @@ The package Makefile copies the backend sources from this repository and install
 
 ## What changed
 - Backend now serves `/static/...` with ETag and long caching (immutable).
-- If `Accept-Encoding: gzip` is present and a `*.gz` variant exists next to the original file, the server serves the `.gz` file (with `Content-Encoding: gzip`).
 - Service Worker precaches a few core assets.
-
-## Build-time precompression
-Run this script before staging files into the package:
-
-```
-sh packaging/openwrt/precompress.sh
-```
-
-It creates:
-- `src/frontend/static/style.css.gz`
-- `src/frontend/static/script.js.gz`
-
-You can add more files if beneficial.
 
 ## Packaging layout reminder
 Recommended paths inside the ipk:
@@ -48,6 +34,5 @@ Recommended paths inside the ipk:
 The included init script ([files/etc/init.d/mswebapp](files/etc/init.d/mswebapp)) passes `/www` as the backend configuration directory and does not modify its contents.
 
 ## Gotchas
-- Keep both compressed and uncompressed files in the package so legacy clients still work.
 - When updating assets, the ETag will change automatically (size/mtime-based).
 - Service Worker is cache-aware but small—avoid precaching too many large files.
