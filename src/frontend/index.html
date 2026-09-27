@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
   <link rel="apple-touch-icon" href="/static/grafics/apple-touch-icon-180.png">
   <link rel="manifest" href="/static/manifest.webmanifest">
@@ -43,7 +43,7 @@
           <span data-i18n="info.docsHtml"><a href="https://ralfmende.github.io/MobileStationWebApp/index.html" target="_blank">Online documentation & FAQ</a></span><br>
           <span data-i18n="info.author">Author: Ralf Mende</span><br>
           <br>
-          <b><span data-i18n="info.backend">Backend:</span></b> <span id="backendType">loading…</span><br>
+          <b><span data-i18n="info.backend">Backend:</span></b> <span id="backendType" data-i18n="info.loading">Loading…</span><br>
           <br>
         </div>
       </div>
@@ -61,7 +61,7 @@
             <input type="range" id="speedSlider" min="0" max="1000" value="0" class="slider-vertical"/>
           </div>
         </div>
-        <div id="locoDesc" class="loco-desc">Select Locomotive</div>
+        <div id="locoDesc" class="loco-desc" data-i18n="control.selectLocomotive">Select Locomotive</div>
           <img id="locoImg" class="loco-img" src="/static/grafics/unknown_loco_txt.png" alt="">
         <div class="direction-buttons">
           <img id="reverseBtn" class="dir-btn" src="/static/grafics/dir_left_inactive.png" />
@@ -71,8 +71,8 @@
       <div class="functions-side" id="rightFunctions"></div>
     </div>
     <div class="control-bottom-bar">
-      <button id="locoAddBtn" class="loco-add-btn" aria-label="Add locomotive" title="Add locomotive">
-        <img src="/static/grafics/plus.png" alt="Add locomotive" width="18" height="18" />
+      <button id="locoAddBtn" class="loco-add-btn" aria-label="Add locomotive" title="Add locomotive" data-i18n="control.addLocomotive" data-i18n-attr="aria-label,title">
+        <img src="/static/grafics/plus.png" alt="Add locomotive" data-i18n="control.addLocomotive" data-i18n-attr="alt" width="18" height="18" />
       </button>
       <div id="locoList" class="loco-list"></div>
     </div>

@@ -123,6 +123,10 @@ const I18N = {
       docsHtml: '<a href="https://ralfmende.github.io/MobileStationWebApp/index.html" target="_blank">Online documentation & FAQ</a>',
       version: 'Version:',
       backend: 'Backend:',
+      loading: 'Loading…',
+      backendActive: 'active',
+      backendUnknown: 'unknown',
+      unavailable: 'unavailable',
       author: 'Author: Ralf Mende',
       issues: 'For questions, bug reports, or feature requests, please open an issue on GitHub.',
       controlsHeader: 'SRSEII locomotive list controls:',
@@ -151,6 +155,10 @@ const I18N = {
     },
     keyboard: {
       headerPrefix: 'Keyboard Page ',
+    },
+    control: {
+      selectLocomotive: 'Select Locomotive',
+      addLocomotive: 'Add locomotive'
     }
   },
   de: {
@@ -163,6 +171,10 @@ const I18N = {
       docsHtml: '<a href="https://ralfmende.github.io/MobileStationWebApp/index.html" target="_blank">Online-Dokumentation & FAQ</a>',
       version: 'Version:',
       backend: 'Backend:',
+      loading: 'Lädt…',
+      backendActive: 'aktiv',
+      backendUnknown: 'unbekannt',
+      unavailable: 'nicht verfügbar',
       author: 'Autor: Ralf Mende',
       issues: 'Für Fragen, Bug-Reports oder Feature-Wünsche bitte ein Issue auf GitHub eröffnen.',
       controlsHeader: 'Steuerung der SRSEII-Lokliste:',
@@ -191,6 +203,106 @@ const I18N = {
     },
     keyboard: {
       headerPrefix: 'Keyboard Seite ',
+    },
+    control: {
+      selectLocomotive: 'Lokomotive auswählen',
+      addLocomotive: 'Lokomotive hinzufügen'
+    }
+  },
+  fr: {
+    common: {
+      close: 'Fermer'
+    },
+    info: {
+      title: 'Infos',
+      aboutHtml: 'Le code source de cette application Web est disponible publiquement sur <a href="https://github.com/RalfMende/MobileStationWebApp" target="_blank">GitHub</a>.<br>Vous y trouverez également les conditions de licence (voir LICENSE) et la dernière version.',
+      docsHtml: '<a href="https://ralfmende.github.io/MobileStationWebApp/index.html" target="_blank">Documentation en ligne et FAQ</a>',
+      version: 'Version :',
+      backend: 'Backend :',
+      loading: 'Chargement…',
+      backendActive: 'actif',
+      backendUnknown: 'inconnu',
+      unavailable: 'indisponible',
+      author: 'Auteur : Ralf Mende',
+      issues: "Pour toute question, rapport de bug ou demande de fonctionnalité, merci d'ouvrir une issue sur GitHub.",
+      controlsHeader: 'Commandes de la liste des locomotives SRSEII :',
+      btn: {
+        refresh: 'Actualiser',
+        'import': 'Importer la liste des locomotives depuis Railcontrol',
+        restart: 'Redémarrer Railcontrol',
+        reload: 'Réinitialiser'
+      }
+    },
+    icon: {
+      title: 'Choisir une icône',
+      filterPlaceholder: 'Filtrer…',
+      cancel: 'Annuler',
+    },
+    locoPicker: {
+      title: 'Liste des locomotives',
+      searchPlaceholder: 'Rechercher…',
+    },
+    locoDock: {
+      noSlotFree: 'Aucun emplacement libre, car toutes les locomotives sont épinglées ou actives',
+      menuPin: 'Épingler',
+      menuUnpin: 'Détacher',
+      menuRelease: 'Libérer',
+      locoStillActive: 'La locomotive est encore active.'
+    },
+    keyboard: {
+      headerPrefix: 'Page clavier ',
+    },
+    control: {
+      selectLocomotive: 'Sélectionner une locomotive',
+      addLocomotive: 'Ajouter une locomotive'
+    }
+  },
+  nl: {
+    common: {
+      close: 'Sluiten'
+    },
+    info: {
+      title: 'Info',
+      aboutHtml: 'De broncode van deze WebApp is openbaar beschikbaar op <a href="https://github.com/RalfMende/MobileStationWebApp" target="_blank">GitHub</a>.<br>Daar vind je ook de licentievoorwaarden (zie bestand LICENSE) en de meest recente versie.',
+      docsHtml: '<a href="https://ralfmende.github.io/MobileStationWebApp/index.html" target="_blank">Online documentatie & FAQ</a>',
+      version: 'Versie:',
+      backend: 'Backend:',
+      loading: 'Laden…',
+      backendActive: 'actief',
+      backendUnknown: 'onbekend',
+      unavailable: 'niet beschikbaar',
+      author: 'Auteur: Ralf Mende',
+      issues: 'Voor vragen, bugmeldingen of functieverzoeken kun je een issue openen op GitHub.',
+      controlsHeader: 'Bediening van de SRSEII-locomotievenlijst:',
+      btn: {
+        refresh: 'Vernieuwen',
+        'import': 'Locomotievenlijst importeren vanuit Railcontrol',
+        restart: 'Railcontrol herstarten',
+        reload: 'Resetten'
+      }
+    },
+    icon: {
+      title: 'Icoon selecteren',
+      filterPlaceholder: 'Filter…',
+      cancel: 'Annuleren',
+    },
+    locoPicker: {
+      title: 'Locomotievenlijst',
+      searchPlaceholder: 'Zoeken…',
+    },
+    locoDock: {
+      noSlotFree: 'Geen vrije plek, want alle locomotieven zijn vastgezet of actief',
+      menuPin: 'Vastzetten',
+      menuUnpin: 'Losmaken',
+      menuRelease: 'Vrijgeven',
+      locoStillActive: 'Locomotief is nog actief.'
+    },
+    keyboard: {
+      headerPrefix: 'Toetsenbordpagina ',
+    },
+    control: {
+      selectLocomotive: 'Locomotief selecteren',
+      addLocomotive: 'Locomotief toevoegen'
     }
   }
 };
@@ -200,6 +312,8 @@ function detectLang() {
   let lang = (nav.languages && nav.languages[0]) || nav.language || 'en';
   lang = String(lang).toLowerCase();
   if (lang.startsWith('de')) return 'de';
+  if (lang.startsWith('fr')) return 'fr';
+  if (lang.startsWith('nl')) return 'nl';
   return 'en';
 }
 
@@ -208,6 +322,7 @@ let T = I18N[CURRENT_LANG] || I18N.en;
 
 function applyI18n() {
   T = I18N[CURRENT_LANG] || I18N.en;
+  document.documentElement.lang = CURRENT_LANG;
   // Apply static translations
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
@@ -219,7 +334,7 @@ function applyI18n() {
     }
     if (val == null) return;
     if (attr) {
-      el.setAttribute(attr, String(val));
+      attr.split(',').forEach(name => el.setAttribute(name.trim(), String(val)));
     } else {
       // Allow HTML in some strings (introHtml/moreHtml)
       if (/Html$/.test(parts[parts.length-1])) el.innerHTML = String(val);
@@ -381,11 +496,11 @@ async function refreshHealthInfo() {
     const data = await res.json();
     const ver = (data && (data.version || data.Version)) || 'unknown';
     const dv = document.getElementById('appVersion'); if (dv) dv.textContent = ver;
-    const backend = data && typeof data.system_state !== 'undefined' ? 'active' : 'unknown';
+    const backend = data && typeof data.system_state !== 'undefined' ? T.info.backendActive : T.info.backendUnknown;
     const db = document.getElementById('backendType'); if (db) db.textContent = `HTTP OK (${backend})`;
   } catch (e) {
-    const dv = document.getElementById('appVersion'); if (dv) dv.textContent = 'unavailable';
-    const db = document.getElementById('backendType'); if (db) db.textContent = 'unavailable';
+    const dv = document.getElementById('appVersion'); if (dv) dv.textContent = T.info.unavailable;
+    const db = document.getElementById('backendType'); if (db) db.textContent = T.info.unavailable;
   }
 }
 

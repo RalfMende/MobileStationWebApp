@@ -30,5 +30,6 @@
             "${workspaceFolder}/src/backend/third_party"
         ],
         "C_Cpp.default.defines": ["_WIN32"]
-    }
+    },
+    "cmake.sourceDirectory": "/Users/ralf/Documents/GitHub/MobileStationWebApp/src/backend"
 }
