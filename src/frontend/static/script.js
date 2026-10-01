@@ -19,7 +19,12 @@ let isRunning = false;
 let currentActiveContainer = 'control'; // Keeps selected page, in case of returning to website
 let currentLocoUid = null; // Keeps selected locomotive from control page (via UID)
 let currentKeyboardId = 0; // Keeps selected keyboard ID from keyboard page
-const debounce_udp_message = 10; // Timer in ms
+const SPEED_SEND_INTERVAL = 25;
+let pendingSpeed = null;
+let pendingSpeedLocoUid = null;
+let speedSendTimer = null;
+let speedRequestInFlight = false;
+let lastSpeedSendTime = 0;
 
 let isDragging = false;
 let dragTimeout = null;
@@ -1748,7 +1753,9 @@ speedBar.addEventListener('pointerdown', (e) => {
       const y = e.clientY - rect.top;
       const percent = 1 - (y / rect.height);
       const value = Math.min(1000, Math.max(0, Math.round(percent * 1000)));
-      setLocoSpeed(value);
+      sendSpeedImmediately(value);
+    } else {
+      sendSpeedImmediately(lastValue);
     }
   };
 
@@ -1760,21 +1767,85 @@ speedBar.addEventListener('pointerdown', (e) => {
 /**
  * Set the speed of the current locomotive.
  *
- * Writes the speed slider value back to the UI (so the bar and
- * readout update) and posts the new speed to the server.  A
- * debounce could be added here but is commented out for now.
+ * Updates the UI immediately and queues only the latest speed for sending.
  *
  * @param {number} val – the raw speed (0–1000)
  */
 function setLocoSpeed(val) {
-  fetch('/api/control_event', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      loco_id: currentLocoUid,
-      speed: val
-    })
-  });
+  const value = Math.min(1000, Math.max(0, Math.round(Number(val) || 0)));
+  speedSlider.value = value;
+  if (currentLocoUid !== null && locList[currentLocoUid]) updateSpeedUI(value);
+  if (currentLocoUid === null) return;
+
+  pendingSpeed = value;
+  pendingSpeedLocoUid = currentLocoUid;
+  scheduleSpeedSend();
+}
+
+/**
+ * Preserve the exact release value so throttling cannot drop the user's final speed.
+ *
+ * @param {number} val – the final speed value (0–1000)
+ */
+function sendSpeedImmediately(val) {
+  setLocoSpeed(val);
+
+  if (speedSendTimer !== null) {
+    clearTimeout(speedSendTimer);
+    speedSendTimer = null;
+  }
+
+  if (pendingSpeed !== null && !speedRequestInFlight) sendPendingSpeed();
+}
+
+/**
+ * Limit request frequency while allowing rapid input to replace stale queued values.
+ */
+function scheduleSpeedSend() {
+  if (pendingSpeed === null || speedRequestInFlight || speedSendTimer !== null) return;
+
+  const elapsed = performance.now() - lastSpeedSendTime;
+  const delay = Math.max(0, SPEED_SEND_INTERVAL - elapsed);
+  speedSendTimer = setTimeout(() => {
+    speedSendTimer = null;
+    sendPendingSpeed();
+  }, delay);
+}
+
+/**
+ * Serialize fetches so slow requests cannot build up, then send the newest queued value.
+ */
+async function sendPendingSpeed() {
+  if (pendingSpeed === null || speedRequestInFlight) return;
+  if (pendingSpeedLocoUid === null) {
+    pendingSpeed = null;
+    return;
+  }
+
+  const value = pendingSpeed;
+  const locoUid = pendingSpeedLocoUid;
+  pendingSpeed = null;
+  pendingSpeedLocoUid = null;
+  speedRequestInFlight = true;
+  lastSpeedSendTime = performance.now();
+
+  try {
+    const response = await fetch('/api/control_event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        loco_id: locoUid,
+        speed: value
+      })
+    });
+
+    if (!response.ok) console.warn('Speed command failed:', response.status);
+  } catch (err) {
+    console.warn('Failed to send speed:', err);
+  } finally {
+    speedRequestInFlight = false;
+    if (pendingSpeed !== null) scheduleSpeedSend();
+  }
 }
 
 /**
