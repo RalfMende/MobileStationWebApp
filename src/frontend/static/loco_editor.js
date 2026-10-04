@@ -126,7 +126,35 @@ function handleConfigValue(uid, cv, value) {
 
 function updateEditorStatus(message) {
   const status = document.getElementById('editorStatus');
-  if (status) status.textContent = message;
+  if (status) {
+    status.textContent = message;
+    status.classList.remove('warning');
+  }
+}
+
+function showEditorWarning(message) {
+  const status = document.getElementById('editorStatus');
+  if (status) {
+    status.textContent = message;
+    status.classList.add('warning');
+  }
+}
+
+async function canConfigureLocomotive() {
+  try {
+    const response = await fetch('/api/health', { cache: 'no-store' });
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    const health = await response.json();
+    if (health.system_state !== 'running') {
+      showEditorWarning('Configuration of the locomotive is not possible while the system is in STOP state.');
+      return false;
+    }
+    return true;
+  } catch (error) {
+    showEditorWarning('Unable to check system state; configuration request cancelled.');
+    console.error(error);
+    return false;
+  }
 }
 
 function connectEditorSSE() {
@@ -182,24 +210,24 @@ function setupReadControl(definition, valueCell) {
   button.textContent = 'Read';
   button.addEventListener('click', async function () {
     if (readInProgress) return;
+    if (!await canConfigureLocomotive()) return;
     readInProgress = true;
     const readButtons = Array.from(document.querySelectorAll('.cv-read-button'));
     readButtons.forEach(function (readButton) { readButton.disabled = true; });
-    const status = valueCell.querySelector('.cv-read-status');
     const responseCvs = definition.response_step > 0
       ? Array.from({ length: definition.length }, function (_, i) { return definition.cv + i * definition.response_step; })
       : [definition.cv];
     expectedCvs = new Set(responseCvs);
     receivedCvs.clear();
-    status.textContent = 'Reading…';
+    updateEditorStatus('Reading CV ' + definition.cv + '…');
 
     try {
       await connectEditorSSE();
       await requestConfigRead(currentUid, definition.cv, definition.length);
       const missing = await waitForConfigValues(responseCvs, definition.response_step > 0 ? 5000 : 2500);
-      status.textContent = missing.length ? 'No response' : 'Read';
+      updateEditorStatus(missing.length ? 'No response for CV ' + missing.join(', ') : 'CV read complete.');
     } catch (error) {
-      status.textContent = 'Read failed';
+      updateEditorStatus('CV read failed.');
       console.error(error);
     } finally {
       readInProgress = false;
@@ -207,10 +235,7 @@ function setupReadControl(definition, valueCell) {
     }
   });
 
-  const status = document.createElement('span');
-  status.className = 'cv-read-status';
-  status.setAttribute('role', 'status');
-  valueCell.append(button, status);
+  valueCell.append(button);
 }
 
 async function requestConfigWrite(uid, cv, value) {
@@ -243,32 +268,29 @@ function setupWriteControl(definition, field, valueCell, valueElement) {
     button.className = 'cv-write-button';
     button.textContent = 'Write';
     button.addEventListener('click', async function () {
+      if (!await canConfigureLocomotive()) return;
       const value = Number(input.value);
-      const status = valueCell.querySelector('.cv-write-status');
       if (!Number.isInteger(value) || value < Number(range[1]) || value > Number(range[2])) {
-        status.textContent = 'Enter ' + range[1] + '–' + range[2];
+        updateEditorStatus('Enter a value between ' + range[1] + ' and ' + range[2] + '.');
         input.focus();
         return;
       }
 
       button.disabled = true;
-      status.textContent = 'Writing…';
+      updateEditorStatus('Writing CV ' + definition.cv + '…');
       try {
         await requestConfigWrite(currentUid, definition.cv, value);
-        status.textContent = 'Sent; waiting for CAN response…';
+        updateEditorStatus('Write request sent; waiting for CAN response…');
       } catch (error) {
-        status.textContent = 'Write failed';
+        updateEditorStatus('CV write failed.');
         console.error(error);
       } finally {
         button.disabled = false;
       }
     });
 
-    const status = document.createElement('span');
-    status.className = 'cv-write-status';
-    status.setAttribute('role', 'status');
     valueElement.replaceWith(input);
-    valueCell.append(button, status);
+    valueCell.append(button);
 }
 
 function renderCvTable(definitions, configValues) {
