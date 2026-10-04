@@ -33,6 +33,12 @@ def find_free_port():
         return s.getsockname()[1]
 
 
+def find_free_udp_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
 def parse_int_auto(value):
     """Mirror parse_int_auto() from main.cpp: decimal or 0x-prefixed hex."""
     value = value.strip()
@@ -50,8 +56,9 @@ def parse_int_auto(value):
 class BackendServer:
     """Starts mswebapp_cpp against a temp copy of var/config and tears it down again."""
 
-    def __init__(self, config_src_dir=CONFIG_SRC_DIR):
+    def __init__(self, config_src_dir=CONFIG_SRC_DIR, udp_rx_port=None):
         self.config_src_dir = config_src_dir
+        self.udp_rx_port = udp_rx_port
         self.proc = None
         self.port = None
         self.tmpdir = None
@@ -68,9 +75,12 @@ class BackendServer:
         shutil.copytree(self.config_src_dir, cfg_dir)
 
         self.port = find_free_port()
+        args = [str(binary), "--config", self.tmpdir, "--www", str(FRONTEND_DIR),
+                "--host", "127.0.0.1", "--port", str(self.port)]
+        if self.udp_rx_port is not None:
+            args.extend(["--udp-rx", str(self.udp_rx_port)])
         self.proc = subprocess.Popen(
-            [str(binary), "--config", self.tmpdir, "--www", str(FRONTEND_DIR),
-             "--host", "127.0.0.1", "--port", str(self.port)],
+            args,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
         )
         self._wait_for_ready(timeout)

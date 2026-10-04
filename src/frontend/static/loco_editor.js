@@ -255,8 +255,7 @@ function setupWriteControl(definition, field, valueCell, valueElement) {
       status.textContent = 'Writing…';
       try {
         await requestConfigWrite(currentUid, definition.cv, value);
-        setFieldValue(field, value);
-        status.textContent = 'Sent';
+        status.textContent = 'Sent; waiting for CAN response…';
       } catch (error) {
         status.textContent = 'Write failed';
         console.error(error);

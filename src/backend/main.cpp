@@ -82,6 +82,11 @@ static bool loco_address_from_uid(const Loco &loco, int &address) {
     return true;
 }
 
+static void initialize_loco_address(Loco &loco) {
+    int address = 0;
+    if (loco_address_from_uid(loco, address)) loco.config_values["adresse"] = std::to_string(address);
+}
+
 struct CvDefinition {
     std::string key;
     std::string range;
@@ -300,24 +305,10 @@ static std::string loco_list_json() {
         os << ",\"protocol\":\"" << json_escape(l.protocol) << "\"";
         os << ",\"config_values\":{";
         bool first_value = true;
-        int derived_address = 0;
-        const bool has_derived_address = loco_address_from_uid(l, derived_address);
-        bool address_emitted = false;
         for (const auto &value : l.config_values) {
             if (!first_value) os << ",";
             first_value = false;
-            os << "\"" << json_escape(value.first) << "\":\"";
-            if (value.first == "adresse" && has_derived_address) {
-                os << derived_address;
-                address_emitted = true;
-            } else {
-                os << json_escape(value.second);
-            }
-            os << "\"";
-        }
-        if (has_derived_address && !address_emitted) {
-            if (!first_value) os << ",";
-            os << "\"adresse\":\"" << derived_address << "\"";
+            os << "\"" << json_escape(value.first) << "\":\"" << json_escape(value.second) << "\"";
         }
         os << "}";
         os << ",\"fn_count\":" << l.fn_count;
@@ -483,7 +474,10 @@ static void parse_lokomotive_cs2(const fs::path &p) {
     while (std::getline(f, line)) {
         line = trim(line);
         if (line == "lokomotive") {
-            if (in && cur.uid) g_locos[cur.uid] = cur;
+            if (in && cur.uid) {
+                initialize_loco_address(cur);
+                g_locos[cur.uid] = cur;
+            }
             cur = Loco{}; in = true; in_fn = false; fn_nr = -1; fn_typ = -1;
         } else if (in) {
             if (!line.empty() && line.rfind(".funktionen", 0) == 0) {
@@ -530,7 +524,10 @@ static void parse_lokomotive_cs2(const fs::path &p) {
             }
         }
     }
-    if (in && cur.uid) g_locos[cur.uid] = cur;
+    if (in && cur.uid) {
+        initialize_loco_address(cur);
+        g_locos[cur.uid] = cur;
+    }
 }
 
 static void parse_magnetartikel_cs2(const fs::path &p) {
@@ -590,6 +587,7 @@ static std::string direction_event_json(int uid, int dir);
 static std::string function_event_json(int uid, int fn, bool val);
 static std::string switch_event_json(int idx, int val);
 static std::string config_value_event_json(int uid, int cv, int value);
+static void apply_loco_config_response(int uid, int cv, int value);
 
 // ---- UDP send/recv stubs ----
 // ---- UDP CS2 helpers ----
@@ -885,12 +883,11 @@ static void udp_listener_thread(std::atomic<bool>& stop_flag) {
                     idx = uid & 0x3FF; if (idx >= 64) idx = idx % 64;
                 }
                 g_switch_state[idx] = value; publish_event(switch_event_json(idx, value));
-            } else if (command == CMD_READ_CONFIG && dlc >= 7) {
-                // Data layout: [0..3]=Loc-ID, [4..5]=CV-Index, [6]=Wert
+            } else if ((command == CMD_READ_CONFIG || command == CMD_WRITE_CONFIG) && dlc >= 7) {
                 int uid = (int(data[0])<<24)|(int(data[1])<<16)|(int(data[2])<<8)|int(data[3]);
                 int cv = (int(data[4])<<8)|int(data[5]);
                 int value = int(data[6]);
-                publish_event(config_value_event_json(uid, cv, value));
+                apply_loco_config_response(uid, cv, value);
             }
         }
     }
@@ -962,11 +959,11 @@ static void can_listener_thread(std::atomic<bool>& stop_flag) {
                 }
                 if (idx < 0) { idx = uid & 0x3FF; if (idx >= 64) idx = idx % 64; }
                 g_switch_state[idx] = value; publish_event(switch_event_json(idx, value));
-            } else if (command == CMD_READ_CONFIG && dlc >= 7) {
+            } else if ((command == CMD_READ_CONFIG || command == CMD_WRITE_CONFIG) && dlc >= 7) {
                 int uid = (int(data[0])<<24)|(int(data[1])<<16)|(int(data[2])<<8)|int(data[3]);
                 int cv = (int(data[4])<<8)|int(data[5]);
                 int value = int(data[6]);
-                publish_event(config_value_event_json(uid, cv, value));
+                apply_loco_config_response(uid, cv, value);
             }
         }
     }
@@ -1030,6 +1027,42 @@ static std::string config_value_event_json(int uid, int cv, int value) {
     return os.str();
 }
 
+static void apply_loco_config_response(int uid, int cv, int value) {
+    auto loco_it = g_locos.find(uid);
+    if (loco_it == g_locos.end()) return;
+
+    std::string protocol = loco_it->second.protocol;
+    std::transform(protocol.begin(), protocol.end(), protocol.begin(), [](unsigned char c){ return (char)std::tolower(c); });
+    auto protocol_it = g_loco_cv_map.find(protocol);
+    if (protocol_it == g_loco_cv_map.end()) return;
+
+    bool matched = false;
+    for (const auto &definition : protocol_it->second) {
+        if (definition.response_step > 0 && cv >= definition.cv &&
+            (cv - definition.cv) % definition.response_step == 0) {
+            const int index = (cv - definition.cv) / definition.response_step;
+            if (index < definition.length) {
+                std::string &text = loco_it->second.config_values[definition.key];
+                if (value == 0) {
+                    if (text.size() > static_cast<size_t>(index)) text.resize(static_cast<size_t>(index));
+                } else {
+                    if (text.size() <= static_cast<size_t>(index)) text.resize(static_cast<size_t>(index) + 1, ' ');
+                    text[static_cast<size_t>(index)] = static_cast<char>(value);
+                }
+                if (definition.key == "name") loco_it->second.name = text;
+                matched = true;
+            }
+            break;
+        }
+        if (definition.cv == cv) {
+            loco_it->second.config_values[definition.key] = std::to_string(value);
+            matched = true;
+            break;
+        }
+    }
+    if (matched) publish_event(config_value_event_json(uid, cv, value));
+}
+
 int main(int argc, char** argv) {
 #ifdef _WIN32
     WSADATA wsaData; WSAStartup(MAKEWORD(2,2), &wsaData);
@@ -1040,6 +1073,7 @@ int main(int argc, char** argv) {
         auto next = [&](int &i){ return (i+1<argc)? std::string(argv[++i]) : std::string(); };
         if (a == "--config") g_config_dir = next(i);
         else if (a == "--udp-ip") g_udp_ip = next(i);
+        else if (a == "--udp-rx") g_udp_rx = std::stoi(next(i));
         else if (a == "--host") g_bind_host = next(i);
         else if (a == "--port") g_http_port = std::stoi(next(i));
         else if (a == "--www") { g_frontend_dir_override = next(i); }
@@ -1057,6 +1091,7 @@ int main(int argc, char** argv) {
             printf("Usage: mswebapp [options]\n");
             printf("  --config <dir>     Path to config directory (contains config/, icons/, fcticons/, ...)\n");
             printf("  --udp-ip <ip|host> UDP target ip/host (default Gleisbox)\n");
+            printf("  --udp-rx <port>    UDP receive port (default %d)\n", g_udp_rx);
             printf("  --host <addr>      HTTP bind host (default 0.0.0.0)\n");
             printf("  --port <port>      HTTP port (default 6020)\n");
             printf("  --www <dir>        Frontend directory containing index.html and static/\n");

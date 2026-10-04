@@ -27,7 +27,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _mswebapp_test_utils import BackendServer, CONFIG_SRC_DIR
+from _mswebapp_test_utils import BackendServer, CONFIG_SRC_DIR, find_free_udp_port
 
 LOKOMOTIVE_CS2 = CONFIG_SRC_DIR / "lokomotive.cs2"
 MAGNETARTIKEL_CS2 = CONFIG_SRC_DIR / "magnetartikel.cs2"
@@ -48,6 +48,7 @@ SYS_STOP = 0x00
 SYS_GO = 0x01
 
 TEST_LOCO_UID = 1       # "Lokliste" in var/config/lokomotive.cs2
+TEST_DCC_LOCO_UID = 0xC005
 TEST_SWITCH_IDX = 0     # "SW 1" in var/config/magnetartikel.cs2 (schaltzeit=200ms)
 
 
@@ -123,7 +124,8 @@ class CanProtocolTest(unittest.TestCase):
         # Bind the capture socket before starting the backend so no outgoing
         # frame can be missed.
         cls.capture = CanCapture()
-        cls.server = BackendServer().start()
+        cls.server = BackendServer(udp_rx_port=find_free_udp_port()).start()
+        cls.initial_loco_list = cls.server.get_json("/api/loco_list")
 
     @classmethod
     def tearDownClass(cls):
@@ -131,6 +133,9 @@ class CanProtocolTest(unittest.TestCase):
             cls.server.stop()
         if cls.capture is not None:
             cls.capture.close()
+
+    def send_inbound(self, command, payload, dlc):
+        send_inbound_frame(command, payload, dlc, port=self.server.udp_rx_port)
 
     # ---- Outgoing frames triggered by HTTP control endpoints ----
 
@@ -146,7 +151,7 @@ class CanProtocolTest(unittest.TestCase):
         self.assertNotIn("label", dcc_by_key["adresse"])
         self.assertNotIn("field", dcc_by_key["adresse"])
 
-        locos = self.server.get_json("/api/loco_list")
+        locos = self.initial_loco_list
         self.assertEqual(locos["1"]["config_values"]["adresse"], "1")
         self.assertEqual(locos[str(0x4005)]["config_values"]["adresse"], "5")
         self.assertEqual(locos[str(0xC005)]["config_values"]["adresse"], "5")
@@ -268,33 +273,65 @@ class CanProtocolTest(unittest.TestCase):
     # ---- Inbound synthetic CS2/GFP response frames ----
 
     def test_inbound_system_go_sets_health_running(self):
-        send_inbound_frame(CMD_SYSTEM, bytes([0, 0, 0, 0, SYS_GO]), dlc=5)
+        self.send_inbound(CMD_SYSTEM, bytes([0, 0, 0, 0, SYS_GO]), dlc=5)
         ok = wait_until(lambda: self.server.get_json("/api/health")["system_state"] == "running")
         self.assertTrue(ok, "backend did not report system_state=running after System Go frame")
 
     def test_inbound_system_stop_sets_health_stopped(self):
-        send_inbound_frame(CMD_SYSTEM, bytes([0, 0, 0, 0, SYS_GO]), dlc=5)
+        self.send_inbound(CMD_SYSTEM, bytes([0, 0, 0, 0, SYS_GO]), dlc=5)
         wait_until(lambda: self.server.get_json("/api/health")["system_state"] == "running")
 
-        send_inbound_frame(CMD_SYSTEM, bytes([0, 0, 0, 0, SYS_STOP]), dlc=5)
+        self.send_inbound(CMD_SYSTEM, bytes([0, 0, 0, 0, SYS_STOP]), dlc=5)
         ok = wait_until(lambda: self.server.get_json("/api/health")["system_state"] == "stopped")
         self.assertTrue(ok, "backend did not report system_state=stopped after System Stopp frame")
 
     def test_inbound_speed_response_updates_loco_state(self):
         speed = 777
         payload = TEST_LOCO_UID.to_bytes(4, "big") + speed.to_bytes(2, "big")
-        send_inbound_frame(CMD_SPEED, payload, dlc=6)
+        self.send_inbound(CMD_SPEED, payload, dlc=6)
         ok = wait_until(
             lambda: self.server.get_json(f"/api/loco_state?loco_id={TEST_LOCO_UID}")["speed"] == speed)
         self.assertTrue(ok, "backend did not update loco speed from inbound CAN frame")
 
     def test_inbound_function_response_updates_loco_state(self):
         payload = TEST_LOCO_UID.to_bytes(4, "big") + bytes([7, 1])
-        send_inbound_frame(CMD_FUNCTION, payload, dlc=6)
+        self.send_inbound(CMD_FUNCTION, payload, dlc=6)
         ok = wait_until(
             lambda: self.server.get_json(f"/api/loco_state?loco_id={TEST_LOCO_UID}")
             ["functions"].get("7") == 1)
         self.assertTrue(ok, "backend did not update loco function state from inbound CAN frame")
+
+    def test_inbound_write_config_response_updates_loco_config(self):
+        cv = 5
+        value = 123
+        locos_before = self.server.get_json("/api/loco_list")
+        self.assertEqual(locos_before[str(TEST_DCC_LOCO_UID)]["config_values"]["vmax"], "90")
+
+        self.server.post_json(
+            "/api/loco_config", {"write": True, "uid": TEST_DCC_LOCO_UID, "cv": cv, "value": value})
+        can_id, dlc, data = self.capture.recv_frame()
+        command, _ = decode_command(can_id)
+        self.assertEqual(command, CMD_WRITE_CONFIG)
+        self.assertEqual(dlc, 8)
+        self.assertEqual(data[6], value)
+        self.assertEqual(data[7], 0)
+        locos_after_write = self.server.get_json("/api/loco_list")
+        self.assertEqual(locos_after_write[str(TEST_DCC_LOCO_UID)]["config_values"]["vmax"], "90")
+
+        payload = TEST_DCC_LOCO_UID.to_bytes(4, "big") + cv.to_bytes(2, "big") + bytes([value, 0])
+        self.send_inbound(CMD_WRITE_CONFIG, payload, dlc=8)
+        ok = wait_until(lambda: self.server.get_json("/api/loco_list")
+                        [str(TEST_DCC_LOCO_UID)]["config_values"].get("vmax") == str(value))
+        self.assertTrue(ok, "backend did not update the locomotive CV value from Write-Config response")
+
+    def test_inbound_read_config_response_replaces_uid_derived_address(self):
+        cv = 1
+        value = 7
+        payload = TEST_DCC_LOCO_UID.to_bytes(4, "big") + cv.to_bytes(2, "big") + bytes([value])
+        self.send_inbound(CMD_READ_CONFIG, payload, dlc=7)
+        ok = wait_until(lambda: self.server.get_json("/api/loco_list")
+                        [str(TEST_DCC_LOCO_UID)]["config_values"].get("adresse") == str(value))
+        self.assertTrue(ok, "Read-Config response did not replace the UID-derived address in config")
 
 
 if __name__ == "__main__":
