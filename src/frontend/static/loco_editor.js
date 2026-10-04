@@ -17,6 +17,8 @@ let expectedCvs = new Set();
 let receivedCvs = new Set();
 let configWaiters = new Set();
 let readInProgress = false;
+let requestedReadCvs = new Set();
+let readCvs = new Set();
 const CV_LABELS = {
   en: {
     adresse: 'Address', vmin: 'Minimum Speed', av: 'Acceleration Delay',
@@ -109,6 +111,10 @@ function handleConfigValue(uid, cv, value) {
   if (!definitions) return;
   if (!expectedCvs.has(cv)) return;
   receivedCvs.add(cv);
+  if (requestedReadCvs.has(cv)) {
+    readCvs.add(cv);
+    setWriteControlEnabled(cv, true);
+  }
   updateEditorStatus('Responses: ' + receivedCvs.size + '/' + expectedCvs.size);
   configWaiters.forEach(function (check) { check(); });
   const name = definitions.find(function (definition) { return definition.response_step > 0; });
@@ -155,6 +161,13 @@ async function canConfigureLocomotive() {
     console.error(error);
     return false;
   }
+}
+
+function setWriteControlEnabled(cv, enabled) {
+  document.querySelectorAll('.cv-write-button[data-cv-index="' + cv + '"]').forEach(function (button) {
+    button.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+    button.classList.toggle('is-disabled', !enabled);
+  });
 }
 
 function connectEditorSSE() {
@@ -219,6 +232,7 @@ function setupReadControl(definition, valueCell) {
       : [definition.cv];
     expectedCvs = new Set(responseCvs);
     receivedCvs.clear();
+    requestedReadCvs = new Set(responseCvs);
     updateEditorStatus('Reading CV ' + definition.cv + '…');
 
     try {
@@ -267,7 +281,14 @@ function setupWriteControl(definition, field, valueCell, valueElement) {
     button.type = 'button';
     button.className = 'cv-write-button';
     button.textContent = 'Write';
+    button.dataset.cvIndex = String(definition.cv);
+    button.setAttribute('aria-disabled', readCvs.has(definition.cv) ? 'false' : 'true');
+    button.classList.toggle('is-disabled', !readCvs.has(definition.cv));
     button.addEventListener('click', async function () {
+      if (!readCvs.has(definition.cv)) {
+        showEditorWarning('Read this CV before writing it.');
+        return;
+      }
       if (!await canConfigureLocomotive()) return;
       const value = Number(input.value);
       if (!Number.isInteger(value) || value < Number(range[1]) || value > Number(range[2])) {
@@ -391,6 +412,8 @@ async function init() {
     return;
   }
 
+  requestedReadCvs.clear();
+  readCvs.clear();
   const expectedResponseCvs = renderCvTable(definitions, locoConfigValues);
   expectedCvs = new Set(expectedResponseCvs);
   const nameDefinition = definitions.find(function (definition) { return definition.response_step > 0; });

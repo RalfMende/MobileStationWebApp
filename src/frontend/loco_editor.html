@@ -79,6 +79,7 @@
       font: inherit;
       cursor: pointer;
     }
+    .cv-write-button.is-disabled { opacity: 0.5; cursor: not-allowed; }
     .cv-write-status { display: block; color: var(--editor-label); font-size: 0.7rem; }
     #editorUnsupported { display: none; color: #ffe0df; margin-top: 1rem; }
     #editorStatus { color: var(--editor-label); font-size: 0.85rem; margin-top: 1rem; }
@@ -103,6 +104,6 @@
     <p id="editorStatus" role="status" aria-live="polite">Connecting…</p>
     <p id="editorUnsupported">No CVs are currently defined for this decoder protocol.</p>
   </div>
-  <script src="/static/loco_editor.js?v=19"></script>
+  <script src="/static/loco_editor.js?v=20"></script>
 </body>
 </html>
