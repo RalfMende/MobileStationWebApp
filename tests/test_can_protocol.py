@@ -41,6 +41,7 @@ CMD_SPEED = 0x04
 CMD_DIRECTION = 0x05
 CMD_FUNCTION = 0x06
 CMD_READ_CONFIG = 0x07
+CMD_WRITE_CONFIG = 0x08
 CMD_SWITCH = 0x0B
 
 SYS_STOP = 0x00
@@ -169,7 +170,7 @@ class CanProtocolTest(unittest.TestCase):
 
     def test_loco_config_read_requests_one_cv_value(self):
         status, _ = self.server.post_json(
-            "/api/loco_config_read", {"uid": TEST_LOCO_UID, "cvs": [1325], "count": 1})
+            "/api/loco_config", {"uid": TEST_LOCO_UID, "cvs": [1325], "count": 1})
         self.assertEqual(status, 200)
 
         can_id, dlc, data = self.capture.recv_frame()
@@ -183,7 +184,7 @@ class CanProtocolTest(unittest.TestCase):
 
     def test_loco_config_read_requests_name_length(self):
         status, _ = self.server.post_json(
-            "/api/loco_config_read", {"uid": TEST_LOCO_UID, "cvs": [1027], "count": 16})
+            "/api/loco_config", {"uid": TEST_LOCO_UID, "cvs": [1027], "count": 16})
         self.assertEqual(status, 200)
 
         can_id, dlc, data = self.capture.recv_frame()
@@ -192,6 +193,21 @@ class CanProtocolTest(unittest.TestCase):
         self.assertEqual(dlc, 7)
         self.assertEqual(int.from_bytes(data[4:6], "big"), 1027)
         self.assertEqual(data[6], 16)
+
+    def test_loco_config_write_emits_write_config_frame(self):
+        status, _ = self.server.post_json(
+            "/api/loco_config", {"write": True, "uid": TEST_LOCO_UID, "cv": 5, "value": 120})
+        self.assertEqual(status, 200)
+
+        can_id, dlc, data = self.capture.recv_frame()
+        command, resp = decode_command(can_id)
+        self.assertEqual(command, CMD_WRITE_CONFIG)
+        self.assertEqual(resp, 0)
+        self.assertEqual(dlc, 8)
+        self.assertEqual(int.from_bytes(data[0:4], "big"), TEST_LOCO_UID)
+        self.assertEqual(int.from_bytes(data[4:6], "big"), 5)
+        self.assertEqual(data[6], 120)
+        self.assertEqual(data[7], 0)
 
     def test_stop_button_emits_system_stopp_go_frames(self):
         self.server.post_json("/api/stop_button", {"state": True})

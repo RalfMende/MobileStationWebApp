@@ -18,11 +18,29 @@ const CV_MAP = {
     name: { cv: 1027, length: 16, field: 'name' }
   },
   dcc: {
-    address: { cv: 1, length: 1, field: 'dccAddress' },
-    vmin: { cv: 2, length: 1 },
-    acc: { cv: 3, length: 1 },
-    dcc: { cv: 4, length: 1 },
-    vmax: { cv: 5, length: 1 }
+    address: { cv: 1, length: 1, values: '1-127' },
+    vmin: { cv: 2, length: 1, values: '0-255' },
+    acc: { cv: 3, length: 1, values: '0-71' },
+    dcc: { cv: 4, length: 1, values: '0-71'  },
+    vmax: { cv: 5, length: 1, values: '0-255' },
+    //reset: { cv: 8, length: 1 },
+    //config: { cv: 29, length: 1 },
+    vol: { cv: 63, length: 1, values: '0-255' }
+  },
+  mm2_prog: {
+    address: { cv: 1, length: 1, values: '1-80' },
+    vmin: { cv: 2, length: 1, values: '1-80' },
+    acc: { cv: 3, length: 1, values: '1-80' },
+    dcc: { cv: 4, length: 1, values: '1-80' },
+    vmax: { cv: 5, length: 1, values: '0-63' },
+    //meas_trip: { cv: 7, length: 1 },
+    //reset: { cv: 6, length: 1 },
+    //address_following_on: { cv: 49, length: 1},
+    //address_following_1: { cv: 75, length: 1},
+    //address_following_2: { cv: 17, length: 1},
+    //address_following_3: { cv: 18, length: 1},
+    //alt_prot: { cv: 50, length: 1 },
+    vol: { cv: 63, length: 1, values: '0-63' }
   }
 };
 
@@ -39,14 +57,16 @@ function normalizeProtocol(raw) {
   const p = String(raw || '').toLowerCase();
   if (p.indexOf('mfx') !== -1) return 'mfx';
   if (p.indexOf('dcc') !== -1) return 'dcc';
-  if (p.indexOf('mm') !== -1) return 'mm';
+  if (p.indexOf('mm2') !== -1) return 'mm2_prog';
   return '';
 }
 
 function setFieldValue(key, value) {
   const el = document.querySelector('[data-protocol="' + currentProtocol + '"] [data-cv-field="' + key + '"]')
     || document.querySelector('[data-cv-field="' + key + '"]');
-  if (el) el.textContent = String(value);
+  if (!el) return;
+  if (el instanceof HTMLInputElement) el.value = String(value);
+  else el.textContent = String(value);
 }
 
 function setCvIndexValue(key, value) {
@@ -150,12 +170,79 @@ function connectEditorSSE() {
 }
 
 async function requestConfigRead(uid, cv, length) {
-  const response = await fetch('/api/loco_config_read', {
+  const response = await fetch('/api/loco_config', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ uid: uid, cvs: [cv], count: length })
   });
   if (!response.ok) throw new Error('Read request failed: HTTP ' + response.status);
+}
+
+async function requestConfigWrite(uid, cv, value) {
+  const response = await fetch('/api/loco_config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ write: true, uid: uid, cv: cv, value: value })
+  });
+  if (!response.ok) throw new Error('Write request failed: HTTP ' + response.status);
+}
+
+function setupWriteControls(map) {
+  Object.keys(map).forEach(function (key) {
+    const definition = map[key];
+    if (!definition.values) return;
+
+    const range = String(definition.values).match(/^(\d+)-(\d+)$/);
+    if (!range) return;
+    const field = definition.field || key;
+    const valueEl = document.querySelector('[data-protocol="' + currentProtocol + '"] [data-cv-field="' + field + '"]')
+      || document.querySelector('[data-cv-field="' + field + '"]');
+    const cell = valueEl && valueEl.closest('td');
+    if (!cell) return;
+
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.className = 'cv-value cv-value-input';
+    input.min = range[1];
+    input.max = range[2];
+    input.step = '1';
+    input.inputMode = 'numeric';
+    input.dataset.cvField = field;
+    input.setAttribute('aria-label', 'Value for ' + key + ' (CV ' + definition.cv + ')');
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'cv-write-button';
+    button.textContent = 'Write';
+    button.addEventListener('click', async function () {
+      const value = Number(input.value);
+      const status = cell.querySelector('.cv-write-status');
+      if (!Number.isInteger(value) || value < Number(range[1]) || value > Number(range[2])) {
+        status.textContent = 'Enter ' + range[1] + '–' + range[2];
+        input.focus();
+        return;
+      }
+
+      button.disabled = true;
+      status.textContent = 'Writing…';
+      try {
+        await requestConfigWrite(currentUid, definition.cv, value);
+        setFieldValue(field, value);
+        status.textContent = 'Sent';
+      } catch (error) {
+        status.textContent = 'Write failed';
+        console.error(error);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    const status = document.createElement('span');
+    status.className = 'cv-write-status';
+    status.setAttribute('role', 'status');
+    valueEl.replaceWith(input);
+    cell.append(button, status);
+  });
 }
 
 function getUidFromUrl() {
@@ -201,9 +288,12 @@ async function init() {
   }
 
   setCvIndexValue('name', map.name ? '1027–16387' : '');
-  setCvIndexValue('dccAddress', map.address ? String(map.address.cv) : '');
-  setFieldValue('name', map.name ? '—' : '');
-  setFieldValue('dccAddress', map.address ? '…' : '');
+  setCvIndexValue('address', map.address ? String(map.address.cv) : '');
+  setFieldValue('address', map.address ? '…' : '');
+  setupWriteControls(map);
+  Object.keys(map).forEach(function (key) {
+    setFieldValue(map[key].field || key, '');
+  });
 
   const definitions = Object.keys(map).map(function (key) {
     return { key: key, cv: map[key].cv, length: map[key].length };

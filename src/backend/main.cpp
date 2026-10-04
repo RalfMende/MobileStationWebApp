@@ -554,6 +554,19 @@ static std::vector<uint8_t> payload_read_config(uint32_t loco_uid, int cv_index,
     return b;
 }
 
+static std::vector<uint8_t> payload_write_config(uint32_t loco_uid, int cv_index, int value) {
+    std::vector<uint8_t> b;
+    b.push_back((loco_uid >> 24) & 0xFF);
+    b.push_back((loco_uid >> 16) & 0xFF);
+    b.push_back((loco_uid >> 8) & 0xFF);
+    b.push_back(loco_uid & 0xFF);
+    b.push_back((cv_index >> 8) & 0xFF);
+    b.push_back(cv_index & 0xFF);
+    b.push_back(value & 0xFF);
+    b.push_back(0x00);
+    return b;
+}
+
 static void udp_send_frame(uint32_t can_id, const std::vector<uint8_t> &payload, int dlc) {
      auto data = pad_to_8(payload);
 #ifdef _WIN32
@@ -1146,10 +1159,8 @@ int main(int argc, char** argv) {
         res.set_content(os.str(), "application/json");
     });
 
-    // API: read locomotive CV values over CAN/UDP (used by the loco CV editor page).
-    // Sends a CS2 "Read Config" request frame per CV index, spaced slightly apart;
-    // publishes matching "config_value" SSE events once response frames arrive.
-    svr.Post("/api/loco_config_read", [&](const httplib::Request& req, httplib::Response &res){
+    // API: read or write locomotive CV values over CAN/UDP.
+    svr.Post("/api/loco_config", [&](const httplib::Request& req, httplib::Response &res){
         auto body = req.body;
         auto find_num = [&](const char* key)->int{
             auto pos = body.find(key);
@@ -1161,33 +1172,63 @@ int main(int argc, char** argv) {
             if (k>j) return std::stoi(body.substr(j,k-j));
             return -1;
         };
+        auto find_bool = [&](const char* key, bool fallback)->bool{
+            auto pos = body.find(key);
+            if (pos==std::string::npos) return fallback;
+            pos = body.find(':', pos);
+            if (pos==std::string::npos) return fallback;
+            size_t j = pos+1;
+            while (j<body.size() && isspace((unsigned char)body[j])) j++;
+            if (body.compare(j, 4, "true") == 0) return true;
+            if (body.compare(j, 5, "false") == 0) return false;
+            return fallback;
+        };
+        bool write = find_bool("\"write\"", false);
         int uid = find_num("\"uid\"");
         if (uid <= 0) { res.status=400; res.set_content("{\"status\":\"error\",\"message\":\"uid required\"}","application/json"); return; }
-        int length = find_num("\"count\"");
-        if (length < 1 || length > 255) length = 1;
-        std::vector<int> cvs;
-        auto arr_pos = body.find("\"cvs\"");
-        if (arr_pos != std::string::npos) {
-            auto lb = body.find('[', arr_pos);
-            auto rb = (lb != std::string::npos) ? body.find(']', lb) : std::string::npos;
-            if (lb != std::string::npos && rb != std::string::npos && rb > lb) {
-                std::string arr = body.substr(lb+1, rb-lb-1);
-                std::stringstream ss(arr); std::string tok;
-                while (std::getline(ss, tok, ',')) {
-                    tok = trim(tok);
-                    if (!tok.empty()) { try { cvs.push_back(std::stoi(tok)); } catch (...) {} }
+
+        if (!write) {
+            int length = find_num("\"count\"");
+            if (length < 1 || length > 255) length = 1;
+            std::vector<int> cvs;
+            auto arr_pos = body.find("\"cvs\"");
+            if (arr_pos != std::string::npos) {
+                auto lb = body.find('[', arr_pos);
+                auto rb = (lb != std::string::npos) ? body.find(']', lb) : std::string::npos;
+                if (lb != std::string::npos && rb != std::string::npos && rb > lb) {
+                    std::string arr = body.substr(lb+1, rb-lb-1);
+                    std::stringstream ss(arr); std::string tok;
+                    while (std::getline(ss, tok, ',')) {
+                        tok = trim(tok);
+                        if (!tok.empty()) { try { cvs.push_back(std::stoi(tok)); } catch (...) {} }
+                    }
                 }
             }
+            if (cvs.empty()) { res.status=400; res.set_content("{\"status\":\"error\",\"message\":\"cvs required\"}","application/json"); return; }
+            std::thread([uid, cvs, length]{
+                for (int cv : cvs) {
+                    uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_READ_CONFIG, 0, 0);
+                    send_cs2_frame(can_id, payload_read_config((uint32_t)uid, cv, length), 7);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+                }
+            }).detach();
+            res.set_content("{\"status\":\"ok\"}", "application/json");
+            return;
         }
-        if (cvs.empty()) { res.status=400; res.set_content("{\"status\":\"error\",\"message\":\"cvs required\"}","application/json"); return; }
-        std::thread([uid, cvs, length]{
-            for (int cv : cvs) {
-                uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_READ_CONFIG, 0, 0);
-            send_cs2_frame(can_id, payload_read_config((uint32_t)uid, cv, length), 7);
-                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+        {
+            int cv = find_num("\"cv\"");
+            int value = find_num("\"value\"");
+            if (cv < 0 || cv > 65535 || value < 0 || value > 255) {
+                res.status=400;
+                res.set_content("{\"status\":\"error\",\"message\":\"cv and byte value required\"}", "application/json");
+                return;
             }
-        }).detach();
-        res.set_content("{\"status\":\"ok\"}", "application/json");
+            uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_WRITE_CONFIG, 0, 0);
+            send_cs2_frame(can_id, payload_write_config((uint32_t)uid, cv, value), 8);
+            res.set_content("{\"status\":\"ok\"}", "application/json");
+            return;
+        }
     });
 
     // API: icons list
