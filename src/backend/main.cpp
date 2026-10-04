@@ -1027,6 +1027,31 @@ static std::string config_value_event_json(int uid, int cv, int value) {
     return os.str();
 }
 
+static std::string loco_uid_changed_event_json(int old_uid, int new_uid) {
+    std::ostringstream os;
+    os << "{\"type\":\"loco_uid_changed\",\"old_uid\":" << old_uid << ",\"new_uid\":" << new_uid << "}";
+    return os.str();
+}
+
+static bool loco_uid_for_address(const Loco &loco, const CvDefinition &definition, int address, int &new_uid) {
+    if (definition.key != "adresse" || definition.range.empty()) return false;
+    const auto separator = definition.range.find('-');
+    int min_address = 0;
+    int max_address = 0;
+    if (separator == std::string::npos ||
+        !parse_xml_int(definition.range.substr(0, separator), min_address) ||
+        !parse_xml_int(definition.range.substr(separator + 1), max_address) ||
+        address < min_address || address > max_address) return false;
+
+    std::string protocol = loco.protocol;
+    std::transform(protocol.begin(), protocol.end(), protocol.begin(), [](unsigned char c){ return (char)std::tolower(c); });
+    uint32_t uid_base = 0;
+    if (protocol == "dcc") uid_base = 0xC000;
+    else if (protocol.rfind("mm2", 0) != 0) return false;
+    new_uid = static_cast<int>(uid_base + static_cast<uint32_t>(address));
+    return true;
+}
+
 static void apply_loco_config_response(int uid, int cv, int value) {
     auto loco_it = g_locos.find(uid);
     if (loco_it == g_locos.end()) return;
@@ -1057,6 +1082,34 @@ static void apply_loco_config_response(int uid, int cv, int value) {
         if (definition.cv == cv) {
             loco_it->second.config_values[definition.key] = std::to_string(value);
             matched = true;
+            int new_uid = uid;
+            if (loco_uid_for_address(loco_it->second, definition, value, new_uid) && new_uid != uid) {
+                auto collision = g_locos.find(new_uid);
+                if (collision != g_locos.end()) {
+                    if (g_verbose) fprintf(stderr, "Cannot change locomotive UID %d to %d: UID is already in use\n", uid, new_uid);
+                    return;
+                }
+
+                Loco updated_loco = std::move(loco_it->second);
+                g_locos.erase(loco_it);
+                updated_loco.uid = new_uid;
+                g_locos.emplace(new_uid, std::move(updated_loco));
+
+                auto move_uid_entry = [uid, new_uid](auto &entries) {
+                    auto it = entries.find(uid);
+                    if (it == entries.end()) return;
+                    entries[new_uid] = std::move(it->second);
+                    entries.erase(it);
+                };
+                move_uid_entry(g_loco_speed);
+                move_uid_entry(g_loco_dir);
+                move_uid_entry(g_loco_fn);
+                move_uid_entry(g_icon_overrides);
+                save_overrides();
+
+                publish_event(loco_uid_changed_event_json(uid, new_uid));
+                uid = new_uid;
+            }
             break;
         }
     }

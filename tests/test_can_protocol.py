@@ -329,9 +329,19 @@ class CanProtocolTest(unittest.TestCase):
         value = 7
         payload = TEST_DCC_LOCO_UID.to_bytes(4, "big") + cv.to_bytes(2, "big") + bytes([value])
         self.send_inbound(CMD_READ_CONFIG, payload, dlc=7)
-        ok = wait_until(lambda: self.server.get_json("/api/loco_list")
-                        [str(TEST_DCC_LOCO_UID)]["config_values"].get("adresse") == str(value))
-        self.assertTrue(ok, "Read-Config response did not replace the UID-derived address in config")
+        new_uid = 0xC000 + value
+        ok = wait_until(lambda: str(new_uid) in self.server.get_json("/api/loco_list"))
+        self.assertTrue(ok, "Read-Config response did not rekey the locomotive to its new address UID")
+        locos = self.server.get_json("/api/loco_list")
+        self.assertNotIn(str(TEST_DCC_LOCO_UID), locos)
+        self.assertEqual(locos[str(new_uid)]["uid"], new_uid)
+        self.assertEqual(locos[str(new_uid)]["config_values"]["adresse"], str(value))
+
+        restore_payload = new_uid.to_bytes(4, "big") + cv.to_bytes(2, "big") + bytes([5])
+        self.send_inbound(CMD_READ_CONFIG, restore_payload, dlc=7)
+        restored = wait_until(lambda: self.server.get_json("/api/loco_list")
+                      .get(str(TEST_DCC_LOCO_UID), {}).get("config_values", {}).get("adresse") == "5")
+        self.assertTrue(restored, "test locomotive UID was not restored after address rekey assertion")
 
 
 if __name__ == "__main__":

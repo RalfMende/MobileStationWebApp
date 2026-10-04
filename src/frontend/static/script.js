@@ -586,6 +586,22 @@ function connectSSE() {
 
 function handleSSEMessage(event) {
   const data = JSON.parse(event.data);
+  if (data.type === 'loco_uid_changed') {
+    var oldUid = String(data.old_uid);
+    var newUid = String(data.new_uid);
+    dockLocoUids = dockLocoUids.map(function(uid) { return uid === oldUid ? newUid : uid; });
+    pinnedLocoUids = pinnedLocoUids.map(function(uid) { return uid === oldUid ? newUid : uid; });
+    saveDockState();
+    if (String(currentLocoUid) === oldUid) {
+      currentLocoUid = Number(data.new_uid);
+      localStorage.setItem('currentLocoUid', newUid);
+      if (pendingSpeedLocoUid != null && String(pendingSpeedLocoUid) === oldUid) {
+        pendingSpeedLocoUid = currentLocoUid;
+      }
+    }
+    loadAndRenderLocoList({ preserveSelection: true });
+    return;
+  }
   if (data.type === 'loco_list_reloaded') {
     // Backend indicates that lokomotive.cs2 changed. Reload list and UI using the shared path.
     loadAndRenderLocoList({ preserveSelection: true });

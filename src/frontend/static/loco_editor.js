@@ -190,7 +190,27 @@ function connectEditorSSE() {
     source.onmessage = function (ev) {
       try {
         const data = JSON.parse(ev.data);
-        if (data.type === 'config_value') handleConfigValue(data.loc_id, data.cv, data.value);
+        if (data.type === 'loco_uid_changed' && Number(data.old_uid) === currentUid) {
+          const oldUid = String(data.old_uid);
+          currentUid = Number(data.new_uid);
+          const newUid = String(currentUid);
+          const url = new URL(window.location.href);
+          url.searchParams.set('uid', newUid);
+          window.history.replaceState(null, '', url.toString());
+          localStorage.setItem('currentLocoUid', newUid);
+          ['dockLocoUids', 'pinnedLocoUids'].forEach(function (key) {
+            try {
+              const uids = JSON.parse(localStorage.getItem(key) || '[]');
+              if (Array.isArray(uids)) {
+                localStorage.setItem(key, JSON.stringify(uids.map(function (uid) {
+                  return String(uid) === oldUid ? newUid : uid;
+                })));
+              }
+            } catch (e) { /* ignore invalid stored dock state */ }
+          });
+        } else if (data.type === 'config_value') {
+          handleConfigValue(data.loc_id, data.cv, data.value);
+        }
       } catch (e) { /* ignore malformed event */ }
     };
     source.onerror = function () {
