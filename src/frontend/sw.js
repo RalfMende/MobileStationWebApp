@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'mswebapp-v15';
+const CACHE_VERSION = 'mswebapp-v17';
 const PRECACHE = [
 	'/',
 	'/static/style.css',

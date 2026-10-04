@@ -146,6 +146,16 @@ class CanProtocolTest(unittest.TestCase):
         self.assertNotIn("label", dcc_by_key["adresse"])
         self.assertNotIn("field", dcc_by_key["adresse"])
 
+        locos = self.server.get_json("/api/loco_list")
+        self.assertEqual(locos["1"]["config_values"]["adresse"], "1")
+        self.assertEqual(locos[str(0x4005)]["config_values"]["adresse"], "5")
+        self.assertEqual(locos[str(0xC005)]["config_values"]["adresse"], "5")
+
+        loco = self.server.get_json("/api/loco_list")[str(TEST_LOCO_UID)]
+        self.assertIn("config_values", loco)
+        for key in ("adresse", "vmin", "av", "bv", "vmax", "volume"):
+            self.assertIn(key, loco["config_values"])
+
     def test_control_event_speed_emits_lok_geschwindigkeit_frame(self):
         self.server.post_json("/api/control_event", {"loco_id": TEST_LOCO_UID, "speed": 500})
         can_id, dlc, data = self.capture.recv_frame()

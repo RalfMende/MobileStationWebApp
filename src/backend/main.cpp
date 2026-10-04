@@ -57,9 +57,31 @@ struct Loco {
     int symbol = 0;
     int tachomax = 0;
     std::string protocol; // decoder protocol from .typ (e.g. "mfx", "mm2", "dcc", "sx1")
+    std::map<std::string, std::string> config_values;
     std::map<int,int> fn_typ; // function index -> type id
     int fn_count = 0; // number of declared function slots (0..32), based on highest .funktionen(_2) ..nr seen
 };
+
+static bool loco_address_from_uid(const Loco &loco, int &address) {
+    std::string protocol = loco.protocol;
+    std::transform(protocol.begin(), protocol.end(), protocol.begin(), [](unsigned char c){ return (char)std::tolower(c); });
+    uint32_t first_uid = 0;
+    uint32_t last_uid = 0x03FF;
+    if (protocol == "mfx") {
+        first_uid = 0x4000;
+        last_uid = 0x7FFF;
+    } else if (protocol == "dcc") {
+        first_uid = 0xC000;
+        last_uid = 0xFFFF;
+    } else if (protocol.rfind("mm2", 0) != 0) {
+        return false;
+    }
+    const uint32_t uid = static_cast<uint32_t>(loco.uid);
+    if (uid < first_uid || uid > last_uid) return false;
+    address = static_cast<int>(uid - first_uid);
+    return true;
+}
+
 struct CvDefinition {
     std::string key;
     std::string range;
@@ -276,6 +298,28 @@ static std::string loco_list_json() {
         os << "\"tachomax\":" << l.tachomax;
         os << ",\"symbol\":" << l.symbol;
         os << ",\"protocol\":\"" << json_escape(l.protocol) << "\"";
+        os << ",\"config_values\":{";
+        bool first_value = true;
+        int derived_address = 0;
+        const bool has_derived_address = loco_address_from_uid(l, derived_address);
+        bool address_emitted = false;
+        for (const auto &value : l.config_values) {
+            if (!first_value) os << ",";
+            first_value = false;
+            os << "\"" << json_escape(value.first) << "\":\"";
+            if (value.first == "adresse" && has_derived_address) {
+                os << derived_address;
+                address_emitted = true;
+            } else {
+                os << json_escape(value.second);
+            }
+            os << "\"";
+        }
+        if (has_derived_address && !address_emitted) {
+            if (!first_value) os << ",";
+            os << "\"adresse\":\"" << derived_address << "\"";
+        }
+        os << "}";
         os << ",\"fn_count\":" << l.fn_count;
         if (!l.fn_typ.empty()) {
             os << ",\"funktionen\":{";
@@ -466,6 +510,7 @@ static void parse_lokomotive_cs2(const fs::path &p) {
                 std::string key = line.substr(1, pos-1);
                 std::string val = line.substr(pos+1);
                 key = trim(key); val = trim(val);
+                cur.config_values[key] = val;
                 if (key == "uid") {
                     cur.uid = parse_int_auto(val);
                 } else if (key == "name") {

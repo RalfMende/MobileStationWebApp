@@ -12,10 +12,11 @@ let currentProtocol = null;
 let protocolCvMap = {};
 let nameChars = [];
 let evtSource = null;
+let evtSourcePromise = null;
 let expectedCvs = new Set();
 let receivedCvs = new Set();
 let configWaiters = new Set();
-const CONFIG_READ_INTERVAL_MS = 1000;
+let readInProgress = false;
 const CV_LABELS = {
   en: {
     adresse: 'Address', vmin: 'Minimum Speed', av: 'Acceleration Delay',
@@ -129,29 +130,38 @@ function updateEditorStatus(message) {
 }
 
 function connectEditorSSE() {
-  return new Promise(function (resolve, reject) {
-    evtSource = new EventSource('/api/events');
+  if (evtSource && evtSource.readyState === EventSource.OPEN) return Promise.resolve();
+  if (evtSourcePromise) return evtSourcePromise;
+
+  const source = new EventSource('/api/events');
+  evtSource = source;
+  evtSourcePromise = new Promise(function (resolve, reject) {
     const timeout = window.setTimeout(function () {
-      evtSource.close();
+      source.close();
+      evtSource = null;
+      evtSourcePromise = null;
       reject(new Error('SSE connection timed out'));
     }, 10000);
-    evtSource.onopen = function () {
+    source.onopen = function () {
       window.clearTimeout(timeout);
       resolve();
     };
-    evtSource.onmessage = function (ev) {
+    source.onmessage = function (ev) {
       try {
         const data = JSON.parse(ev.data);
         if (data.type === 'config_value') handleConfigValue(data.loc_id, data.cv, data.value);
       } catch (e) { /* ignore malformed event */ }
     };
-    evtSource.onerror = function () {
-      if (evtSource.readyState === EventSource.CLOSED) {
+    source.onerror = function () {
+      if (source.readyState === EventSource.CLOSED) {
         window.clearTimeout(timeout);
+        evtSource = null;
+        evtSourcePromise = null;
         reject(new Error('SSE connection closed'));
       }
     };
   });
+  return evtSourcePromise;
 }
 
 async function requestConfigRead(uid, cv, length) {
@@ -161,6 +171,46 @@ async function requestConfigRead(uid, cv, length) {
     body: JSON.stringify({ uid: uid, cvs: [cv], count: length })
   });
   if (!response.ok) throw new Error('Read request failed: HTTP ' + response.status);
+}
+
+function setupReadControl(definition, valueCell) {
+  if (!Number.isInteger(definition.cv)) return;
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'cv-read-button';
+  button.textContent = 'Read';
+  button.addEventListener('click', async function () {
+    if (readInProgress) return;
+    readInProgress = true;
+    const readButtons = Array.from(document.querySelectorAll('.cv-read-button'));
+    readButtons.forEach(function (readButton) { readButton.disabled = true; });
+    const status = valueCell.querySelector('.cv-read-status');
+    const responseCvs = definition.response_step > 0
+      ? Array.from({ length: definition.length }, function (_, i) { return definition.cv + i * definition.response_step; })
+      : [definition.cv];
+    expectedCvs = new Set(responseCvs);
+    receivedCvs.clear();
+    status.textContent = 'Reading…';
+
+    try {
+      await connectEditorSSE();
+      await requestConfigRead(currentUid, definition.cv, definition.length);
+      const missing = await waitForConfigValues(responseCvs, definition.response_step > 0 ? 5000 : 2500);
+      status.textContent = missing.length ? 'No response' : 'Read';
+    } catch (error) {
+      status.textContent = 'Read failed';
+      console.error(error);
+    } finally {
+      readInProgress = false;
+      readButtons.forEach(function (readButton) { readButton.disabled = false; });
+    }
+  });
+
+  const status = document.createElement('span');
+  status.className = 'cv-read-status';
+  status.setAttribute('role', 'status');
+  valueCell.append(button, status);
 }
 
 async function requestConfigWrite(uid, cv, value) {
@@ -185,6 +235,7 @@ function setupWriteControl(definition, field, valueCell, valueElement) {
     input.step = '1';
     input.inputMode = 'numeric';
     input.dataset.cvField = field;
+    input.value = valueElement.textContent;
     input.setAttribute('aria-label', 'Value for ' + getCvLabel(definition.key) + ' (CV ' + definition.cv + ')');
 
     const button = document.createElement('button');
@@ -221,7 +272,7 @@ function setupWriteControl(definition, field, valueCell, valueElement) {
     valueCell.append(button, status);
 }
 
-function renderCvTable(definitions) {
+function renderCvTable(definitions, configValues) {
   const tableBody = document.getElementById('cvTableBody');
   const responseCvs = [];
   if (!tableBody) return responseCvs;
@@ -249,7 +300,10 @@ function renderCvTable(definitions) {
     const valueElement = document.createElement('span');
     valueElement.className = 'cv-value';
     valueElement.dataset.cvField = definition.key;
+    const storedValue = configValues[definition.key];
+    if (typeof storedValue === 'string') valueElement.textContent = storedValue;
     valueCell.appendChild(valueElement);
+    setupReadControl(definition, valueCell);
     setupWriteControl(definition, definition.key, valueCell, valueElement);
     row.appendChild(valueCell);
     tableBody.appendChild(row);
@@ -278,6 +332,7 @@ async function init() {
   document.documentElement.lang = detectEditorLanguage();
   const titleEl = document.getElementById('editorLocoName');
   const protocolEl = document.getElementById('editorProtocol');
+  let locoConfigValues = {};
   currentUid = getUidFromUrl();
   if (!currentUid) {
     if (titleEl) titleEl.textContent = 'No locomotive selected';
@@ -291,6 +346,7 @@ async function init() {
     if (loco) {
       if (titleEl) titleEl.textContent = loco.name || ('UID ' + currentUid);
       currentProtocol = normalizeProtocol(loco.protocol);
+      locoConfigValues = loco.config_values || {};
       if (protocolEl) protocolEl.textContent = 'Protocol: ' + (loco.protocol || 'unknown');
     }
     const mapResponse = await fetch('/api/loco_cv_map');
@@ -314,31 +370,11 @@ async function init() {
     return;
   }
 
-  const expectedResponseCvs = renderCvTable(definitions);
+  const expectedResponseCvs = renderCvTable(definitions, locoConfigValues);
   expectedCvs = new Set(expectedResponseCvs);
   const nameDefinition = definitions.find(function (definition) { return definition.response_step > 0; });
-  const readableDefinitions = definitions.filter(function (definition) { return Number.isInteger(definition.cv); });
   nameChars = nameDefinition ? new Array(nameDefinition.length).fill(null) : [];
-  try {
-    await connectEditorSSE();
-    for (let i = 0; i < readableDefinitions.length; i++) {
-      const definition = readableDefinitions[i];
-      updateEditorStatus('Reading CV ' + (i + 1) + '/' + readableDefinitions.length + ' (' + definition.cv + ')…');
-      await requestConfigRead(currentUid, definition.cv, definition.length);
-      if (i < readableDefinitions.length - 1) {
-        await new Promise(function (resolve) { window.setTimeout(resolve, CONFIG_READ_INTERVAL_MS); });
-      }
-    }
-    await waitForConfigValues(expectedResponseCvs, 2500);
-
-    const missingValueCvs = expectedResponseCvs.filter(function (cv) { return !receivedCvs.has(cv); });
-    updateEditorStatus(missingValueCvs.length === 0
-      ? 'All values read.'
-      : 'Read complete; no response for CV: ' + missingValueCvs.join(', '));
-  } catch (error) {
-    updateEditorStatus('Failed to connect or send CV read requests.');
-    console.error(error);
-  }
+  updateEditorStatus('Values loaded from locomotive configuration.');
 }
 
 document.addEventListener('DOMContentLoaded', init);

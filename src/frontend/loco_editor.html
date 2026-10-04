@@ -57,6 +57,7 @@
       font-variant-numeric: tabular-nums;
       font-weight: 600;
     }
+    .cv-value[data-cv-field="name"] { font-weight: 400; }
     .cv-value-cell { white-space: nowrap; }
     .cv-value-input {
       box-sizing: border-box;
@@ -68,7 +69,7 @@
       color: var(--editor-value);
       font: inherit;
     }
-    .cv-write-button {
+    .cv-write-button, .cv-read-button {
       margin-left: 0.3rem;
       padding: 0.3rem 0.45rem;
       border: 1px solid #24436b;
@@ -101,6 +102,6 @@
     <p id="editorStatus" role="status" aria-live="polite">Connecting…</p>
     <p id="editorUnsupported">No CVs are currently defined for this decoder protocol.</p>
   </div>
-  <script src="/static/loco_editor.js?v=15"></script>
+  <script src="/static/loco_editor.js?v=17"></script>
 </body>
 </html>
