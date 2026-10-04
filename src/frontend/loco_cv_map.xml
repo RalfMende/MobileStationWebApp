@@ -15,6 +15,7 @@
     <cv key="av" index="3" length="1" range="0-71" />
     <cv key="bv" index="4" length="1" range="0-71" />
     <cv key="vmax" index="5" length="1" range="0-255" />
+    <cv key="config" index="29" length="1" range="0-55" />
     <cv key="volume" index="63" length="1" range="0-255" />
     <cv key="name" />
   </protocol>
