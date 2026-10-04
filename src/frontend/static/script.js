@@ -156,6 +156,7 @@ const I18N = {
       menuPin: 'Pin',
       menuUnpin: 'Unpin',
       menuRelease: 'Release',
+      menuEdit: 'Edit',
       locoStillActive: 'Locomotive is still active.'
     },
     keyboard: {
@@ -204,6 +205,7 @@ const I18N = {
       menuPin: 'Pinnen',
       menuUnpin: 'Entpinnen',
       menuRelease: 'Freigeben',
+      menuEdit: 'Bearbeiten',
       locoStillActive: 'Lokomotive ist noch aktiv.'
     },
     keyboard: {
@@ -252,6 +254,7 @@ const I18N = {
       menuPin: 'Épingler',
       menuUnpin: 'Détacher',
       menuRelease: 'Libérer',
+      menuEdit: 'Modifier',
       locoStillActive: 'La locomotive est encore active.'
     },
     keyboard: {
@@ -300,6 +303,7 @@ const I18N = {
       menuPin: 'Vastzetten',
       menuUnpin: 'Losmaken',
       menuRelease: 'Vrijgeven',
+      menuEdit: 'Bewerken',
       locoStillActive: 'Locomotief is nog actief.'
     },
     keyboard: {
@@ -1176,6 +1180,9 @@ function ensureDockActionMenuElement() {
         setLocoPinned(uid, false);
       } else if (currentAction === 'release') {
         releaseLocoFromDock(uid);
+      } else if (currentAction === 'edit') {
+        if (currentLocoUid === null) return;
+        window.location.href = '/loco_editor.html?uid=' + encodeURIComponent(currentLocoUid);
       }
       if (navigator && typeof navigator.vibrate === 'function') navigator.vibrate(12);
     });
@@ -1183,8 +1190,10 @@ function ensureDockActionMenuElement() {
   }
 
   var pinBtn = makeItem('pin');
+  var editBtn = makeItem('edit');
   var releaseBtn = makeItem('release');
   el.appendChild(pinBtn);
+  el.appendChild(editBtn);
   el.appendChild(releaseBtn);
   document.body.appendChild(el);
   dockActionMenuEl = el;
@@ -1217,11 +1226,13 @@ function openDockActionMenu(uidStr, anchorEvent, anchorEl) {
 
   var isPinned = pinnedLocoUids.indexOf(uidStr) !== -1;
   var pinBtn = el.querySelector('button[data-action="pin"], button[data-action="unpin"]');
+  var editBtn = el.querySelector('button[data-action="edit"]');
   var releaseBtn = el.querySelector('button[data-action="release"]');
   if (pinBtn) {
     pinBtn.setAttribute('data-action', isPinned ? 'unpin' : 'pin');
     pinBtn.textContent = isPinned ? getDockText('menuUnpin', 'Unpin') : getDockText('menuPin', 'Pin');
   }
+  if (editBtn) editBtn.textContent = getDockText('menuEdit', 'Edit');
   if (releaseBtn) releaseBtn.textContent = getDockText('menuRelease', 'Release');
 
   var left = 0;

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Locomotive Editor</title>
+  <link rel="apple-touch-icon" href="/static/grafics/apple-touch-icon-180.png">
+  <style>
+    :root {
+      --editor-blue: #527ba3;
+      --editor-navy: #2d4b76;
+      --editor-border: #7897b5;
+      --editor-label: #d2deed;
+      --editor-value: #263b56;
+      --editor-value-bg: #f1f4f7;
+    }
+    html, body {
+      background: var(--editor-blue);
+      color: #fff;
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+    }
+    .editor-wrap {
+      box-sizing: border-box;
+      max-width: 480px;
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 1rem 1.2rem 2rem;
+      background: var(--editor-blue);
+    }
+    .editor-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: -1rem -1.2rem 1rem;
+      padding: 0.75rem 1rem;
+      background: var(--editor-navy);
+    }
+    .editor-header h1 { font-size: 1.1rem; margin: 0; }
+    .editor-protocol { color: var(--editor-label); font-size: 0.8rem; margin: 0.2rem 0 0; }
+    .back-link { color: #fff; text-decoration: none; font-size: 0.95rem; white-space: nowrap; }
+    table.cv-table { width: 100%; border-collapse: collapse; }
+    table.cv-table th, table.cv-table td { text-align: left; padding: 0.55rem 0.4rem; border-bottom: 1px solid var(--editor-border); }
+    table.cv-table th { color: var(--editor-label); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; }
+    table.cv-table td:first-child { color: var(--editor-label); }
+    .cv-idx { color: #fff; font-variant-numeric: tabular-nums; }
+    .cv-value {
+      display: inline-block;
+      min-width: 2.5rem;
+      box-sizing: border-box;
+      padding: 0.2rem 0.4rem;
+      border-radius: 3px;
+      background: var(--editor-value-bg);
+      color: var(--editor-value);
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+    }
+    #editorUnsupported { display: none; color: #ffe0df; margin-top: 1rem; }
+    #editorStatus { color: var(--editor-label); font-size: 0.85rem; margin-top: 1rem; }
+  </style>
+</head>
+<body class="no-select">
+  <div class="editor-wrap">
+    <div class="editor-header">
+      <div>
+        <h1 id="editorLocoName">Loading …</h1>
+        <p id="editorProtocol" class="editor-protocol">Protocol: …</p>
+      </div>
+      <a class="back-link" href="/">&larr; Back</a>
+    </div>
+    <table class="cv-table">
+      <thead>
+        <tr><th>Parameter</th><th>CV Index</th><th>Value</th></tr>
+      </thead>
+      <tbody>
+        <tr data-protocol="mfx"><td>VMax</td><td class="cv-idx">2227</td><td class="cv-value" data-cv-field="vmax">…</td></tr>
+        <tr data-protocol="mfx"><td>VMin</td><td class="cv-idx">1203</td><td class="cv-value" data-cv-field="vmin">…</td></tr>
+        <tr><td>Name</td><td class="cv-idx" data-cv-index="name"></td><td class="cv-value" data-cv-field="name"></td></tr>
+        <tr data-protocol="mfx"><td>ACC</td><td class="cv-idx">1202</td><td class="cv-value" data-cv-field="acc">…</td></tr>
+        <tr data-protocol="mfx"><td>DCC</td><td class="cv-idx">2226</td><td class="cv-value" data-cv-field="dcc">…</td></tr>
+        <tr data-protocol="mfx"><td>Vol</td><td class="cv-idx">1325</td><td class="cv-value" data-cv-field="vol">…</td></tr>
+        <tr><td>Address</td><td class="cv-idx" data-cv-index="dccAddress"></td><td class="cv-value" data-cv-field="dccAddress"></td></tr>
+        <tr data-protocol="dcc"><td>VMin</td><td class="cv-idx">2</td><td class="cv-value" data-cv-field="vmin">…</td></tr>
+        <tr data-protocol="dcc"><td>ACC</td><td class="cv-idx">3</td><td class="cv-value" data-cv-field="acc">…</td></tr>
+        <tr data-protocol="dcc"><td>DCC</td><td class="cv-idx">4</td><td class="cv-value" data-cv-field="dcc">…</td></tr>
+        <tr data-protocol="dcc"><td>VMax</td><td class="cv-idx">5</td><td class="cv-value" data-cv-field="vmax">…</td></tr>
+      </tbody>
+    </table>
+    <p id="editorStatus" role="status" aria-live="polite">Connecting…</p>
+    <p id="editorUnsupported">No CVs are currently defined for this decoder protocol.</p>
+  </div>
+  <script src="/static/loco_editor.js?v=8"></script>
+</body>
+</html>

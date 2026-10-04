@@ -40,6 +40,7 @@ CMD_SYSTEM = 0x00
 CMD_SPEED = 0x04
 CMD_DIRECTION = 0x05
 CMD_FUNCTION = 0x06
+CMD_READ_CONFIG = 0x07
 CMD_SWITCH = 0x0B
 
 SYS_STOP = 0x00
@@ -165,6 +166,32 @@ class CanProtocolTest(unittest.TestCase):
         self.assertEqual(uid, TEST_LOCO_UID)
         self.assertEqual(data[4], 3)  # function nr
         self.assertEqual(data[5], 1)  # value
+
+    def test_loco_config_read_requests_one_cv_value(self):
+        status, _ = self.server.post_json(
+            "/api/loco_config_read", {"uid": TEST_LOCO_UID, "cvs": [1325], "count": 1})
+        self.assertEqual(status, 200)
+
+        can_id, dlc, data = self.capture.recv_frame()
+        command, resp = decode_command(can_id)
+        self.assertEqual(command, CMD_READ_CONFIG)
+        self.assertEqual(resp, 0)
+        self.assertEqual(dlc, 7)
+        self.assertEqual(int.from_bytes(data[0:4], "big"), TEST_LOCO_UID)
+        self.assertEqual(int.from_bytes(data[4:6], "big"), 1325)
+        self.assertEqual(data[6], 1)
+
+    def test_loco_config_read_requests_name_length(self):
+        status, _ = self.server.post_json(
+            "/api/loco_config_read", {"uid": TEST_LOCO_UID, "cvs": [1027], "count": 16})
+        self.assertEqual(status, 200)
+
+        can_id, dlc, data = self.capture.recv_frame()
+        command, _ = decode_command(can_id)
+        self.assertEqual(command, CMD_READ_CONFIG)
+        self.assertEqual(dlc, 7)
+        self.assertEqual(int.from_bytes(data[4:6], "big"), 1027)
+        self.assertEqual(data[6], 16)
 
     def test_stop_button_emits_system_stopp_go_frames(self):
         self.server.post_json("/api/stop_button", {"state": True})

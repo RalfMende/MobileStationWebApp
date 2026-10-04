@@ -55,6 +55,7 @@ struct Loco {
     std::string icon;
     int symbol = 0;
     int tachomax = 0;
+    std::string protocol; // decoder protocol from .typ (e.g. "mfx", "mm2", "dcc", "sx1")
     std::map<int,int> fn_typ; // function index -> type id
     int fn_count = 0; // number of declared function slots (0..32), based on highest .funktionen(_2) ..nr seen
 };
@@ -175,6 +176,7 @@ static std::string loco_list_json() {
         os << "\"icon\":\"" << json_escape(icon_eff) << "\",";
         os << "\"tachomax\":" << l.tachomax;
         os << ",\"symbol\":" << l.symbol;
+        os << ",\"protocol\":\"" << json_escape(l.protocol) << "\"";
         os << ",\"fn_count\":" << l.fn_count;
         if (!l.fn_typ.empty()) {
             os << ",\"funktionen\":{";
@@ -375,6 +377,8 @@ static void parse_lokomotive_cs2(const fs::path &p) {
                     cur.symbol = parse_int_auto(val);
                 } else if (key == "tachomax") {
                     cur.tachomax = parse_int_auto(val);
+                } else if (key == "typ") {
+                    cur.protocol = val;
                 } /*else if (key == "vmax") {
                     int vmax = parse_int_auto(val);
                     if (cur.tachomax <= 0 && vmax > 0) cur.tachomax = vmax; //Workaround for MS where there is no tachomax
@@ -441,6 +445,7 @@ static std::string speed_event_json(int uid, int spd);
 static std::string direction_event_json(int uid, int dir);
 static std::string function_event_json(int uid, int fn, bool val);
 static std::string switch_event_json(int idx, int val);
+static std::string config_value_event_json(int uid, int cv, int value);
 
 // ---- UDP send/recv stubs ----
 // ---- UDP CS2 helpers ----
@@ -534,6 +539,18 @@ static std::vector<uint8_t> payload_system_state(uint32_t device_uid, bool runni
     b.push_back((device_uid >> 8) & 0xFF);
     b.push_back(device_uid & 0xFF);
     b.push_back(running ? 1 : 0);
+    return b;
+}
+
+static std::vector<uint8_t> payload_read_config(uint32_t loco_uid, int cv_index, int length) {
+    std::vector<uint8_t> b;
+    b.push_back((loco_uid >> 24) & 0xFF);
+    b.push_back((loco_uid >> 16) & 0xFF);
+    b.push_back((loco_uid >> 8) & 0xFF);
+    b.push_back(loco_uid & 0xFF);
+    b.push_back((cv_index >> 8) & 0xFF);
+    b.push_back(cv_index & 0xFF);
+    b.push_back(length & 0xFF);
     return b;
 }
 
@@ -711,6 +728,12 @@ static void udp_listener_thread(std::atomic<bool>& stop_flag) {
                     idx = uid & 0x3FF; if (idx >= 64) idx = idx % 64;
                 }
                 g_switch_state[idx] = value; publish_event(switch_event_json(idx, value));
+            } else if (command == CMD_READ_CONFIG && dlc >= 7) {
+                // Data layout: [0..3]=Loc-ID, [4..5]=CV-Index, [6]=Wert
+                int uid = (int(data[0])<<24)|(int(data[1])<<16)|(int(data[2])<<8)|int(data[3]);
+                int cv = (int(data[4])<<8)|int(data[5]);
+                int value = int(data[6]);
+                publish_event(config_value_event_json(uid, cv, value));
             }
         }
     }
@@ -782,6 +805,11 @@ static void can_listener_thread(std::atomic<bool>& stop_flag) {
                 }
                 if (idx < 0) { idx = uid & 0x3FF; if (idx >= 64) idx = idx % 64; }
                 g_switch_state[idx] = value; publish_event(switch_event_json(idx, value));
+            } else if (command == CMD_READ_CONFIG && dlc >= 7) {
+                int uid = (int(data[0])<<24)|(int(data[1])<<16)|(int(data[2])<<8)|int(data[3]);
+                int cv = (int(data[4])<<8)|int(data[5]);
+                int value = int(data[6]);
+                publish_event(config_value_event_json(uid, cv, value));
             }
         }
     }
@@ -836,6 +864,12 @@ static std::string function_event_json(int uid, int fn, bool val) {
 static std::string switch_event_json(int idx, int val) {
     std::ostringstream os;
     os << "{\"type\":\"switch\",\"idx\":" << idx << ",\"value\":" << val << "}";
+    return os.str();
+}
+
+static std::string config_value_event_json(int uid, int cv, int value) {
+    std::ostringstream os;
+    os << "{\"type\":\"config_value\",\"loc_id\":" << uid << ",\"cv\":" << cv << ",\"value\":" << value << "}";
     return os.str();
 }
 
@@ -972,6 +1006,11 @@ int main(int argc, char** argv) {
     });
     // Info page removed: info is now shown via in-page modal
 
+    // Locomotive CV editor page (opened via long-press "Edit" menu entry)
+    svr.Get("/loco_editor.html", [&](const httplib::Request&, httplib::Response &res){
+        serve_template(frontend_dir/"loco_editor.html", res);
+    });
+
     // Service worker (no-cache to ensure updates roll out)
     svr.Get("/sw.js", [&](const httplib::Request&, httplib::Response &res){
         std::ifstream f(frontend_dir/"sw.js", std::ios::binary);
@@ -1105,6 +1144,50 @@ int main(int argc, char** argv) {
         }
         os << "]}";
         res.set_content(os.str(), "application/json");
+    });
+
+    // API: read locomotive CV values over CAN/UDP (used by the loco CV editor page).
+    // Sends a CS2 "Read Config" request frame per CV index, spaced slightly apart;
+    // publishes matching "config_value" SSE events once response frames arrive.
+    svr.Post("/api/loco_config_read", [&](const httplib::Request& req, httplib::Response &res){
+        auto body = req.body;
+        auto find_num = [&](const char* key)->int{
+            auto pos = body.find(key);
+            if (pos==std::string::npos) return -1;
+            pos = body.find(':', pos);
+            if (pos==std::string::npos) return -1;
+            size_t j = pos+1; while (j<body.size() && (body[j]==' '||body[j]=='"')) j++;
+            size_t k=j; while (k<body.size() && (isdigit((unsigned char)body[k])||body[k]=='-')) k++;
+            if (k>j) return std::stoi(body.substr(j,k-j));
+            return -1;
+        };
+        int uid = find_num("\"uid\"");
+        if (uid <= 0) { res.status=400; res.set_content("{\"status\":\"error\",\"message\":\"uid required\"}","application/json"); return; }
+        int length = find_num("\"count\"");
+        if (length < 1 || length > 255) length = 1;
+        std::vector<int> cvs;
+        auto arr_pos = body.find("\"cvs\"");
+        if (arr_pos != std::string::npos) {
+            auto lb = body.find('[', arr_pos);
+            auto rb = (lb != std::string::npos) ? body.find(']', lb) : std::string::npos;
+            if (lb != std::string::npos && rb != std::string::npos && rb > lb) {
+                std::string arr = body.substr(lb+1, rb-lb-1);
+                std::stringstream ss(arr); std::string tok;
+                while (std::getline(ss, tok, ',')) {
+                    tok = trim(tok);
+                    if (!tok.empty()) { try { cvs.push_back(std::stoi(tok)); } catch (...) {} }
+                }
+            }
+        }
+        if (cvs.empty()) { res.status=400; res.set_content("{\"status\":\"error\",\"message\":\"cvs required\"}","application/json"); return; }
+        std::thread([uid, cvs, length]{
+            for (int cv : cvs) {
+                uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_READ_CONFIG, 0, 0);
+            send_cs2_frame(can_id, payload_read_config((uint32_t)uid, cv, length), 7);
+                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            }
+        }).detach();
+        res.set_content("{\"status\":\"ok\"}", "application/json");
     });
 
     // API: icons list

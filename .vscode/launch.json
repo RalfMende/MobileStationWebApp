@@ -82,11 +82,11 @@
       "program": "${workspaceFolder}/src/backend/build-macos-debug/mswebapp",
       "args": [
         "--config", "${workspaceFolder}/var",
-        "--udp-ip", "Gleisbox",
+        "--udp-ip", "192.168.20.255",
         "--host", "0.0.0.0",
         "--port", "6020",
         "--www", "${workspaceFolder}/src/frontend",
-        "--bind", "1000"
+        "--verbose"
       ],
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false,

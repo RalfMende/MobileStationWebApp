@@ -222,3 +222,64 @@ lokomotive
  ..nr=30
  .funktionen_2
  ..nr=31
+lokomotive
+ .name=BR 260 DCC
+ .richtung=4294967295
+ .uid=0xC005
+ .adresse=0x3
+ .typ=dcc
+ .sid=0x3
+ .icon=V 60
+ .symbol=1
+ .av=25
+ .bv=25
+ .volume=128
+ .tachomax=0
+ .vmax=90
+ .vmin=1
+ .stand=0
+ .fahrt=0
+ .funktionen
+ ..nr=0
+ ..typ=1
+ .funktionen
+ ..nr=1
+ ..typ=5
+ .funktionen
+ ..nr=2
+ ..typ=5
+ .funktionen
+ ..nr=3
+ ..typ=10
+ .funktionen
+ ..nr=4
+ ..typ=8
+ .funktionen
+ ..nr=5
+ ..typ=8
+ .funktionen
+ ..nr=6
+ ..typ=5
+ .funktionen
+ ..nr=7
+ ..typ=138
+ .funktionen
+ ..nr=8
+ .funktionen
+ ..nr=9
+ ..typ=5
+ .funktionen
+ ..nr=10
+ .funktionen
+ ..nr=11
+ ..typ=5
+ .funktionen
+ ..nr=12
+ ..typ=133
+ .funktionen
+ ..nr=13
+ ..typ=143
+ .funktionen
+ ..nr=14
+ .funktionen
+ ..nr=15
