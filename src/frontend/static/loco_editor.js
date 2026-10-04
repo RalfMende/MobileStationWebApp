@@ -7,51 +7,45 @@
  Ralf Mende
 */
 
-// CV-Index map per decoder protocol.
-const CV_MAP = {
-  mfx: {
-    vmax: { cv: 2227, length: 1 },
-    vmin: { cv: 1203, length: 1 },
-    acc: { cv: 1202, length: 1 },
-    dcc: { cv: 2226, length: 1 },
-    vol: { cv: 1325, length: 1 },
-    name: { cv: 1027, length: 16, field: 'name' }
-  },
-  dcc: {
-    address: { cv: 1, length: 1, values: '1-127' },
-    vmin: { cv: 2, length: 1, values: '0-255' },
-    acc: { cv: 3, length: 1, values: '0-71' },
-    dcc: { cv: 4, length: 1, values: '0-71'  },
-    vmax: { cv: 5, length: 1, values: '0-255' },
-    //reset: { cv: 8, length: 1 },
-    //config: { cv: 29, length: 1 },
-    vol: { cv: 63, length: 1, values: '0-255' }
-  },
-  mm2_prog: {
-    address: { cv: 1, length: 1, values: '1-80' },
-    vmin: { cv: 2, length: 1, values: '1-80' },
-    acc: { cv: 3, length: 1, values: '1-80' },
-    dcc: { cv: 4, length: 1, values: '1-80' },
-    vmax: { cv: 5, length: 1, values: '0-63' },
-    //meas_trip: { cv: 7, length: 1 },
-    //reset: { cv: 6, length: 1 },
-    //address_following_on: { cv: 49, length: 1},
-    //address_following_1: { cv: 75, length: 1},
-    //address_following_2: { cv: 17, length: 1},
-    //address_following_3: { cv: 18, length: 1},
-    //alt_prot: { cv: 50, length: 1 },
-    vol: { cv: 63, length: 1, values: '0-63' }
-  }
-};
-
 let currentUid = null;
 let currentProtocol = null;
+let protocolCvMap = {};
 let nameChars = [];
 let evtSource = null;
 let expectedCvs = new Set();
 let receivedCvs = new Set();
 let configWaiters = new Set();
 const CONFIG_READ_INTERVAL_MS = 1000;
+const CV_LABELS = {
+  en: {
+    adresse: 'Address', vmin: 'Minimum Speed', av: 'Acceleration Delay',
+    bv: 'Braking Delay', vmax: 'Maximum Speed', volume: 'Volume', name: 'Name'
+  },
+  de: {
+    adresse: 'Adresse', vmin: 'Mindestgeschwindigkeit', av: 'Anfahrverzögerung',
+    bv: 'Bremsverzögerung', vmax: 'Höchstgeschwindigkeit', volume: 'Lautstärke', name: 'Name'
+  },
+  fr: {
+    adresse: 'Adresse', vmin: 'Vitesse minimale', av: 'Temporisation d’accélération',
+    bv: 'Temporisation de freinage', vmax: 'Vitesse maximale', volume: 'Volume', name: 'Nom'
+  },
+  nl: {
+    adresse: 'Adres', vmin: 'Minimumsnelheid', av: 'Optrekvertraging',
+    bv: 'Remvertraging', vmax: 'Maximumsnelheid', volume: 'Volume', name: 'Naam'
+  }
+};
+
+function detectEditorLanguage() {
+  const language = String((navigator.languages && navigator.languages[0]) || navigator.language || 'en').toLowerCase();
+  if (language.indexOf('de') === 0) return 'de';
+  if (language.indexOf('fr') === 0) return 'fr';
+  if (language.indexOf('nl') === 0) return 'nl';
+  return 'en';
+}
+
+function getCvLabel(key) {
+  return CV_LABELS[detectEditorLanguage()][key] || key;
+}
 
 function normalizeProtocol(raw) {
   const p = String(raw || '').toLowerCase();
@@ -67,11 +61,6 @@ function setFieldValue(key, value) {
   if (!el) return;
   if (el instanceof HTMLInputElement) el.value = String(value);
   else el.textContent = String(value);
-}
-
-function setCvIndexValue(key, value) {
-  const el = document.querySelector('[data-cv-index="' + key + '"]');
-  if (el) el.textContent = value;
 }
 
 function updateNameField() {
@@ -115,27 +104,23 @@ function waitForConfigValues(cvs, timeoutMs) {
 
 function handleConfigValue(uid, cv, value) {
   if (uid !== currentUid) return;
-  const map = CV_MAP[currentProtocol];
-  if (!map) return;
+  const definitions = protocolCvMap[currentProtocol];
+  if (!definitions) return;
   if (!expectedCvs.has(cv)) return;
   receivedCvs.add(cv);
   updateEditorStatus('Responses: ' + receivedCvs.size + '/' + expectedCvs.size);
   configWaiters.forEach(function (check) { check(); });
-  const name = map.name;
-  if (name && cv >= name.cv && (cv - name.cv) % 1024 === 0) {
-    const idx = (cv - name.cv) / 1024;
+  const name = definitions.find(function (definition) { return definition.response_step > 0; });
+  if (name && cv >= name.cv && (cv - name.cv) % name.response_step === 0) {
+    const idx = (cv - name.cv) / name.response_step;
     if (idx < name.length) {
       nameChars[idx] = value;
       updateNameField();
       return;
     }
   }
-  Object.keys(map).forEach(function (key) {
-    const definition = map[key];
-    if (key !== 'name' && cv === definition.cv) {
-      setFieldValue(definition.field || key, value);
-    }
-  });
+  const definition = definitions.find(function (item) { return item.cv === cv; });
+  if (definition) setFieldValue(definition.key, value);
 }
 
 function updateEditorStatus(message) {
@@ -187,18 +172,10 @@ async function requestConfigWrite(uid, cv, value) {
   if (!response.ok) throw new Error('Write request failed: HTTP ' + response.status);
 }
 
-function setupWriteControls(map) {
-  Object.keys(map).forEach(function (key) {
-    const definition = map[key];
-    if (!definition.values) return;
-
-    const range = String(definition.values).match(/^(\d+)-(\d+)$/);
+function setupWriteControl(definition, field, valueCell, valueElement) {
+    if (!definition.range || !Number.isInteger(definition.cv)) return;
+    const range = String(definition.range).match(/^(\d+)-(\d+)$/);
     if (!range) return;
-    const field = definition.field || key;
-    const valueEl = document.querySelector('[data-protocol="' + currentProtocol + '"] [data-cv-field="' + field + '"]')
-      || document.querySelector('[data-cv-field="' + field + '"]');
-    const cell = valueEl && valueEl.closest('td');
-    if (!cell) return;
 
     const input = document.createElement('input');
     input.type = 'number';
@@ -208,7 +185,7 @@ function setupWriteControls(map) {
     input.step = '1';
     input.inputMode = 'numeric';
     input.dataset.cvField = field;
-    input.setAttribute('aria-label', 'Value for ' + key + ' (CV ' + definition.cv + ')');
+    input.setAttribute('aria-label', 'Value for ' + getCvLabel(definition.key) + ' (CV ' + definition.cv + ')');
 
     const button = document.createElement('button');
     button.type = 'button';
@@ -216,7 +193,7 @@ function setupWriteControls(map) {
     button.textContent = 'Write';
     button.addEventListener('click', async function () {
       const value = Number(input.value);
-      const status = cell.querySelector('.cv-write-status');
+      const status = valueCell.querySelector('.cv-write-status');
       if (!Number.isInteger(value) || value < Number(range[1]) || value > Number(range[2])) {
         status.textContent = 'Enter ' + range[1] + '–' + range[2];
         input.focus();
@@ -240,9 +217,55 @@ function setupWriteControls(map) {
     const status = document.createElement('span');
     status.className = 'cv-write-status';
     status.setAttribute('role', 'status');
-    valueEl.replaceWith(input);
-    cell.append(button, status);
+    valueElement.replaceWith(input);
+    valueCell.append(button, status);
+}
+
+function renderCvTable(definitions) {
+  const tableBody = document.getElementById('cvTableBody');
+  const responseCvs = [];
+  if (!tableBody) return responseCvs;
+  tableBody.replaceChildren();
+
+  definitions.forEach(function (definition) {
+    const row = document.createElement('tr');
+    row.dataset.protocol = currentProtocol;
+
+    const labelCell = document.createElement('td');
+    labelCell.textContent = getCvLabel(definition.key);
+    row.appendChild(labelCell);
+
+    const indexCell = document.createElement('td');
+    indexCell.className = 'cv-idx';
+    if (Number.isInteger(definition.cv)) {
+      indexCell.textContent = definition.response_step > 0
+        ? definition.cv + '–' + (definition.cv + (definition.length - 1) * definition.response_step)
+        : String(definition.cv);
+    }
+    row.appendChild(indexCell);
+
+    const valueCell = document.createElement('td');
+    valueCell.className = 'cv-value-cell';
+    const valueElement = document.createElement('span');
+    valueElement.className = 'cv-value';
+    valueElement.dataset.cvField = definition.key;
+    valueCell.appendChild(valueElement);
+    setupWriteControl(definition, definition.key, valueCell, valueElement);
+    row.appendChild(valueCell);
+    tableBody.appendChild(row);
+
+    if (Number.isInteger(definition.cv)) {
+      if (definition.response_step > 0) {
+        for (let i = 0; i < definition.length; i++) {
+          responseCvs.push(definition.cv + i * definition.response_step);
+        }
+      } else {
+        responseCvs.push(definition.cv);
+      }
+    }
   });
+
+  return responseCvs;
 }
 
 function getUidFromUrl() {
@@ -252,6 +275,7 @@ function getUidFromUrl() {
 }
 
 async function init() {
+  document.documentElement.lang = detectEditorLanguage();
   const titleEl = document.getElementById('editorLocoName');
   const protocolEl = document.getElementById('editorProtocol');
   currentUid = getUidFromUrl();
@@ -269,6 +293,9 @@ async function init() {
       currentProtocol = normalizeProtocol(loco.protocol);
       if (protocolEl) protocolEl.textContent = 'Protocol: ' + (loco.protocol || 'unknown');
     }
+    const mapResponse = await fetch('/api/loco_cv_map');
+    if (!mapResponse.ok) throw new Error('CV map request failed: HTTP ' + mapResponse.status);
+    protocolCvMap = await mapResponse.json();
   } catch (e) { /* keep defaults */ }
   if (!currentProtocol && protocolEl && protocolEl.textContent === 'Protocol: …') {
     protocolEl.textContent = 'Protocol: unknown';
@@ -278,8 +305,8 @@ async function init() {
     row.hidden = row.getAttribute('data-protocol') !== currentProtocol;
   });
 
-  const map = CV_MAP[currentProtocol];
-  if (!map) {
+  const definitions = protocolCvMap[currentProtocol];
+  if (!Array.isArray(definitions)) {
     if (titleEl && titleEl.textContent === 'Loading …') titleEl.textContent = 'UID ' + currentUid;
     const warn = document.getElementById('editorUnsupported');
     if (warn) warn.style.display = 'block';
@@ -287,34 +314,18 @@ async function init() {
     return;
   }
 
-  setCvIndexValue('name', map.name ? '1027–16387' : '');
-  setCvIndexValue('address', map.address ? String(map.address.cv) : '');
-  setFieldValue('address', map.address ? '…' : '');
-  setupWriteControls(map);
-  Object.keys(map).forEach(function (key) {
-    setFieldValue(map[key].field || key, '');
-  });
-
-  const definitions = Object.keys(map).map(function (key) {
-    return { key: key, cv: map[key].cv, length: map[key].length };
-  });
-  const expectedResponseCvs = [];
-  definitions.forEach(function (definition) {
-    if (definition.key === 'name') {
-      for (let i = 0; i < definition.length; i++) expectedResponseCvs.push(definition.cv + (i * 1024));
-    } else {
-      expectedResponseCvs.push(definition.cv);
-    }
-  });
+  const expectedResponseCvs = renderCvTable(definitions);
   expectedCvs = new Set(expectedResponseCvs);
-  nameChars = map.name ? new Array(map.name.length).fill(null) : [];
+  const nameDefinition = definitions.find(function (definition) { return definition.response_step > 0; });
+  const readableDefinitions = definitions.filter(function (definition) { return Number.isInteger(definition.cv); });
+  nameChars = nameDefinition ? new Array(nameDefinition.length).fill(null) : [];
   try {
     await connectEditorSSE();
-    for (let i = 0; i < definitions.length; i++) {
-      const definition = definitions[i];
-      updateEditorStatus('Reading CV ' + (i + 1) + '/' + definitions.length + ' (' + definition.cv + ')…');
+    for (let i = 0; i < readableDefinitions.length; i++) {
+      const definition = readableDefinitions[i];
+      updateEditorStatus('Reading CV ' + (i + 1) + '/' + readableDefinitions.length + ' (' + definition.cv + ')…');
       await requestConfigRead(currentUid, definition.cv, definition.length);
-      if (i < definitions.length - 1) {
+      if (i < readableDefinitions.length - 1) {
         await new Promise(function (resolve) { window.setTimeout(resolve, CONFIG_READ_INTERVAL_MS); });
       }
     }

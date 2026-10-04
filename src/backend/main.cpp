@@ -21,6 +21,7 @@
 #include <condition_variable>
 #include <cstring>
 #include <cctype>
+#include <regex>
 
 #include "httplib.h" // yhirose/cpp-httplib single header (HTTP + SSE via chunked)
 
@@ -59,6 +60,15 @@ struct Loco {
     std::map<int,int> fn_typ; // function index -> type id
     int fn_count = 0; // number of declared function slots (0..32), based on highest .funktionen(_2) ..nr seen
 };
+struct CvDefinition {
+    std::string key;
+    std::string range;
+    int cv = -1;
+    int length = 1;
+    int response_step = 0;
+};
+using CvProtocolMap = std::map<std::string, std::vector<CvDefinition>>;
+static CvProtocolMap g_loco_cv_map;
 static std::map<int, Loco> g_locos; // uid -> loco
 static std::map<int, int> g_loco_speed; // uid -> 0..1023
 static std::map<int, int> g_loco_dir;   // uid -> 0/1/2
@@ -119,6 +129,95 @@ static std::string json_escape(const std::string &in) {
         }
     }
     return out;
+}
+
+static std::map<std::string, std::string> xml_attributes(const std::string &text) {
+    static const std::regex attribute_re(R"xml(([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*"([^"]*)")xml");
+    std::map<std::string, std::string> attributes;
+    for (std::sregex_iterator it(text.begin(), text.end(), attribute_re), end; it != end; ++it) {
+        attributes[(*it)[1].str()] = (*it)[2].str();
+    }
+    return attributes;
+}
+
+static bool parse_xml_int(const std::string &text, int &value) {
+    try {
+        size_t parsed = 0;
+        value = std::stoi(text, &parsed);
+        return parsed == text.size();
+    } catch (...) {
+        return false;
+    }
+}
+
+static bool load_loco_cv_map(const fs::path &path) {
+    std::ifstream file(path, std::ios::binary);
+    if (!file) return false;
+    std::ostringstream buffer;
+    buffer << file.rdbuf();
+    const std::string xml = buffer.str();
+    static const std::regex protocol_re(R"xml(<protocol\b([^>]*)>([\s\S]*?)</protocol\s*>)xml");
+    static const std::regex cv_re(R"xml(<cv\b([^>]*)/\s*>)xml");
+    CvProtocolMap parsed_map;
+
+    for (std::sregex_iterator protocol_it(xml.begin(), xml.end(), protocol_re), end; protocol_it != end; ++protocol_it) {
+        const auto protocol_attributes = xml_attributes((*protocol_it)[1].str());
+        auto protocol_name = protocol_attributes.find("name");
+        if (protocol_name == protocol_attributes.end() || protocol_name->second.empty() ||
+            parsed_map.find(protocol_name->second) != parsed_map.end()) return false;
+
+        std::vector<CvDefinition> definitions;
+        const std::string contents = (*protocol_it)[2].str();
+        for (std::sregex_iterator cv_it(contents.begin(), contents.end(), cv_re); cv_it != end; ++cv_it) {
+            const auto attributes = xml_attributes((*cv_it)[1].str());
+            CvDefinition definition;
+            auto key = attributes.find("key");
+            if (key == attributes.end() || key->second.empty()) return false;
+            definition.key = key->second;
+            auto range = attributes.find("range");
+            if (range != attributes.end()) definition.range = range->second;
+
+            auto index = attributes.find("index");
+            if (index != attributes.end() && (!parse_xml_int(index->second, definition.cv) || definition.cv < 0 || definition.cv > 65535)) return false;
+            auto length = attributes.find("length");
+            if (length != attributes.end() && (!parse_xml_int(length->second, definition.length) || definition.length < 1 || definition.length > 255)) return false;
+            auto response_step = attributes.find("response-step");
+            if (response_step != attributes.end() && (!parse_xml_int(response_step->second, definition.response_step) || definition.response_step < 1)) return false;
+            if (definition.cv < 0 && (length != attributes.end() || response_step != attributes.end() || range != attributes.end())) return false;
+            if (std::any_of(definitions.begin(), definitions.end(), [&](const CvDefinition &item){ return item.key == definition.key; })) return false;
+            definitions.push_back(std::move(definition));
+        }
+        if (definitions.empty()) return false;
+        parsed_map.emplace(protocol_name->second, std::move(definitions));
+    }
+
+    if (parsed_map.empty()) return false;
+    g_loco_cv_map.swap(parsed_map);
+    return true;
+}
+
+static std::string loco_cv_map_json() {
+    std::ostringstream os;
+    os << "{";
+    bool first_protocol = true;
+    for (const auto &protocol : g_loco_cv_map) {
+        if (!first_protocol) os << ",";
+        first_protocol = false;
+        os << "\"" << json_escape(protocol.first) << "\":[";
+        bool first_cv = true;
+        for (const auto &cv : protocol.second) {
+            if (!first_cv) os << ",";
+            first_cv = false;
+                os << "{\"key\":\"" << json_escape(cv.key) << "\",\"length\":" << cv.length;
+            if (cv.cv >= 0) os << ",\"cv\":" << cv.cv;
+            if (!cv.range.empty()) os << ",\"range\":\"" << json_escape(cv.range) << "\"";
+            if (cv.response_step > 0) os << ",\"response_step\":" << cv.response_step;
+            os << "}";
+        }
+        os << "]";
+    }
+    os << "}";
+    return os.str();
 }
 
 // parse integer from string supporting decimal and 0x... hex
@@ -996,6 +1095,9 @@ int main(int argc, char** argv) {
         frontend_dir = base_dir / "frontend";
     }
     fs::path static_dir = frontend_dir / "static";
+    if (!load_loco_cv_map(frontend_dir / "loco_cv_map.xml")) {
+        fprintf(stderr, "Failed to load locomotive CV map from %s\n", (frontend_dir / "loco_cv_map.xml").string().c_str());
+    }
 
     // Root: serve index.html with simple replacement and explicit no-cache
     auto serve_template = [&](const fs::path &p, httplib::Response &res){
@@ -1108,6 +1210,11 @@ int main(int argc, char** argv) {
     // API: loco list
     svr.Get("/api/loco_list", [&](const httplib::Request&, httplib::Response &res){
         res.set_content(loco_list_json(), "application/json");
+    });
+
+    // API: CV definitions loaded from loco_cv_map.xml at startup.
+    svr.Get("/api/loco_cv_map", [&](const httplib::Request&, httplib::Response &res){
+        res.set_content(loco_cv_map_json(), "application/json");
     });
 
     // API: loco state (single or all)

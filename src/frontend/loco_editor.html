@@ -38,7 +38,7 @@
       padding: 0.75rem 1rem;
       background: var(--editor-navy);
     }
-    .editor-header h1 { font-size: 1.1rem; margin: 0; }
+    .editor-header h1 { color: #fff; font-size: 1.1rem; margin: 0; }
     .editor-protocol { color: var(--editor-label); font-size: 0.8rem; margin: 0.2rem 0 0; }
     .back-link { color: #fff; text-decoration: none; font-size: 0.95rem; white-space: nowrap; }
     table.cv-table { width: 100%; border-collapse: collapse; }
@@ -96,29 +96,11 @@
       <thead>
         <tr><th>Parameter</th><th>CV Index</th><th>Value</th></tr>
       </thead>
-      <tbody>
-        <tr data-protocol="mfx"><td>VMax</td><td class="cv-idx">2227</td><td class="cv-value-cell"><span class="cv-value" data-cv-field="vmax"></span></td></tr>
-        <tr data-protocol="mfx"><td>VMin</td><td class="cv-idx">1203</td><td class="cv-value-cell"><span class="cv-value" data-cv-field="vmin"></span></td></tr>
-        <tr><td>Name</td><td class="cv-idx" data-cv-index="name"></td><td class="cv-value-cell"><span class="cv-value" data-cv-field="name"></span></td></tr>
-        <tr data-protocol="mfx"><td>ACC</td><td class="cv-idx">1202</td><td class="cv-value-cell"><span class="cv-value" data-cv-field="acc"></span></td></tr>
-        <tr data-protocol="mfx"><td>DCC</td><td class="cv-idx">2226</td><td class="cv-value-cell"><span class="cv-value" data-cv-field="dcc"></span></td></tr>
-        <tr data-protocol="mfx"><td>Vol</td><td class="cv-idx">1325</td><td class="cv-value-cell"><span class="cv-value" data-cv-field="vol"></span></td></tr>
-        <tr><td>Address</td><td class="cv-idx" data-cv-index="address"></td><td class="cv-value-cell"><span class="cv-value" data-cv-field="address"></span></td></tr>
-        <tr data-protocol="dcc"><td>VMin</td><td class="cv-idx">2</td><td class="cv-value-cell"><span class="cv-value" data-cv-field="vmin"></span></td></tr>
-        <tr data-protocol="dcc"><td>ACC</td><td class="cv-idx">3</td><td class="cv-value-cell"><span class="cv-value" data-cv-field="acc"></span></td></tr>
-        <tr data-protocol="dcc"><td>DCC</td><td class="cv-idx">4</td><td class="cv-value-cell"><span class="cv-value" data-cv-field="dcc"></span></td></tr>
-        <tr data-protocol="dcc"><td>VMax</td><td class="cv-idx">5</td><td class="cv-value-cell"><span class="cv-value" data-cv-field="vmax"></span></td></tr>
-        <tr data-protocol="dcc"><td>Vol</td><td class="cv-idx">63</td><td class="cv-value-cell"><span class="cv-value" data-cv-field="vol"></span></td></tr>
-        <tr data-protocol="mm2_prog"><td>VMin</td><td class="cv-idx">2</td><td class="cv-value-cell"><span class="cv-value" data-cv-field="vmin"></span></td></tr>
-        <tr data-protocol="mm2_prog"><td>ACC</td><td class="cv-idx">3</td><td class="cv-value-cell"><span class="cv-value" data-cv-field="acc"></span></td></tr>
-        <tr data-protocol="mm2_prog"><td>DCC</td><td class="cv-idx">4</td><td class="cv-value-cell"><span class="cv-value" data-cv-field="dcc"></span></td></tr>
-        <tr data-protocol="mm2_prog"><td>VMax</td><td class="cv-idx">5</td><td class="cv-value-cell"><span class="cv-value" data-cv-field="vmax"></span></td></tr>
-        <tr data-protocol="mm2_prog"><td>Vol</td><td class="cv-idx">63</td><td class="cv-value-cell"><span class="cv-value" data-cv-field="vol"></span></td></tr>
-      </tbody>
+      <tbody id="cvTableBody"></tbody>
     </table>
     <p id="editorStatus" role="status" aria-live="polite">Connecting…</p>
     <p id="editorUnsupported">No CVs are currently defined for this decoder protocol.</p>
   </div>
-  <script src="/static/loco_editor.js?v=12"></script>
+  <script src="/static/loco_editor.js?v=15"></script>
 </body>
 </html>

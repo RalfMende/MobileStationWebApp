@@ -134,6 +134,18 @@ class CanProtocolTest(unittest.TestCase):
 
     # ---- Outgoing frames triggered by HTTP control endpoints ----
 
+    def test_loco_cv_map_is_loaded_from_xml_at_startup(self):
+        cv_map = self.server.get_json("/api/loco_cv_map")
+        mfx_by_key = {definition["key"]: definition for definition in cv_map["mfx"]}
+        dcc_by_key = {definition["key"]: definition for definition in cv_map["dcc"]}
+        mm2_by_key = {definition["key"]: definition for definition in cv_map["mm2_prog"]}
+        self.assertEqual(mfx_by_key["vmax"]["cv"], 2227)
+        self.assertEqual(mfx_by_key["name"]["length"], 16)
+        self.assertEqual(dcc_by_key["adresse"]["range"], "1-127")
+        self.assertEqual(mm2_by_key["adresse"]["cv"], 1)
+        self.assertNotIn("label", dcc_by_key["adresse"])
+        self.assertNotIn("field", dcc_by_key["adresse"])
+
     def test_control_event_speed_emits_lok_geschwindigkeit_frame(self):
         self.server.post_json("/api/control_event", {"loco_id": TEST_LOCO_UID, "speed": 500})
         can_id, dlc, data = self.capture.recv_frame()

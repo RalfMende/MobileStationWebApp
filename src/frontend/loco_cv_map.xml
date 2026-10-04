@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cv-map>
+  <protocol name="mfx">
+    <cv key="vmax" index="2227" length="1" />
+    <cv key="vmin" index="1203" length="1" />
+    <cv key="name" index="1027" length="16" response-step="1024" />
+    <cv key="av" index="1202" length="1" />
+    <cv key="bv" index="2226" length="1" />
+    <cv key="volume" index="1325" length="1" />
+    <cv key="adresse" />
+  </protocol>
+  <protocol name="dcc">
+    <cv key="adresse" index="1" length="1" range="1-127" />
+    <cv key="vmin" index="2" length="1" range="0-255" />
+    <cv key="av" index="3" length="1" range="0-71" />
+    <cv key="bv" index="4" length="1" range="0-71" />
+    <cv key="vmax" index="5" length="1" range="0-255" />
+    <cv key="volume" index="63" length="1" range="0-255" />
+    <cv key="name" />
+  </protocol>
+  <protocol name="mm2_prog">
+    <cv key="adresse" index="1" length="1" range="1-80" />
+    <cv key="vmin" index="2" length="1" range="1-80" />
+    <cv key="av" index="3" length="1" range="1-80" />
+    <cv key="bv" index="4" length="1" range="1-80" />
+    <cv key="vmax" index="5" length="1" range="0-63" />
+    <cv key="volume" index="63" length="1" range="0-63" />
+    <cv key="name" />
+  </protocol>
+</cv-map>
