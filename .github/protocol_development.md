@@ -28,6 +28,13 @@ Die durchsuchbaren Markdown-Referenzen befinden sich hier:
 
 Lies nur die Referenzabschnitte, die für die aktuelle Aufgabe relevant sind. Wenn eine Datei noch nicht existiert, suche in den vorhandenen Referenzen und kennzeichne fehlende Informationen. Erfinde keine Inhalte.
 
+Weitere hilfreiche beobachtungen zum Protokoll, die offiziell nicht dokumentiert sind ebenfalls zu beachten. Diese sind hier dokumentiert:
+- [Abfrage *.cs2 Dateien](./references/mb-abfrage-cs2-dateien.md)
+- [Abfrage Loknamen und -daten von der MS2](./references/mb-abfrage-cs2-dateien.md)
+- [Config Data](./references/mb-config-data.md)
+- [Folgenummer der MS2](./references/mb-folgenummer-der-ms2.md)
+- [Statusdaten](./references/mb-statusdaten.md)
+
 Bei Widersprüchen oder unklaren Angaben:
 1. Prüfe den betreffenden Abschnitt in der Original-Spezifikation.
 2. Dokumentiere den Widerspruch mit Kapitel- oder Seitenangabe.
