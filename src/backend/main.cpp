@@ -119,6 +119,7 @@ static int g_http_port = 6020;
 static std::string g_bind_host = "0.0.0.0";
 static int g_device_uid = 0; // sender uid for CAN id hash
 static bool g_verbose = false;
+static bool g_master_mode = false;
 static std::string g_frontend_dir_override; // optional path to frontend dir (index.html/static)
 static std::map<int, std::string> g_icon_overrides; // uid -> icon name (stem)
 static bool g_enable_bind_timer = false; // enable CMD_BIND timer only when --bind is passed
@@ -601,7 +602,8 @@ enum Command {
     CMD_FUNCTION = 6,
     CMD_READ_CONFIG = 7,
     CMD_WRITE_CONFIG = 8,
-    CMD_SWITCH = 11
+    CMD_SWITCH = 11,
+    CMD_SOFTWARE_VERSION = 0x18
 };
 
 enum SystemSubCmd {
@@ -709,6 +711,19 @@ static std::vector<uint8_t> payload_write_config(uint32_t loco_uid, int cv_index
     return b;
 }
 
+static std::vector<uint8_t> payload_software_version(uint32_t device_uid, uint16_t version, uint16_t device_type) {
+    return {
+        static_cast<uint8_t>((device_uid >> 24) & 0xFF),
+        static_cast<uint8_t>((device_uid >> 16) & 0xFF),
+        static_cast<uint8_t>((device_uid >> 8) & 0xFF),
+        static_cast<uint8_t>(device_uid & 0xFF),
+        static_cast<uint8_t>((version >> 8) & 0xFF),
+        static_cast<uint8_t>(version & 0xFF),
+        static_cast<uint8_t>((device_type >> 8) & 0xFF),
+        static_cast<uint8_t>(device_type & 0xFF)
+    };
+}
+
 static void udp_send_frame(uint32_t can_id, const std::vector<uint8_t> &payload, int dlc) {
      auto data = pad_to_8(payload);
 #ifdef _WIN32
@@ -791,6 +806,18 @@ static void send_cs2_frame(uint32_t can_id, const std::vector<uint8_t> &payload,
     udp_send_frame(can_id, payload, dlc);
 }
 
+static void respond_to_software_version_request(int command, int resp_bit, uint8_t dlc) {
+    if (g_master_mode || command != CMD_SOFTWARE_VERSION || resp_bit != 0 || dlc != 0) return;
+    send_cs2_frame(
+        build_can_id(0, CMD_SOFTWARE_VERSION, 0, 1),
+        payload_software_version(0, 0x0101, 0xEEEE),
+        8);
+}
+
+static void send_master_software_version_request() {
+    send_cs2_frame(build_can_id((uint32_t)g_device_uid, CMD_SOFTWARE_VERSION, 0, 0), {}, 0);
+}
+
 static void udp_listener_thread(std::atomic<bool>& stop_flag) {
     using Clock = std::chrono::steady_clock;
     bool mfx_bind_pending = false;
@@ -812,7 +839,17 @@ static void udp_listener_thread(std::atomic<bool>& stop_flag) {
     struct timeval tv; tv.tv_sec = 1; tv.tv_usec = 0; setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 #endif
 
+    const auto master_ping_interval = std::chrono::seconds(12);
+    auto next_master_ping = Clock::now() + master_ping_interval;
     while (!stop_flag.load()) {
+        auto now = Clock::now();
+        if (g_master_mode && now >= next_master_ping) {
+            send_master_software_version_request();
+            do {
+                next_master_ping += master_ping_interval;
+            } while (next_master_ping <= now);
+        }
+
         // Optional MFX-BIND timer only active if --bind flag set
         if (g_enable_bind_timer && mfx_bind_pending && Clock::now() >= mfx_bind_deadline) {
             mfx_bind_pending = false;
@@ -840,6 +877,8 @@ static void udp_listener_thread(std::atomic<bool>& stop_flag) {
         int cmd_resp = (can_id >> 16) & 0x1FF; // 9 bits (command + resp bit)
         int command = (cmd_resp >> 1) & 0xFF;
         int resp_bit = cmd_resp & 1;
+
+        respond_to_software_version_request(command, resp_bit, dlc);
 
         if ((command == CMD_BIND || command == CMD_READ_CONFIG) && g_enable_bind_timer) {
             // (Re)start MFX-Bind timer on each BIND or READ_CONFIG
@@ -906,7 +945,17 @@ static void can_listener_thread(std::atomic<bool>& stop_flag) {
     Clock::time_point mfx_bind_deadline{};
     struct timeval tv{}; tv.tv_sec = 1; tv.tv_usec = 0;
     setsockopt(g_can_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    const auto master_ping_interval = std::chrono::seconds(12);
+    auto next_master_ping = Clock::now() + master_ping_interval;
     while (!stop_flag.load()) {
+        auto now = Clock::now();
+        if (g_master_mode && now >= next_master_ping) {
+            send_master_software_version_request();
+            do {
+                next_master_ping += master_ping_interval;
+            } while (next_master_ping <= now);
+        }
+
         if (g_enable_bind_timer && mfx_bind_pending && Clock::now() >= mfx_bind_deadline) {
             mfx_bind_pending = false;
             int loco_id = 1; int fn = 0;
@@ -924,6 +973,7 @@ static void can_listener_thread(std::atomic<bool>& stop_flag) {
         int cmd_resp = (can_id >> 16) & 0x1FF;
         int command = (cmd_resp >> 1) & 0xFF;
         int resp_bit = cmd_resp & 1;
+        respond_to_software_version_request(command, resp_bit, dlc);
         if ((command == CMD_BIND || command == CMD_READ_CONFIG) && g_enable_bind_timer) {
             int ms = (g_bind_timeout_ms > 0) ? g_bind_timeout_ms : 1000;
             mfx_bind_deadline = Clock::now() + std::chrono::milliseconds(ms);
@@ -1131,6 +1181,7 @@ int main(int argc, char** argv) {
         else if (a == "--port") g_http_port = std::stoi(next(i));
         else if (a == "--www") { g_frontend_dir_override = next(i); }
         else if (a == "--bind") { handle_bind_flag(i, argc, argv); }
+        else if (a == "--master") { g_master_mode = true; }
         else if (a.rfind("--bind=", 0) == 0) {
             g_enable_bind_timer = true;
             std::string nv = a.substr(7);
@@ -1149,6 +1200,7 @@ int main(int argc, char** argv) {
             printf("  --port <port>      HTTP port (default 6020)\n");
             printf("  --www <dir>        Frontend directory containing index.html and static/\n");
             printf("  --bind[=<ms>]      Enable requesting new loco config after MFX-BIND command automatically; optional timeout in ms (default %d)\n", g_bind_timeout_ms);
+            printf("  --master           Send software-version requests every 12 seconds; do not respond to them\n");
 #if defined(MSWEBAPP_WITH_CAN) && defined(__linux__)
             printf("  --can/-i <iface>   CAN interface name (e.g. can0); routes CS2 traffic via SocketCAN instead of UDP\n");
 #endif

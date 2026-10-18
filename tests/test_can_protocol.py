@@ -19,6 +19,7 @@ These tests:
 Run with:
     python3 tests/test_can_protocol.py
 """
+import select
 import socket
 import struct
 import sys
@@ -43,6 +44,7 @@ CMD_FUNCTION = 0x06
 CMD_READ_CONFIG = 0x07
 CMD_WRITE_CONFIG = 0x08
 CMD_SWITCH = 0x0B
+CMD_SOFTWARE_VERSION = 0x18
 
 SYS_STOP = 0x00
 SYS_GO = 0x01
@@ -134,10 +136,54 @@ class CanProtocolTest(unittest.TestCase):
         if cls.capture is not None:
             cls.capture.close()
 
-    def send_inbound(self, command, payload, dlc):
-        send_inbound_frame(command, payload, dlc, port=self.server.udp_rx_port)
+    def send_inbound(self, command, payload, dlc, resp=1):
+        send_inbound_frame(command, payload, dlc, resp=resp, port=self.server.udp_rx_port)
 
     # ---- Outgoing frames triggered by HTTP control endpoints ----
+
+    def test_inbound_software_version_request_emits_software_app_response(self):
+        self.send_inbound(CMD_SOFTWARE_VERSION, b"", dlc=0, resp=0)
+
+        can_id, dlc, data = self.capture.recv_frame()
+        command, resp = decode_command(can_id)
+        self.assertEqual(command, CMD_SOFTWARE_VERSION)
+        self.assertEqual(resp, 1)
+        self.assertEqual(can_id & 0xFFFF, 0x0300)
+        self.assertEqual(dlc, 8)
+        self.assertEqual(int.from_bytes(data[0:4], "big"), 0)
+        self.assertEqual(int.from_bytes(data[4:6], "big"), 0x0101)
+        self.assertEqual(int.from_bytes(data[6:8], "big"), 0xEEEE)
+
+    def test_master_suppresses_software_version_response(self):
+        master_server = BackendServer(
+            udp_rx_port=find_free_udp_port(), extra_args=["--master"]).start()
+        self.addCleanup(master_server.stop)
+
+        send_inbound_frame(
+            CMD_SOFTWARE_VERSION, b"", dlc=0, resp=0, port=master_server.udp_rx_port)
+        readable, _, _ = select.select([self.capture.sock], [], [], 0.2)
+        self.assertFalse(readable, "master mode unexpectedly replied to a software-version request")
+
+    def test_master_sends_software_version_request_every_12_seconds(self):
+        master_server = BackendServer(
+            udp_rx_port=find_free_udp_port(), extra_args=["--master"]).start()
+        self.addCleanup(master_server.stop)
+
+        received_at = []
+        for _ in range(2):
+            readable, _, _ = select.select([self.capture.sock], [], [], 14.0)
+            self.assertTrue(readable, "master mode did not send a software-version request")
+            received_at.append(time.monotonic())
+            can_id, dlc, data = self.capture.recv_frame()
+            command, resp = decode_command(can_id)
+            self.assertEqual(command, CMD_SOFTWARE_VERSION)
+            self.assertEqual(resp, 0)
+            self.assertEqual(dlc, 0)
+            self.assertEqual(data, bytes(8))
+
+        interval = received_at[1] - received_at[0]
+        self.assertGreaterEqual(interval, 10.0)
+        self.assertLessEqual(interval, 14.0)
 
     def test_loco_cv_map_is_loaded_from_xml_at_startup(self):
         cv_map = self.server.get_json("/api/loco_cv_map")

@@ -56,9 +56,10 @@ def parse_int_auto(value):
 class BackendServer:
     """Starts mswebapp_cpp against a temp copy of var/config and tears it down again."""
 
-    def __init__(self, config_src_dir=CONFIG_SRC_DIR, udp_rx_port=None):
+    def __init__(self, config_src_dir=CONFIG_SRC_DIR, udp_rx_port=None, extra_args=None):
         self.config_src_dir = config_src_dir
         self.udp_rx_port = udp_rx_port
+        self.extra_args = extra_args or []
         self.proc = None
         self.port = None
         self.tmpdir = None
@@ -79,6 +80,7 @@ class BackendServer:
                 "--host", "127.0.0.1", "--port", str(self.port)]
         if self.udp_rx_port is not None:
             args.extend(["--udp-rx", str(self.udp_rx_port)])
+        args.extend(self.extra_args)
         self.proc = subprocess.Popen(
             args,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
