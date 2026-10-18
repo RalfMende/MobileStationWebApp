@@ -25,6 +25,7 @@ import struct
 import sys
 import time
 import unittest
+import zlib
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -44,6 +45,8 @@ CMD_FUNCTION = 0x06
 CMD_READ_CONFIG = 0x07
 CMD_WRITE_CONFIG = 0x08
 CMD_SWITCH = 0x0B
+CMD_CONFIG_DATA = 0x20
+CMD_CONFIG_DATA_STREAM = 0x21
 CMD_SOFTWARE_VERSION = 0x18
 
 SYS_STOP = 0x00
@@ -80,6 +83,40 @@ def build_inbound_can_id(command, resp=1):
     """Build a CAN-ID for a synthetic inbound frame. The backend does not
     validate the hash (lower 16 bits) on receipt, so any value works here."""
     return ((command << 1) | (resp & 1)) << 16
+
+
+def config_data_crc(data):
+    crc = 0xFFFF
+    for byte in data:
+        crc ^= byte << 8
+        for _ in range(8):
+            crc = ((crc << 1) ^ 0x1021) & 0xFFFF if crc & 0x8000 else (crc << 1) & 0xFFFF
+    return crc
+
+
+def send_config_stream(port, config_text, header_dlc=6):
+    raw_config = config_text.encode("utf-8")
+    if header_dlc == 7:
+        stream = len(raw_config).to_bytes(4, "big") + zlib.compress(raw_config)
+    else:
+        stream = zlib.compress(raw_config)
+    padded_stream = stream + bytes((-len(stream)) % 8)
+    crc_data = padded_stream if header_dlc == 7 else stream
+    header = len(stream).to_bytes(4, "big") + config_data_crc(crc_data).to_bytes(2, "big")
+    if header_dlc == 7:
+        header += b"\x7b"
+
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        sock.sendto(
+            pack_can_udp_frame(build_inbound_can_id(CMD_CONFIG_DATA_STREAM), header_dlc, header),
+            ("127.0.0.1", port))
+        for offset in range(0, len(padded_stream), 8):
+            sock.sendto(
+                pack_can_udp_frame(
+                    build_inbound_can_id(CMD_CONFIG_DATA_STREAM),
+                    8,
+                    padded_stream[offset:offset + 8]),
+                ("127.0.0.1", port))
 
 
 class CanCapture:
@@ -129,6 +166,8 @@ class CanProtocolTest(unittest.TestCase):
         # frame can be missed.
         cls.capture = CanCapture()
         cls.server = BackendServer(udp_rx_port=find_free_udp_port()).start()
+        cls.startup_config_request = cls.capture.recv_frame()
+        cls.startup_switch_list = cls.server.get_json("/api/switch_list")["artikel"]
         cls.initial_loco_list = cls.server.get_json("/api/loco_list")
 
     @classmethod
@@ -142,6 +181,40 @@ class CanProtocolTest(unittest.TestCase):
         send_inbound_frame(command, payload, dlc, resp=resp, port=self.server.udp_rx_port)
 
     # ---- Outgoing frames triggered by HTTP control endpoints ----
+
+    def test_default_mode_requests_mags_without_loading_local_switches(self):
+        can_id, dlc, data = self.startup_config_request
+        command, resp = decode_command(can_id)
+        self.assertEqual(command, CMD_CONFIG_DATA)
+        self.assertEqual(resp, 0)
+        self.assertEqual(can_id & 0xFFFF, 0xB311)
+        self.assertEqual(dlc, 8)
+        self.assertEqual(data, b"mags\0\0\0\0")
+        self.assertTrue(all(not item["name"] for item in self.startup_switch_list))
+
+    def test_zlib_mags_stream_populates_switch_list(self):
+        config_text = (
+            "[magnetartikel]\n"
+            "artikel\n.id=1\n.name=Remote Switch A\n.typ=artikel\n.dectyp=mm2\n.schaltzeit=375\n"
+            "artikel\n.id=3\n.name=Remote Switch B\n.typ=artikel\n.dectyp=dcc\n"
+        )
+        send_config_stream(self.server.udp_rx_port, config_text)
+
+        loaded = wait_until(
+            lambda: self.server.get_json("/api/switch_list")["artikel"][0]["name"] == "Remote Switch A")
+        self.assertTrue(loaded, "backend did not load the received mags config stream")
+        switches = self.server.get_json("/api/switch_list")["artikel"]
+        self.assertEqual(switches[0]["uid"], 0x3000)
+        self.assertEqual(switches[1]["name"], "Remote Switch B")
+        self.assertEqual(switches[1]["uid"], 0x3802)
+
+    def test_zlib_mags_broadcast_stream_with_length_prefix_is_accepted(self):
+        config_text = "[magnetartikel]\nartikel\n.id=8\n.name=Broadcast Switch\n.dectyp=sx1\n"
+        send_config_stream(self.server.udp_rx_port, config_text, header_dlc=7)
+
+        loaded = wait_until(
+            lambda: self.server.get_json("/api/switch_list")["artikel"][0]["name"] == "Broadcast Switch")
+        self.assertTrue(loaded, "backend did not load the DLC-7 mags config stream")
 
     def test_inbound_software_version_request_emits_software_app_response(self):
         self.send_inbound(CMD_SOFTWARE_VERSION, b"", dlc=0, resp=0)

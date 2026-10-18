@@ -27,7 +27,7 @@ class SystemStateTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.server = BackendServer().start()
+        cls.server = BackendServer(extra_args=["--master"]).start()
 
     @classmethod
     def tearDownClass(cls):

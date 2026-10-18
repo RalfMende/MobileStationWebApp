@@ -607,6 +607,16 @@ function handleSSEMessage(event) {
     loadAndRenderLocoList({ preserveSelection: true });
     return;
   }
+  if (data.type === 'switch_list_reloaded') {
+    fetch('/api/switch_list')
+      .then(response => response.json())
+      .then(list => {
+        switchList = list;
+        updateKeyboardGroupLabels();
+      })
+      .catch(error => console.warn('Failed to reload switch list:', error));
+    return;
+  }
   if (data.type === 'system') {
       isRunning = data.status;
     updateStopButtonUI();

@@ -22,6 +22,7 @@
 #include <cstring>
 #include <cctype>
 #include <regex>
+#include <zlib.h>
 
 #include "httplib.h" // yhirose/cpp-httplib single header (HTTP + SSE via chunked)
 
@@ -109,6 +110,7 @@ struct SwitchEntry {
 };
 static std::vector<SwitchEntry> g_switches; // index corresponds to switch slot
 static std::map<int, int> g_switch_state; // idx -> value
+static std::mutex g_switches_mutex;
 static std::atomic<bool> g_running{false};
 static std::string g_config_dir = "var";
 static std::string g_public_cfg = "/cfg";
@@ -531,12 +533,11 @@ static void parse_lokomotive_cs2(const fs::path &p) {
     }
 }
 
-static void parse_magnetartikel_cs2(const fs::path &p) {
+static void parse_magnetartikel_cs2(std::istream &f) {
+    std::lock_guard<std::mutex> lock(g_switches_mutex);
     g_switch_state.clear();
     g_switches.clear();
     g_switches.resize(64);
-    std::ifstream f(p);
-    if (!f) return;
     std::string line; bool in = false; int idx = 0; int cur_id = 0; std::string dectyp; std::string cur_name; std::string cur_typ; int cur_time = 0;
     while (std::getline(f, line)) {
         line = trim(line);
@@ -580,6 +581,11 @@ static void parse_magnetartikel_cs2(const fs::path &p) {
     }
 }
 
+static void parse_magnetartikel_cs2(const fs::path &p) {
+    std::ifstream f(p);
+    parse_magnetartikel_cs2(f);
+}
+
 // Forward declarations for SSE/event helpers used in UDP listener
 static void publish_event(const std::string &msg);
 static std::string system_event_json();
@@ -603,6 +609,8 @@ enum Command {
     CMD_READ_CONFIG = 7,
     CMD_WRITE_CONFIG = 8,
     CMD_SWITCH = 11,
+    CMD_CONFIG_DATA = 0x20,
+    CMD_CONFIG_DATA_STREAM = 0x21,
     CMD_SOFTWARE_VERSION = 0x18
 };
 
@@ -819,6 +827,156 @@ static void send_master_software_version_request() {
     send_cs2_frame(build_can_id((uint32_t)g_device_uid, CMD_SOFTWARE_VERSION, 0, 0), {}, 0);
 }
 
+static void request_magnetartikel_config() {
+    const std::vector<uint8_t> payload = {'m', 'a', 'g', 's', 0, 0, 0, 0};
+    if (g_verbose) fprintf(stderr, "[config data] Requesting magnetartikel stream 'mags'\n");
+    send_cs2_frame(build_can_id(static_cast<uint32_t>(g_device_uid), CMD_CONFIG_DATA, 0, 0), payload, 8);
+}
+
+static uint16_t config_data_crc(const uint8_t *data, size_t size) {
+    uint16_t crc = 0xFFFF;
+    for (size_t i = 0; i < size; ++i) {
+        crc ^= static_cast<uint16_t>(data[i]) << 8;
+        for (int bit = 0; bit < 8; ++bit) {
+            crc = (crc & 0x8000) ? static_cast<uint16_t>((crc << 1) ^ 0x1021)
+                                 : static_cast<uint16_t>(crc << 1);
+        }
+    }
+    return crc;
+}
+
+class MagnetartikelConfigStream {
+public:
+    void process(uint8_t dlc, const uint8_t *data) {
+        if (dlc == 6 || dlc == 7) {
+            reset();
+            stream_length_ = (static_cast<size_t>(data[0]) << 24) |
+                             (static_cast<size_t>(data[1]) << 16) |
+                             (static_cast<size_t>(data[2]) << 8) |
+                             static_cast<size_t>(data[3]);
+            expected_crc_ = (static_cast<uint16_t>(data[4]) << 8) | data[5];
+            format_ = dlc;
+            if (stream_length_ == 0 || stream_length_ > kMaxStreamSize ||
+                (dlc == 7 && data[6] != 0x7B)) {
+                report_error("invalid stream header");
+                reset();
+                return;
+            }
+            packet_count_ = (stream_length_ + 7) / 8;
+            active_ = true;
+            return;
+        }
+
+        if (dlc != 8) {
+            if (active_) report_error("unexpected DLC before stream completed");
+            reset();
+            return;
+        }
+        if (!active_) return;
+
+        stream_.insert(stream_.end(), data, data + 8);
+        if (stream_.size() < packet_count_ * 8) return;
+
+        const size_t crc_length = format_ == 7 ? packet_count_ * 8 : stream_length_;
+        if (config_data_crc(stream_.data(), crc_length) != expected_crc_) {
+            report_error("stream CRC mismatch");
+            reset();
+            return;
+        }
+
+        std::vector<uint8_t> transferred(stream_.begin(), stream_.begin() + stream_length_);
+        std::string config_text;
+        if (!decode_config(transferred, format_ == 7, config_text) ||
+            config_text.find("[magnetartikel]") == std::string::npos ||
+            config_text.find("artikel") == std::string::npos) {
+            report_error("invalid or unsupported magnetartikel config data");
+            reset();
+            return;
+        }
+
+        std::istringstream config_file(config_text);
+        parse_magnetartikel_cs2(config_file);
+        publish_event("{\"type\":\"switch_list_reloaded\"}");
+        if (g_verbose) fprintf(stderr, "[config data] Received and imported magnetartikel stream (%zu bytes)\n", config_text.size());
+        reset();
+    }
+
+private:
+    static constexpr size_t kMaxStreamSize = 4 * 1024 * 1024;
+
+    static bool inflate_config(const uint8_t *data, size_t size, size_t expected_size, std::string &output) {
+        z_stream stream{};
+        stream.next_in = const_cast<Bytef *>(reinterpret_cast<const Bytef *>(data));
+        stream.avail_in = static_cast<uInt>(size);
+        if (inflateInit(&stream) != Z_OK) return false;
+
+        int result = Z_OK;
+        char buffer[4096];
+        while (result == Z_OK) {
+            stream.next_out = reinterpret_cast<Bytef *>(buffer);
+            stream.avail_out = sizeof(buffer);
+            result = inflate(&stream, Z_NO_FLUSH);
+            output.append(buffer, sizeof(buffer) - stream.avail_out);
+            if (output.size() > kMaxStreamSize) {
+                result = Z_MEM_ERROR;
+                break;
+            }
+        }
+        inflateEnd(&stream);
+        return result == Z_STREAM_END && (expected_size == 0 || output.size() == expected_size);
+    }
+
+    static bool decode_config(const std::vector<uint8_t> &transferred, bool prefixed, std::string &output) {
+        if (!prefixed && transferred.size() >= 16) {
+            std::string text(transferred.begin(), transferred.end());
+            if (text.find("[magnetartikel]") != std::string::npos) {
+                output = std::move(text);
+                return true;
+            }
+        }
+
+        if (prefixed) {
+            if (transferred.size() < 5) return false;
+            const size_t uncompressed_size = (static_cast<size_t>(transferred[0]) << 24) |
+                                             (static_cast<size_t>(transferred[1]) << 16) |
+                                             (static_cast<size_t>(transferred[2]) << 8) |
+                                             static_cast<size_t>(transferred[3]);
+            return uncompressed_size <= kMaxStreamSize &&
+                   inflate_config(transferred.data() + 4, transferred.size() - 4, uncompressed_size, output);
+        }
+
+        if (inflate_config(transferred.data(), transferred.size(), 0, output)) return true;
+        output.clear();
+        if (transferred.size() < 5) return false;
+        const size_t uncompressed_size = (static_cast<size_t>(transferred[0]) << 24) |
+                                         (static_cast<size_t>(transferred[1]) << 16) |
+                                         (static_cast<size_t>(transferred[2]) << 8) |
+                                         static_cast<size_t>(transferred[3]);
+        return uncompressed_size <= kMaxStreamSize &&
+               inflate_config(transferred.data() + 4, transferred.size() - 4, uncompressed_size, output);
+    }
+
+    static void report_error(const char *message) {
+        fprintf(stderr, "[config data] Failed to load magnetartikel config stream: %s\n", message);
+    }
+
+    void reset() {
+        active_ = false;
+        stream_length_ = 0;
+        packet_count_ = 0;
+        expected_crc_ = 0;
+        format_ = 0;
+        stream_.clear();
+    }
+
+    bool active_ = false;
+    uint8_t format_ = 0;
+    size_t stream_length_ = 0;
+    size_t packet_count_ = 0;
+    uint16_t expected_crc_ = 0;
+    std::vector<uint8_t> stream_;
+};
+
 static void respond_to_system_identifier_request(int command, int resp_bit, uint8_t dlc, const uint8_t *data) {
     if (command != CMD_SYSTEM || resp_bit != 0 || dlc != 7 || data[4] != SYS_IDENTIFIER ||
         data[5] != 0x01 || data[6] != 0x00) return;
@@ -838,6 +996,7 @@ static void udp_listener_thread(std::atomic<bool>& stop_flag) {
     using Clock = std::chrono::steady_clock;
     bool mfx_bind_pending = false;
     Clock::time_point mfx_bind_deadline{};
+    MagnetartikelConfigStream magnetartikel_stream;
 
 #ifdef _WIN32
     SOCKET s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -854,6 +1013,8 @@ static void udp_listener_thread(std::atomic<bool>& stop_flag) {
     if (bind(s, (sockaddr*)&addr, sizeof(addr)) < 0) { close(s); perror("bind in udp_listener_thread failed"); return; }
     struct timeval tv; tv.tv_sec = 1; tv.tv_usec = 0; setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 #endif
+
+    if (!g_master_mode) request_magnetartikel_config();
 
     const auto master_ping_interval = std::chrono::seconds(12);
     auto next_master_ping = Clock::now() + master_ping_interval;
@@ -896,6 +1057,7 @@ static void udp_listener_thread(std::atomic<bool>& stop_flag) {
 
         respond_to_software_version_request(command, resp_bit, dlc);
         respond_to_system_identifier_request(command, resp_bit, dlc, data);
+        if (command == CMD_CONFIG_DATA_STREAM) magnetartikel_stream.process(dlc, data);
 
         if ((command == CMD_BIND || command == CMD_READ_CONFIG) && g_enable_bind_timer) {
             // (Re)start MFX-Bind timer on each BIND or READ_CONFIG
@@ -929,16 +1091,18 @@ static void udp_listener_thread(std::atomic<bool>& stop_flag) {
                 // Data layout: [0..3]=UID (big-endian), [4]=value, [5]=0x01
                 int uid = (int(data[0])<<24)|(int(data[1])<<16)|(int(data[2])<<8)|int(data[3]);
                 int value = int(data[4]);
-                // Map UID back to index if known
                 int idx = -1;
-                for (size_t i = 0; i < g_switches.size(); ++i) {
-                    if (g_switches[i].uid == uid) { idx = int(i); break; }
+                {
+                    std::lock_guard<std::mutex> lock(g_switches_mutex);
+                    for (size_t i = 0; i < g_switches.size(); ++i) {
+                        if (g_switches[i].uid == uid) { idx = int(i); break; }
+                    }
+                    if (idx < 0) {
+                        idx = uid & 0x3FF; if (idx >= 64) idx = idx % 64;
+                    }
+                    g_switch_state[idx] = value;
                 }
-                if (idx < 0) {
-                    // Fallback: use low 10 bits as simple index if unknown mapping
-                    idx = uid & 0x3FF; if (idx >= 64) idx = idx % 64;
-                }
-                g_switch_state[idx] = value; publish_event(switch_event_json(idx, value));
+                publish_event(switch_event_json(idx, value));
             } else if ((command == CMD_READ_CONFIG || command == CMD_WRITE_CONFIG) && dlc >= 7) {
                 int uid = (int(data[0])<<24)|(int(data[1])<<16)|(int(data[2])<<8)|int(data[3]);
                 int cv = (int(data[4])<<8)|int(data[5]);
@@ -960,8 +1124,10 @@ static void can_listener_thread(std::atomic<bool>& stop_flag) {
     using Clock = std::chrono::steady_clock;
     bool mfx_bind_pending = false;
     Clock::time_point mfx_bind_deadline{};
+    MagnetartikelConfigStream magnetartikel_stream;
     struct timeval tv{}; tv.tv_sec = 1; tv.tv_usec = 0;
     setsockopt(g_can_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    if (!g_master_mode) request_magnetartikel_config();
     const auto master_ping_interval = std::chrono::seconds(12);
     auto next_master_ping = Clock::now() + master_ping_interval;
     while (!stop_flag.load()) {
@@ -992,6 +1158,7 @@ static void can_listener_thread(std::atomic<bool>& stop_flag) {
         int resp_bit = cmd_resp & 1;
         respond_to_software_version_request(command, resp_bit, dlc);
         respond_to_system_identifier_request(command, resp_bit, dlc, data);
+        if (command == CMD_CONFIG_DATA_STREAM) magnetartikel_stream.process(dlc, data);
         if ((command == CMD_BIND || command == CMD_READ_CONFIG) && g_enable_bind_timer) {
             int ms = (g_bind_timeout_ms > 0) ? g_bind_timeout_ms : 1000;
             mfx_bind_deadline = Clock::now() + std::chrono::milliseconds(ms);
@@ -1022,11 +1189,15 @@ static void can_listener_thread(std::atomic<bool>& stop_flag) {
                 int uid = (int(data[0])<<24)|(int(data[1])<<16)|(int(data[2])<<8)|int(data[3]);
                 int value = int(data[4]);
                 int idx = -1;
-                for (size_t i = 0; i < g_switches.size(); ++i) {
-                    if (g_switches[i].uid == uid) { idx = int(i); break; }
+                {
+                    std::lock_guard<std::mutex> lock(g_switches_mutex);
+                    for (size_t i = 0; i < g_switches.size(); ++i) {
+                        if (g_switches[i].uid == uid) { idx = int(i); break; }
+                    }
+                    if (idx < 0) { idx = uid & 0x3FF; if (idx >= 64) idx = idx % 64; }
+                    g_switch_state[idx] = value;
                 }
-                if (idx < 0) { idx = uid & 0x3FF; if (idx >= 64) idx = idx % 64; }
-                g_switch_state[idx] = value; publish_event(switch_event_json(idx, value));
+                publish_event(switch_event_json(idx, value));
             } else if ((command == CMD_READ_CONFIG || command == CMD_WRITE_CONFIG) && dlc >= 7) {
                 int uid = (int(data[0])<<24)|(int(data[1])<<16)|(int(data[2])<<8)|int(data[3]);
                 int cv = (int(data[4])<<8)|int(data[5]);
@@ -1218,7 +1389,7 @@ int main(int argc, char** argv) {
             printf("  --port <port>      HTTP port (default 6020)\n");
             printf("  --www <dir>        Frontend directory containing index.html and static/\n");
             printf("  --bind[=<ms>]      Enable requesting new loco config after MFX-BIND command automatically; optional timeout in ms (default %d)\n", g_bind_timeout_ms);
-            printf("  --master           Send software-version requests every 12 seconds; do not respond to them\n");
+            printf("  --master           Acting as a Central Station Master\n");
 #if defined(MSWEBAPP_WITH_CAN) && defined(__linux__)
             printf("  --can/-i <iface>   CAN interface name (e.g. can0); routes CS2 traffic via SocketCAN instead of UDP\n");
 #endif
@@ -1259,7 +1430,9 @@ int main(int argc, char** argv) {
 
     // Load config files
     parse_lokomotive_cs2(fs::path(g_config_dir)/"config"/"lokomotive.cs2");
-    parse_magnetartikel_cs2(fs::path(g_config_dir)/"config"/"magnetartikel.cs2");
+    if (g_master_mode) {
+        parse_magnetartikel_cs2(fs::path(g_config_dir)/"config"/"magnetartikel.cs2");
+    }
     load_overrides();
 
     // Initialize state maps
@@ -1439,6 +1612,7 @@ int main(int argc, char** argv) {
     // API: switch list (structure with artikel array of names)
     svr.Get("/api/switch_list", [&](const httplib::Request&, httplib::Response &res){
         // Build from parsed magnetartikel.cs2 if available
+        std::lock_guard<std::mutex> lock(g_switches_mutex);
         int maxIdx = 63; for (auto &kv : g_switch_state) { if (kv.first > maxIdx) maxIdx = kv.first; }
         std::ostringstream os; os << "{\"artikel\":[";
         for (int i=0;i<=maxIdx;i++) {
@@ -1457,6 +1631,7 @@ int main(int argc, char** argv) {
 
     // API: switch state array
     svr.Get("/api/switch_state", [&](const httplib::Request&, httplib::Response &res){
+        std::lock_guard<std::mutex> lock(g_switches_mutex);
         std::ostringstream os; os << "{\"switch_state\":[";
         int maxIdx = -1; for (auto &kv : g_switch_state) { if (kv.first > maxIdx) maxIdx = kv.first; }
         if (maxIdx < 0) maxIdx = 63; // default
@@ -1623,18 +1798,22 @@ int main(int argc, char** argv) {
         };
         idx = find_num("idx"); pos = find_num("pos");
         if (idx<0 || pos<0) { res.status=400; res.set_content("{\"status\":\"error\",\"message\":\"idx and pos required\"}","application/json"); return; }
-        g_switch_state[idx] = pos;
-        publish_event(switch_event_json(idx, pos));
+        int uid = idx;
+        int switch_delay_ms = 200;
         {
-            // Map index to UID if available from parsed magnetartikel.cs2
-            int uid = idx;
+            std::lock_guard<std::mutex> lock(g_switches_mutex);
+            g_switch_state[idx] = pos;
             if (idx >= 0 && idx < (int)g_switches.size() && g_switches[idx].uid >= 0) {
                 uid = g_switches[idx].uid;
             }
+            if (idx < (int)g_switches.size() && g_switches[idx].switch_delay > 0) {
+                switch_delay_ms = g_switches[idx].switch_delay;
+            }
+        }
+        publish_event(switch_event_json(idx, pos));
+        {
             uint32_t can_id = build_can_id((uint32_t)g_device_uid, CMD_SWITCH, 0, 0);
             send_cs2_frame(can_id, payload_switch((uint32_t)uid, pos, 1), 6);
-            int switch_delay_ms = 200; // default delay before auto-reset
-            if (idx < (int)g_switches.size() && g_switches[idx].switch_delay > 0) { switch_delay_ms = g_switches[idx].switch_delay; }
             std::thread([can_id, uid, pos, switch_delay_ms]{
                 std::this_thread::sleep_for(std::chrono::milliseconds(switch_delay_ms));
                 send_cs2_frame(can_id, payload_switch((uint32_t)uid, pos, 0), 6);
@@ -1702,13 +1881,17 @@ int main(int argc, char** argv) {
             // Queue initial snapshot directly to this subscriber to avoid racing global queues
             std::unique_lock<std::mutex> lk(sub->mtx);
             sub->queue.push_back(system_event_json());
+            sub->queue.push_back("{\"type\":\"switch_list_reloaded\"}");
             for (auto &kv : g_locos) {
                 int uid=kv.first;
                 sub->queue.push_back(speed_event_json(uid, g_loco_speed[uid]));
                 sub->queue.push_back(direction_event_json(uid, g_loco_dir[uid]));
                 for (auto &fkv : g_loco_fn[uid]) sub->queue.push_back(function_event_json(uid, fkv.first, fkv.second));
             }
-            for (auto &skv : g_switch_state) sub->queue.push_back(switch_event_json(skv.first, skv.second));
+            {
+                std::lock_guard<std::mutex> lock(g_switches_mutex);
+                for (auto &skv : g_switch_state) sub->queue.push_back(switch_event_json(skv.first, skv.second));
+            }
             lk.unlock();
             sub->cv.notify_one();
         }
@@ -1747,6 +1930,7 @@ int main(int argc, char** argv) {
 
     // API: health
     svr.Get("/api/health", [&](const httplib::Request&, httplib::Response &res){
+        std::lock_guard<std::mutex> lock(g_switches_mutex);
         std::ostringstream os; os << "{"
             << "\"status\":\"ok\"," 
             << "\"system_state\":\"" << (g_running.load()?"running":"stopped") << "\"," 

@@ -19,6 +19,9 @@ add_executable(mswebapp
     main.cpp
 )
 
+find_package(ZLIB REQUIRED)
+target_link_libraries(mswebapp PRIVATE ZLIB::ZLIB)
+
 # Link stdc++fs only for older GCC libstdc++ (not needed on AppleClang/libc++ or modern GCC)
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
