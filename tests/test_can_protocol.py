@@ -48,6 +48,7 @@ CMD_SWITCH = 0x0B
 CMD_CONFIG_DATA = 0x20
 CMD_CONFIG_DATA_STREAM = 0x21
 CMD_SOFTWARE_VERSION = 0x18
+CMD_BOOTLOADER_CAN_SERVICE = 0x1B
 
 SYS_STOP = 0x00
 SYS_GO = 0x01
@@ -166,6 +167,7 @@ class CanProtocolTest(unittest.TestCase):
         # frame can be missed.
         cls.capture = CanCapture()
         cls.server = BackendServer(udp_rx_port=find_free_udp_port()).start()
+        cls.startup_service_frame = cls.capture.recv_frame()
         cls.startup_config_request = cls.capture.recv_frame()
         cls.startup_switch_list = cls.server.get_json("/api/switch_list")["artikel"]
         cls.initial_loco_list = cls.server.get_json("/api/loco_list")
@@ -181,6 +183,15 @@ class CanProtocolTest(unittest.TestCase):
         send_inbound_frame(command, payload, dlc, resp=resp, port=self.server.udp_rx_port)
 
     # ---- Outgoing frames triggered by HTTP control endpoints ----
+
+    def test_startup_sends_bootloader_can_service_frame_first(self):
+        can_id, dlc, data = self.startup_service_frame
+        command, resp = decode_command(can_id)
+        self.assertEqual(command, CMD_BOOTLOADER_CAN_SERVICE)
+        self.assertEqual(resp, 0)
+        self.assertEqual(can_id & 0xFFFF, 0xB311)
+        self.assertEqual(dlc, 8)
+        self.assertEqual(data, bytes(8))
 
     def test_default_mode_requests_mags_without_loading_local_switches(self):
         can_id, dlc, data = self.startup_config_request

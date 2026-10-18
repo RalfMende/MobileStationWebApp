@@ -611,7 +611,8 @@ enum Command {
     CMD_SWITCH = 11,
     CMD_CONFIG_DATA = 0x20,
     CMD_CONFIG_DATA_STREAM = 0x21,
-    CMD_SOFTWARE_VERSION = 0x18
+    CMD_SOFTWARE_VERSION = 0x18,
+    CMD_BOOTLOADER_CAN_SERVICE = 0x1B
 };
 
 enum SystemSubCmd {
@@ -833,6 +834,13 @@ static void request_magnetartikel_config() {
     send_cs2_frame(build_can_id(static_cast<uint32_t>(g_device_uid), CMD_CONFIG_DATA, 0, 0), payload, 8);
 }
 
+static void send_startup_service_frame() {
+    send_cs2_frame(
+        build_can_id(static_cast<uint32_t>(g_device_uid), CMD_BOOTLOADER_CAN_SERVICE, 0, 0),
+        std::vector<uint8_t>(8, 0),
+        8);
+}
+
 static uint16_t config_data_crc(const uint8_t *data, size_t size) {
     uint16_t crc = 0xFFFF;
     for (size_t i = 0; i < size; ++i) {
@@ -1014,6 +1022,7 @@ static void udp_listener_thread(std::atomic<bool>& stop_flag) {
     struct timeval tv; tv.tv_sec = 1; tv.tv_usec = 0; setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 #endif
 
+    send_startup_service_frame();
     if (!g_master_mode) request_magnetartikel_config();
 
     const auto master_ping_interval = std::chrono::seconds(12);
@@ -1127,6 +1136,7 @@ static void can_listener_thread(std::atomic<bool>& stop_flag) {
     MagnetartikelConfigStream magnetartikel_stream;
     struct timeval tv{}; tv.tv_sec = 1; tv.tv_usec = 0;
     setsockopt(g_can_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    send_startup_service_frame();
     if (!g_master_mode) request_magnetartikel_config();
     const auto master_ping_interval = std::chrono::seconds(12);
     auto next_master_ping = Clock::now() + master_ping_interval;
