@@ -117,7 +117,7 @@ static int g_udp_tx = 15731;
 static int g_udp_rx = 15730;
 static int g_http_port = 6020;
 static std::string g_bind_host = "0.0.0.0";
-static int g_device_uid = 0; // sender uid for CAN id hash
+static int g_device_uid = 0x43425553; // sender uid for CAN id hash
 static bool g_verbose = false;
 static bool g_master_mode = false;
 static std::string g_frontend_dir_override; // optional path to frontend dir (index.html/static)
@@ -609,7 +609,8 @@ enum Command {
 enum SystemSubCmd {
     SYS_STOP = 0x00,
     SYS_GO = 0x01,
-    SYS_HALT = 0x02
+    SYS_HALT = 0x02,
+    SYS_IDENTIFIER = 0x0C
 };
 
 static uint16_t generate_hash(uint32_t uid) {
@@ -810,12 +811,27 @@ static void respond_to_software_version_request(int command, int resp_bit, uint8
     if (g_master_mode || command != CMD_SOFTWARE_VERSION || resp_bit != 0 || dlc != 0) return;
     send_cs2_frame(
         build_can_id(0, CMD_SOFTWARE_VERSION, 0, 1),
-        payload_software_version(0, 0x0101, 0xEEEE),
+        payload_software_version(0, 0x0101, 0xEEEF),
         8);
 }
 
 static void send_master_software_version_request() {
     send_cs2_frame(build_can_id((uint32_t)g_device_uid, CMD_SOFTWARE_VERSION, 0, 0), {}, 0);
+}
+
+static void respond_to_system_identifier_request(int command, int resp_bit, uint8_t dlc, const uint8_t *data) {
+    if (command != CMD_SYSTEM || resp_bit != 0 || dlc != 7 || data[4] != SYS_IDENTIFIER ||
+        data[5] != 0x01 || data[6] != 0x00) return;
+    std::vector<uint8_t> payload = {
+        static_cast<uint8_t>((static_cast<uint32_t>(g_device_uid) >> 24) & 0xFF),
+        static_cast<uint8_t>((static_cast<uint32_t>(g_device_uid) >> 16) & 0xFF),
+        static_cast<uint8_t>((static_cast<uint32_t>(g_device_uid) >> 8) & 0xFF),
+        static_cast<uint8_t>(static_cast<uint32_t>(g_device_uid) & 0xFF),
+        SYS_IDENTIFIER,
+        0x00,
+        0x53
+    };
+    send_cs2_frame(build_can_id(static_cast<uint32_t>(g_device_uid), CMD_SYSTEM, 0, 1), payload, 7);
 }
 
 static void udp_listener_thread(std::atomic<bool>& stop_flag) {
@@ -879,6 +895,7 @@ static void udp_listener_thread(std::atomic<bool>& stop_flag) {
         int resp_bit = cmd_resp & 1;
 
         respond_to_software_version_request(command, resp_bit, dlc);
+        respond_to_system_identifier_request(command, resp_bit, dlc, data);
 
         if ((command == CMD_BIND || command == CMD_READ_CONFIG) && g_enable_bind_timer) {
             // (Re)start MFX-Bind timer on each BIND or READ_CONFIG
@@ -974,6 +991,7 @@ static void can_listener_thread(std::atomic<bool>& stop_flag) {
         int command = (cmd_resp >> 1) & 0xFF;
         int resp_bit = cmd_resp & 1;
         respond_to_software_version_request(command, resp_bit, dlc);
+        respond_to_system_identifier_request(command, resp_bit, dlc, data);
         if ((command == CMD_BIND || command == CMD_READ_CONFIG) && g_enable_bind_timer) {
             int ms = (g_bind_timeout_ms > 0) ? g_bind_timeout_ms : 1000;
             mfx_bind_deadline = Clock::now() + std::chrono::milliseconds(ms);

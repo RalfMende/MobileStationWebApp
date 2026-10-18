@@ -48,6 +48,8 @@ CMD_SOFTWARE_VERSION = 0x18
 
 SYS_STOP = 0x00
 SYS_GO = 0x01
+SYS_IDENTIFIER = 0x0C
+APP_DEVICE_UID = 0x43425553
 
 TEST_LOCO_UID = 1       # "Lokliste" in var/config/lokomotive.cs2
 TEST_DCC_LOCO_UID = 0xC005
@@ -152,7 +154,21 @@ class CanProtocolTest(unittest.TestCase):
         self.assertEqual(dlc, 8)
         self.assertEqual(int.from_bytes(data[0:4], "big"), 0)
         self.assertEqual(int.from_bytes(data[4:6], "big"), 0x0101)
-        self.assertEqual(int.from_bytes(data[6:8], "big"), 0xEEEE)
+        self.assertEqual(int.from_bytes(data[6:8], "big"), 0xEEEF)
+
+    def test_system_identifier_request_emits_app_uid_and_identifier(self):
+        payload = bytes(4) + bytes([SYS_IDENTIFIER, 0x01, 0x00])
+        self.send_inbound(CMD_SYSTEM, payload, dlc=7, resp=0)
+
+        can_id, dlc, data = self.capture.recv_frame()
+        command, resp = decode_command(can_id)
+        self.assertEqual(command, CMD_SYSTEM)
+        self.assertEqual(resp, 1)
+        self.assertEqual(can_id & 0xFFFF, 0xB311)
+        self.assertEqual(dlc, 7)
+        self.assertEqual(int.from_bytes(data[0:4], "big"), APP_DEVICE_UID)
+        self.assertEqual(data[4], SYS_IDENTIFIER)
+        self.assertEqual(int.from_bytes(data[5:7], "big"), 0x0053)
 
     def test_master_suppresses_software_version_response(self):
         master_server = BackendServer(
