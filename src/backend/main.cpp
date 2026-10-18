@@ -1065,7 +1065,7 @@ static void udp_listener_thread(std::atomic<bool>& stop_flag) {
         int resp_bit = cmd_resp & 1;
 
         respond_to_software_version_request(command, resp_bit, dlc);
-        respond_to_system_identifier_request(command, resp_bit, dlc, data);
+        // respond_to_system_identifier_request(command, resp_bit, dlc, data);
         if (command == CMD_CONFIG_DATA_STREAM) magnetartikel_stream.process(dlc, data);
 
         if ((command == CMD_BIND || command == CMD_READ_CONFIG) && g_enable_bind_timer) {
@@ -1167,7 +1167,7 @@ static void can_listener_thread(std::atomic<bool>& stop_flag) {
         int command = (cmd_resp >> 1) & 0xFF;
         int resp_bit = cmd_resp & 1;
         respond_to_software_version_request(command, resp_bit, dlc);
-        respond_to_system_identifier_request(command, resp_bit, dlc, data);
+        // respond_to_system_identifier_request(command, resp_bit, dlc, data);
         if (command == CMD_CONFIG_DATA_STREAM) magnetartikel_stream.process(dlc, data);
         if ((command == CMD_BIND || command == CMD_READ_CONFIG) && g_enable_bind_timer) {
             int ms = (g_bind_timeout_ms > 0) ? g_bind_timeout_ms : 1000;
