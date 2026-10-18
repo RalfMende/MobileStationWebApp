@@ -223,9 +223,9 @@ class CanProtocolTest(unittest.TestCase):
         command, resp = decode_command(can_id)
         self.assertEqual(command, CMD_SOFTWARE_VERSION)
         self.assertEqual(resp, 1)
-        self.assertEqual(can_id & 0xFFFF, 0x0300)
+        self.assertEqual(can_id & 0xFFFF, 0xB311)
         self.assertEqual(dlc, 8)
-        self.assertEqual(int.from_bytes(data[0:4], "big"), 0)
+        self.assertEqual(int.from_bytes(data[0:4], "big"), APP_DEVICE_UID)
         self.assertEqual(int.from_bytes(data[4:6], "big"), 0x0101)
         self.assertEqual(int.from_bytes(data[6:8], "big"), 0xEEEF)
 

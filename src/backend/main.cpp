@@ -818,8 +818,8 @@ static void send_cs2_frame(uint32_t can_id, const std::vector<uint8_t> &payload,
 static void respond_to_software_version_request(int command, int resp_bit, uint8_t dlc) {
     if (g_master_mode || command != CMD_SOFTWARE_VERSION || resp_bit != 0 || dlc != 0) return;
     send_cs2_frame(
-        build_can_id(0, CMD_SOFTWARE_VERSION, 0, 1),
-        payload_software_version(0, 0x0101, 0xEEEF),
+        build_can_id(static_cast<uint32_t>(g_device_uid), CMD_SOFTWARE_VERSION, 0, 1),
+        payload_software_version(static_cast<uint32_t>(g_device_uid), 0x0101, 0xEEEF),
         8);
 }
 
