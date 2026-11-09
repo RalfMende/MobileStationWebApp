@@ -1310,7 +1310,6 @@ static void apply_loco_config_response(int uid, int cv, int value) {
     auto protocol_it = g_loco_cv_map.find(protocol);
     if (protocol_it == g_loco_cv_map.end()) return;
 
-    bool matched = false;
     for (const auto &definition : protocol_it->second) {
         if (definition.response_step > 0 && cv >= definition.cv &&
             (cv - definition.cv) % definition.response_step == 0) {
@@ -1324,13 +1323,11 @@ static void apply_loco_config_response(int uid, int cv, int value) {
                     text[static_cast<size_t>(index)] = static_cast<char>(value);
                 }
                 if (definition.key == "name") loco_it->second.name = text;
-                matched = true;
             }
             break;
         }
         if (definition.cv == cv) {
             loco_it->second.config_values[definition.key] = std::to_string(value);
-            matched = true;
             int new_uid = uid;
             if (loco_uid_for_address(loco_it->second, definition, value, new_uid) && new_uid != uid) {
                 auto collision = g_locos.find(new_uid);
@@ -1362,7 +1359,9 @@ static void apply_loco_config_response(int uid, int cv, int value) {
             break;
         }
     }
-    if (matched) publish_event(config_value_event_json(uid, cv, value));
+    // Publish the response even for CVs without a definition so that the
+    // locomotive editor can display values of user-entered custom CVs.
+    publish_event(config_value_event_json(uid, cv, value));
 }
 
 int main(int argc, char** argv) {

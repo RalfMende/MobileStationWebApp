@@ -58,6 +58,41 @@ function normalizeProtocol(raw) {
   return '';
 }
 
+// CONFIG_PATH is injected by the backend into loco_editor.html; fall back to the
+// default public config base used by the server ("/cfg") when it is missing.
+const STATIC_BASE = String(window.CONFIG_PATH || '/cfg').replace(/\/$/, '');
+function asset(rel) {
+  if (!rel.startsWith('/')) rel = '/' + rel;
+  return STATIC_BASE + rel;
+}
+
+// Same fallback chain as the main page: icon -> sym_<Symbol>.png -> leeres Gleis.png
+function setEditorLocoIcon(imgEl, loco) {
+  if (!imgEl) return;
+  const iconName = loco && loco.icon;
+  const symbolVal = loco && loco.symbol;
+  let stage = 0; // 0: try icon, 1: try symbol, 2: final fallback
+  imgEl.onerror = function () {
+    if (stage === 0 && Number.isFinite(Number(symbolVal))) {
+      stage = 1;
+      imgEl.src = '/static/grafics/sym_' + Number(symbolVal) + '.png';
+    } else if (stage <= 1) {
+      stage = 2;
+      imgEl.onerror = null;
+      imgEl.src = asset('icons/leeres Gleis.png');
+    }
+  };
+  if (iconName) {
+    imgEl.src = asset('icons/' + iconName + '.png');
+  } else if (Number.isFinite(Number(symbolVal))) {
+    stage = 1;
+    imgEl.src = '/static/grafics/sym_' + Number(symbolVal) + '.png';
+  } else {
+    imgEl.onerror = null;
+    imgEl.src = asset('icons/leeres Gleis.png');
+  }
+}
+
 function setFieldValue(key, value) {
   const el = document.querySelector('[data-protocol="' + currentProtocol + '"] [data-cv-field="' + key + '"]')
     || document.querySelector('[data-cv-field="' + key + '"]');
@@ -128,6 +163,11 @@ function handleConfigValue(uid, cv, value) {
   }
   const definition = definitions.find(function (item) { return item.cv === cv; });
   if (definition) setFieldValue(definition.key, value);
+  const customIndex = document.getElementById('customCvIndex');
+  if (customIndex && Number(customIndex.value) === cv) {
+    const customValue = document.getElementById('customCvValue');
+    if (customValue) customValue.value = String(value);
+  }
 }
 
 function updateEditorStatus(message) {
@@ -334,6 +374,164 @@ function setupWriteControl(definition, field, valueCell, valueElement) {
     valueCell.append(button);
 }
 
+function renderCvTableHead() {
+  const tableHead = document.getElementById('cvTableHead');
+  if (!tableHead) return;
+  tableHead.replaceChildren();
+  const row = document.createElement('tr');
+  const labels = currentProtocol === 'dcc'
+    ? ['CV Index', 'Parameter', 'Value']
+    : ['Parameter', 'CV Index', 'Value'];
+  labels.forEach(function (label) {
+    const th = document.createElement('th');
+    th.textContent = label;
+    row.appendChild(th);
+  });
+  tableHead.appendChild(row);
+}
+
+// DCC-only extra row: lets the user enter any CV index (1-1024), shows the
+// parameter meaning from the XML map when one exists, and allows read/write
+// of that CV (write only after a successful read).
+function setupCustomCvRow(definitions, tableBody) {
+  const row = document.createElement('tr');
+  row.dataset.protocol = currentProtocol;
+
+  const indexCell = document.createElement('td');
+  indexCell.className = 'cv-idx';
+  const indexInput = document.createElement('input');
+  indexInput.type = 'number';
+  indexInput.id = 'customCvIndex';
+  indexInput.className = 'cv-index-input';
+  indexInput.min = '1';
+  indexInput.max = '1024';
+  indexInput.step = '1';
+  indexInput.inputMode = 'numeric';
+  indexInput.setAttribute('aria-label', 'CV Index');
+  indexCell.appendChild(indexInput);
+
+  const labelCell = document.createElement('td');
+  labelCell.id = 'customCvParam';
+
+  const valueCell = document.createElement('td');
+  valueCell.className = 'cv-value-cell';
+  const valueInput = document.createElement('input');
+  valueInput.type = 'number';
+  valueInput.id = 'customCvValue';
+  valueInput.className = 'cv-value cv-value-input';
+  valueInput.min = '0';
+  valueInput.max = '255';
+  valueInput.step = '1';
+  valueInput.inputMode = 'numeric';
+  valueInput.setAttribute('aria-label', 'Value for custom CV');
+
+  const readButton = document.createElement('button');
+  readButton.type = 'button';
+  readButton.className = 'cv-read-button';
+  readButton.textContent = 'Read';
+
+  const writeButton = document.createElement('button');
+  writeButton.type = 'button';
+  writeButton.className = 'cv-write-button is-disabled';
+  writeButton.textContent = 'Write';
+  writeButton.setAttribute('aria-disabled', 'true');
+
+  function currentCustomCv() {
+    const cv = Number(indexInput.value);
+    return Number.isInteger(cv) && cv >= 1 && cv <= 1024 ? cv : null;
+  }
+
+  function syncCustomRow() {
+    const cv = currentCustomCv();
+    const definition = cv === null ? null
+      : definitions.find(function (item) { return item.cv === cv; }) || null;
+    labelCell.textContent = definition ? getCvLabel(definition.key) : '';
+    let min = 0, max = 255;
+    if (definition && definition.range) {
+      const range = String(definition.range).match(/^(\d+)-(\d+)$/);
+      if (range) { min = Number(range[1]); max = Number(range[2]); }
+    }
+    valueInput.min = String(min);
+    valueInput.max = String(max);
+    valueInput.value = '';
+    readButton.disabled = cv === null;
+    if (cv === null) writeButton.removeAttribute('data-cv-index');
+    else writeButton.dataset.cvIndex = String(cv);
+    const writeEnabled = cv !== null && readCvs.has(cv);
+    writeButton.setAttribute('aria-disabled', writeEnabled ? 'false' : 'true');
+    writeButton.classList.toggle('is-disabled', !writeEnabled);
+  }
+
+  indexInput.addEventListener('input', syncCustomRow);
+
+  readButton.addEventListener('click', async function () {
+    const cv = currentCustomCv();
+    if (cv === null || readInProgress) return;
+    if (!await canConfigureLocomotive()) return;
+    readInProgress = true;
+    const readButtons = Array.from(document.querySelectorAll('.cv-read-button'));
+    readButtons.forEach(function (button) { button.disabled = true; });
+    expectedCvs = new Set([cv]);
+    receivedCvs.clear();
+    requestedReadCvs = new Set([cv]);
+    updateEditorStatus('Reading CV ' + cv + '…');
+
+    try {
+      await connectEditorSSE();
+      await requestConfigRead(currentUid, cv, 1);
+      const missing = await waitForConfigValues([cv], 2500);
+      updateEditorStatus(missing.length ? 'No response for CV ' + missing.join(', ') : 'CV read complete.');
+    } catch (error) {
+      updateEditorStatus('CV read failed.');
+      console.error(error);
+    } finally {
+      readInProgress = false;
+      readButtons.forEach(function (button) { button.disabled = false; });
+      readButton.disabled = currentCustomCv() === null;
+    }
+  });
+
+  writeButton.addEventListener('click', async function () {
+    const cv = currentCustomCv();
+    if (cv === null) return;
+    if (!readCvs.has(cv)) {
+      showEditorWarning('Read this CV before writing it.');
+      return;
+    }
+    if (!await canConfigureLocomotive()) return;
+    const min = Number(valueInput.min);
+    const max = Number(valueInput.max);
+    const value = Number(valueInput.value);
+    if (!Number.isInteger(value) || value < min || value > max) {
+      updateEditorStatus('Enter a value between ' + min + ' and ' + max + '.');
+      valueInput.focus();
+      return;
+    }
+
+    writeButton.disabled = true;
+    updateEditorStatus('Writing CV ' + cv + '…');
+    try {
+      await requestConfigWrite(currentUid, cv, value);
+      updateEditorStatus('Write request sent; waiting for CAN response…');
+    } catch (error) {
+      updateEditorStatus('CV write failed.');
+      console.error(error);
+    } finally {
+      writeButton.disabled = false;
+    }
+  });
+
+  valueCell.appendChild(valueInput);
+  valueCell.appendChild(readButton);
+  valueCell.appendChild(writeButton);
+
+  row.appendChild(indexCell);
+  row.appendChild(labelCell);
+  row.appendChild(valueCell);
+  tableBody.appendChild(row);
+  syncCustomRow();
+}
+
 function renderCvTable(definitions, configValues) {
   const tableBody = document.getElementById('cvTableBody');
   const responseCvs = [];
@@ -341,12 +539,12 @@ function renderCvTable(definitions, configValues) {
   tableBody.replaceChildren();
 
   definitions.forEach(function (definition) {
+    if (currentProtocol === 'dcc' && definition.key === 'name') return; // name is shown in the header bar
     const row = document.createElement('tr');
     row.dataset.protocol = currentProtocol;
 
     const labelCell = document.createElement('td');
     labelCell.textContent = getCvLabel(definition.key);
-    row.appendChild(labelCell);
 
     const indexCell = document.createElement('td');
     indexCell.className = 'cv-idx';
@@ -355,7 +553,6 @@ function renderCvTable(definitions, configValues) {
         ? definition.cv + '–' + (definition.cv + (definition.length - 1) * definition.response_step)
         : String(definition.cv);
     }
-    row.appendChild(indexCell);
 
     const valueCell = document.createElement('td');
     valueCell.className = 'cv-value-cell';
@@ -367,6 +564,14 @@ function renderCvTable(definitions, configValues) {
     valueCell.appendChild(valueElement);
     setupReadControl(definition, valueCell);
     setupWriteControl(definition, definition.key, valueCell, valueElement);
+
+    if (currentProtocol === 'dcc') {
+      row.appendChild(indexCell);
+      row.appendChild(labelCell);
+    } else {
+      row.appendChild(labelCell);
+      row.appendChild(indexCell);
+    }
     row.appendChild(valueCell);
     tableBody.appendChild(row);
 
@@ -380,6 +585,8 @@ function renderCvTable(definitions, configValues) {
       }
     }
   });
+
+  if (currentProtocol === 'dcc') setupCustomCvRow(definitions, tableBody);
 
   return responseCvs;
 }
@@ -401,11 +608,13 @@ async function init() {
     return;
   }
 
+  let currentLoco = null;
   try {
     const res = await fetch('/api/loco_list');
     const list = await res.json();
     const loco = list[String(currentUid)];
     if (loco) {
+      currentLoco = loco;
       if (titleEl) titleEl.textContent = loco.name || ('UID ' + currentUid);
       currentProtocol = normalizeProtocol(loco.protocol);
       locoConfigValues = loco.config_values || {};
@@ -418,20 +627,28 @@ async function init() {
   if (!currentProtocol && protocolEl && protocolEl.textContent === 'Protocol: …') {
     protocolEl.textContent = 'Protocol: unknown';
   }
+  setEditorLocoIcon(document.getElementById('editorLocoIcon'), currentLoco);
 
   document.querySelectorAll('[data-protocol]').forEach(function (row) {
     row.hidden = row.getAttribute('data-protocol') !== currentProtocol;
   });
 
-  const definitions = protocolCvMap[currentProtocol];
+  // The POM table is currently only implemented for DCC; MFX support is planned later.
+  const tableSupported = currentProtocol === 'dcc';
+  const definitions = tableSupported ? protocolCvMap[currentProtocol] : null;
   if (!Array.isArray(definitions)) {
     if (titleEl && titleEl.textContent === 'Loading …') titleEl.textContent = 'UID ' + currentUid;
     const warn = document.getElementById('editorUnsupported');
     if (warn) warn.style.display = 'block';
+    const table = document.getElementById('cvTable');
+    if (table) table.style.display = 'none';
+    const pomHeading = document.getElementById('pomHeading');
+    if (pomHeading) pomHeading.style.display = 'none';
     updateEditorStatus('');
     return;
   }
 
+  renderCvTableHead();
   requestedReadCvs.clear();
   readCvs.clear();
   const expectedResponseCvs = renderCvTable(definitions, locoConfigValues);
