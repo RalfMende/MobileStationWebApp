@@ -19,6 +19,9 @@ let isRunning = false;
 let currentActiveContainer = 'control'; // Keeps selected page, in case of returning to website
 let currentLocoUid = null; // Keeps selected locomotive from control page (via UID)
 let currentKeyboardId = 0; // Keeps selected keyboard ID from keyboard page
+// Optional keyboard list view (all switches in one scrollable list), persisted across sessions
+let keyboardListViewEnabled = false;
+try { keyboardListViewEnabled = localStorage.getItem('keyboardListView') === '1'; } catch (e) { /* ignore */ }
 const SPEED_SEND_INTERVAL = 25;
 let pendingSpeed = null;
 let pendingSpeedLocoUid = null;
@@ -135,6 +138,7 @@ const I18N = {
       author: 'Author: Ralf Mende',
       issues: 'For questions, bug reports, or feature requests, please open an issue on GitHub.',
       controlsHeader: 'SRSEII locomotive list controls:',
+      keyboardListView: 'Show Keyboard as scrollable list',
       btn: {
         refresh: 'Refresh',
         'import': 'Import locomotive list from Railcontrol',
@@ -161,6 +165,8 @@ const I18N = {
     },
     keyboard: {
       headerPrefix: 'Keyboard Page ',
+      scrollUp: 'Scroll up',
+      scrollDown: 'Scroll down',
     },
     control: {
       selectLocomotive: 'Select Locomotive',
@@ -184,6 +190,7 @@ const I18N = {
       author: 'Autor: Ralf Mende',
       issues: 'Für Fragen, Bug-Reports oder Feature-Wünsche bitte ein Issue auf GitHub eröffnen.',
       controlsHeader: 'Steuerung der SRSEII-Lokliste:',
+      keyboardListView: 'Keyboard als scrollbare Liste anzeigen',
       btn: {
         refresh: 'Aktualisieren',
         'import': 'Loklistenimport Railcontrol',
@@ -210,6 +217,8 @@ const I18N = {
     },
     keyboard: {
       headerPrefix: 'Keyboard Seite ',
+      scrollUp: 'Nach oben scrollen',
+      scrollDown: 'Nach unten scrollen',
     },
     control: {
       selectLocomotive: 'Lokomotive auswählen',
@@ -233,6 +242,7 @@ const I18N = {
       author: 'Auteur : Ralf Mende',
       issues: "Pour toute question, rapport de bug ou demande de fonctionnalité, merci d'ouvrir une issue sur GitHub.",
       controlsHeader: 'Commandes de la liste des locomotives SRSEII :',
+      keyboardListView: 'Afficher le clavier sous forme de liste défilante',
       btn: {
         refresh: 'Actualiser',
         'import': 'Importer la liste des locomotives depuis Railcontrol',
@@ -259,6 +269,8 @@ const I18N = {
     },
     keyboard: {
       headerPrefix: 'Page clavier ',
+      scrollUp: 'Faire défiler vers le haut',
+      scrollDown: 'Faire défiler vers le bas',
     },
     control: {
       selectLocomotive: 'Sélectionner une locomotive',
@@ -282,6 +294,7 @@ const I18N = {
       author: 'Auteur: Ralf Mende',
       issues: 'Voor vragen, bugmeldingen of functieverzoeken kun je een issue openen op GitHub.',
       controlsHeader: 'Bediening van de SRSEII-locomotievenlijst:',
+      keyboardListView: 'Toetsenbord als scrollbare lijst tonen',
       btn: {
         refresh: 'Vernieuwen',
         'import': 'Locomotievenlijst importeren vanuit Railcontrol',
@@ -308,6 +321,8 @@ const I18N = {
     },
     keyboard: {
       headerPrefix: 'Toetsenbordpagina ',
+      scrollUp: 'Omhoog scrollen',
+      scrollDown: 'Omlaag scrollen',
     },
     control: {
       selectLocomotive: 'Locomotief selecteren',
@@ -436,10 +451,12 @@ document.addEventListener('DOMContentLoaded', function() {
     .then(data => {
       switchList = data;
       updateKeyboardGroupLabels();
+      if (keyboardListViewEnabled) buildKeyboardListView();
     })
     .catch(() => {
       switchList = {};
       updateKeyboardGroupLabels();
+      if (keyboardListViewEnabled) buildKeyboardListView();
     });
   // Load and initialize keyboard switch states
   fetch('/api/switch_state')
@@ -511,6 +528,18 @@ async function refreshHealthInfo() {
     const dv = document.getElementById('appVersion'); if (dv) dv.textContent = T.info.unavailable;
     const db = document.getElementById('backendType'); if (db) db.textContent = T.info.unavailable;
   }
+}
+
+// Settings toggle inside the info modal: switch the keyboard page between the
+// classic paged grid and the optional scrollable list view.
+const keyboardListViewToggle = document.getElementById('keyboardListViewToggle');
+if (keyboardListViewToggle) {
+  keyboardListViewToggle.checked = keyboardListViewEnabled;
+  keyboardListViewToggle.addEventListener('change', function() {
+    keyboardListViewEnabled = !!keyboardListViewToggle.checked;
+    try { localStorage.setItem('keyboardListView', keyboardListViewEnabled ? '1' : '0'); } catch (e) { /* ignore */ }
+    applyKeyboardViewMode();
+  });
 }
 
 if (infoBtn) {
@@ -613,6 +642,7 @@ function handleSSEMessage(event) {
       .then(list => {
         switchList = list;
         updateKeyboardGroupLabels();
+        if (keyboardListViewEnabled) buildKeyboardListView();
       })
       .catch(error => console.warn('Failed to reload switch list:', error));
     return;
@@ -652,6 +682,8 @@ function handleSSEMessage(event) {
         updateSwitchUI(btn1, btn2, valueNum);
       }
     }
+    // The list view shows all switches, so it is always affected
+    updateKeyboardListRow(idxNum, valueNum);
   }
 }
 
@@ -676,6 +708,7 @@ document.addEventListener('visibilitychange', function(){
 // are grouped here because they affect both control and keyboard views.
 
 function switchKeyboardPageByOffset(offset) {
+  if (keyboardListViewEnabled) return; // no pages in list view mode
   if (!keyboardPageBtns || keyboardPageBtns.length === 0) return;
   var next = currentKeyboardId + offset;
   if (next < 0 || next >= keyboardPageBtns.length) return;
@@ -2499,6 +2532,22 @@ function buildKeyboardBottomBar() {
     b.textContent = label;
     bar.appendChild(b);
   });
+  // Scroll buttons for the optional list view (visibility is toggled by applyKeyboardViewMode)
+  const tKeyboard = (I18N[CURRENT_LANG] || I18N.en).keyboard || {};
+  const scrollUp = document.createElement('button');
+  scrollUp.id = 'keyboardScrollUp';
+  scrollUp.className = 'keyboard-scroll-btn';
+  scrollUp.textContent = '▲';
+  scrollUp.setAttribute('aria-label', tKeyboard.scrollUp || 'Scroll up');
+  scrollUp.addEventListener('click', function() { scrollKeyboardListBy(-1); });
+  const scrollDown = document.createElement('button');
+  scrollDown.id = 'keyboardScrollDown';
+  scrollDown.className = 'keyboard-scroll-btn';
+  scrollDown.textContent = '▼';
+  scrollDown.setAttribute('aria-label', tKeyboard.scrollDown || 'Scroll down');
+  scrollDown.addEventListener('click', function() { scrollKeyboardListBy(1); });
+  bar.appendChild(scrollUp);
+  bar.appendChild(scrollDown);
   // Refresh NodeList reference after (re)building
   keyboardPageBtns = document.querySelectorAll('.keyboard-page-btn');
 }
@@ -2529,6 +2578,155 @@ function applyKeyboardLayout(preservePosition) {
     .catch(() => {
       initializeKeyboardButtons([]);
     });
+
+  // Re-apply the optional list view (bottom bar buttons were recreated above)
+  applyKeyboardViewMode();
+}
+
+/**
+ * Toggle between the paged keyboard grid and the optional scrollable list view.
+ *
+ * In list view mode the grid, the page header and the page selector buttons are
+ * hidden; instead the whole switch list is rendered into '#keyboardListView' and
+ * the bottom bar shows scroll up/down buttons. The mode is persisted in
+ * localStorage ('keyboardListView') via the toggle in the info modal.
+ */
+function applyKeyboardViewMode() {
+  const grid = document.querySelector('.keyboard-grid');
+  const header = document.querySelector('.keyboard-header');
+  const listView = document.getElementById('keyboardListView');
+  const pageBtns = document.querySelectorAll('.keyboard-page-btn');
+  const scrollBtns = document.querySelectorAll('.keyboard-scroll-btn');
+  if (keyboardListViewEnabled) {
+    if (grid) grid.classList.add('hidden');
+    if (header) header.classList.add('hidden');
+    pageBtns.forEach(b => b.classList.add('hidden'));
+    scrollBtns.forEach(b => b.classList.remove('hidden'));
+    if (listView) {
+      listView.classList.remove('hidden');
+      buildKeyboardListView();
+    }
+  } else {
+    if (listView) listView.classList.add('hidden');
+    if (header) header.classList.remove('hidden');
+    if (grid) grid.classList.remove('hidden');
+    scrollBtns.forEach(b => b.classList.add('hidden'));
+    pageBtns.forEach(b => b.classList.remove('hidden'));
+  }
+}
+
+/**
+ * Build the scrollable list view containing one row per switch.
+ *
+ * Each row shows the switch name on the left and a horizontal white track on
+ * the right holding the red (straight, pos=0) button on the left and the
+ * green (diverging, pos=1) button on the right. After rendering, the current
+ * switch states are fetched and applied.
+ *
+ * Side effects:
+ * - Mutates the DOM under '#keyboardListView'.
+ */
+function buildKeyboardListView() {
+  const container = document.getElementById('keyboardListView');
+  if (!container) return;
+  container.innerHTML = '';
+  const articles = (switchList && Array.isArray(switchList.artikel)) ? switchList.artikel : [];
+  const total = Math.max(articles.length, 64);
+  for (let i = 0; i < total; i++) {
+    const entry = articles[i];
+    const name = entry && entry.name ? entry.name : String(i + 1);
+    const row = document.createElement('div');
+    row.className = 'keyboard-list-row';
+
+    const label = document.createElement('span');
+    label.className = 'keyboard-list-name';
+    label.textContent = name;
+    row.appendChild(label);
+
+    const track = document.createElement('div');
+    track.className = 'keyboard-list-track';
+
+    const redBtn = document.createElement('button');
+    redBtn.className = 'keyboard-list-btn';
+    redBtn.setAttribute('data-switch-idx', String(i));
+    redBtn.setAttribute('data-pos', '0');
+    const redImg = document.createElement('img');
+    redImg.alt = '';
+    redBtn.appendChild(redImg);
+
+    const greenBtn = document.createElement('button');
+    greenBtn.className = 'keyboard-list-btn';
+    greenBtn.setAttribute('data-switch-idx', String(i));
+    greenBtn.setAttribute('data-pos', '1');
+    const greenImg = document.createElement('img');
+    greenImg.alt = '';
+    greenBtn.appendChild(greenImg);
+
+    track.appendChild(redBtn);
+    track.appendChild(greenBtn);
+    row.appendChild(track);
+    container.appendChild(row);
+  }
+  fetch('/api/switch_state')
+    .then(response => response.json())
+    .then(data => {
+      updateKeyboardListStates(data && data.switch_state ? data.switch_state : []);
+    })
+    .catch(() => {
+      updateKeyboardListStates([]);
+    });
+}
+
+/**
+ * Apply switch states to all rows of the list view.
+ *
+ * @param {number[]} switchState – array of switch positions from the server
+ */
+function updateKeyboardListStates(switchState) {
+  const container = document.getElementById('keyboardListView');
+  if (!container || container.classList.contains('hidden')) return;
+  const rows = container.querySelectorAll('.keyboard-list-row');
+  rows.forEach((row, idx) => {
+    const greenBtn = row.querySelector('.keyboard-list-btn[data-pos="1"]');
+    const redBtn = row.querySelector('.keyboard-list-btn[data-pos="0"]');
+    const valueNum = switchState && switchState.length > idx ? Number(switchState[idx]) : 0;
+    if (greenBtn && redBtn) {
+      updateSwitchUI(redBtn, greenBtn, valueNum);
+    }
+  });
+}
+
+/**
+ * Apply a single switch state change to the matching list view row.
+ *
+ * @param {number} idx – global switch index
+ * @param {number} valueNum – 0 if red/straight is active, 1 if green/diverging is active
+ */
+function updateKeyboardListRow(idx, valueNum) {
+  const container = document.getElementById('keyboardListView');
+  if (!container || container.classList.contains('hidden')) return;
+  const greenBtn = container.querySelector('.keyboard-list-btn[data-switch-idx="' + idx + '"][data-pos="1"]');
+  const redBtn = container.querySelector('.keyboard-list-btn[data-switch-idx="' + idx + '"][data-pos="0"]');
+  if (greenBtn && redBtn) {
+    updateSwitchUI(redBtn, greenBtn, valueNum);
+  }
+}
+
+/**
+ * Scroll the list view up or down by roughly one visible page.
+ *
+ * @param {number} direction – negative scrolls up, positive scrolls down
+ */
+function scrollKeyboardListBy(direction) {
+  const el = document.getElementById('keyboardListView');
+  if (!el) return;
+  const amount = Math.max(el.clientHeight - 60, 60);
+  const target = el.scrollTop + (direction < 0 ? -amount : amount);
+  try {
+    el.scrollTo({ top: target, behavior: 'smooth' });
+  } catch (e) {
+    el.scrollTop = target;
+  }
 }
 
 /**
@@ -2734,6 +2932,25 @@ if (keyboardGrid) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ idx: eventIdx, pos })
+    });
+  });
+}
+
+// UI logic for the optional list view (delegated for dynamic content).
+// Each row carries the global switch index; the red button sends pos=0
+// (straight), the green button pos=1 (diverging).
+const keyboardListViewEl = document.getElementById('keyboardListView');
+if (keyboardListViewEl) {
+  keyboardListViewEl.addEventListener('click', function(ev) {
+    const btn = ev.target instanceof Element ? ev.target.closest('.keyboard-list-btn') : null;
+    if (!btn || !keyboardListViewEl.contains(btn)) return;
+    const idx = Number(btn.getAttribute('data-switch-idx'));
+    const pos = Number(btn.getAttribute('data-pos'));
+    if (!Number.isFinite(idx) || !Number.isFinite(pos)) return;
+    fetch('/api/keyboard_event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idx: idx, pos: pos })
     });
   });
 }
