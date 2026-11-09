@@ -597,6 +597,102 @@ function getUidFromUrl() {
   return Number.isFinite(uid) && uid > 0 ? uid : null;
 }
 
+// ==========================
+//  Icon picker (opened via double-click on the loco icon)
+// ==========================
+
+function openIconPicker() {
+  const modal = document.getElementById('iconPickerModal');
+  const filter = document.getElementById('iconFilter');
+  if (!modal || !currentUid) return;
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  fetch('/api/icons')
+    .then(function (r) { return r.json(); })
+    .then(function (list) {
+      renderIconGrid(list || []);
+      if (filter) {
+        filter.value = '';
+        filter.oninput = function () {
+          const q = filter.value.trim().toLowerCase();
+          const filtered = (list || []).filter(function (it) { return it.name.toLowerCase().includes(q); });
+          renderIconGrid(filtered);
+        };
+      }
+    })
+    .catch(function () { renderIconGrid([]); });
+}
+
+function closeIconPicker() {
+  const modal = document.getElementById('iconPickerModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+function renderIconGrid(items) {
+  const grid = document.getElementById('iconPickerGrid');
+  if (!grid) return;
+  grid.replaceChildren();
+  if (!Array.isArray(items)) return;
+  items.forEach(function (it) {
+    const card = document.createElement('div');
+    card.className = 'icon-card';
+    const img = new Image();
+    img.alt = it.name;
+    img.src = asset('icons/' + it.name + '.png');
+    img.onerror = function () {
+      img.onerror = null;
+      img.src = '/static/grafics/unknown_loco.png';
+    };
+    const cap = document.createElement('div');
+    cap.className = 'caption';
+    cap.textContent = it.file;
+    card.appendChild(img);
+    card.appendChild(cap);
+    card.onclick = function () { chooseIconForCurrentLoco(it.name); };
+    grid.appendChild(card);
+  });
+}
+
+function chooseIconForCurrentLoco(iconNameNoExt) {
+  if (!currentUid) return;
+  fetch('/api/loco_icon', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ loco_id: currentUid, icon: iconNameNoExt })
+  })
+    .then(function (r) { return r.json(); })
+    .then(function () {
+      const iconImg = document.getElementById('editorLocoIcon');
+      if (iconImg) {
+        iconImg.onerror = null;
+        iconImg.src = asset('icons/' + iconNameNoExt + '.png');
+      }
+      closeIconPicker();
+    })
+    .catch(function () { closeIconPicker(); });
+}
+
+function setupIconPicker() {
+  const iconImg = document.getElementById('editorLocoIcon');
+  const modal = document.getElementById('iconPickerModal');
+  const closeBtn = document.getElementById('iconPickerClose');
+  const cancelBtn = document.getElementById('iconPickerCancel');
+  if (iconImg) {
+    iconImg.setAttribute('draggable', 'false');
+    iconImg.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    iconImg.addEventListener('dblclick', openIconPicker);
+  }
+  if (closeBtn) closeBtn.onclick = closeIconPicker;
+  if (cancelBtn) cancelBtn.onclick = closeIconPicker;
+  if (modal) {
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal || e.target.classList.contains('modal-backdrop')) closeIconPicker();
+    });
+  }
+}
+
 async function init() {
   document.documentElement.lang = detectEditorLanguage();
   const titleEl = document.getElementById('editorLocoName');
@@ -658,4 +754,7 @@ async function init() {
   updateEditorStatus('Values loaded from locomotive configuration.');
 }
 
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', function () {
+  setupIconPicker();
+  init();
+});
