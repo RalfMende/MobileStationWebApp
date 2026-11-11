@@ -31,7 +31,7 @@ Recommended paths inside the ipk:
 - Existing SRSEII data: `/www` (contains `config/`, `icons/`, `fcticons/`, and `magicons_/`)
 - Init script: `/etc/init.d/mswebapp`
 
-The included init script ([files/etc/init.d/mswebapp](files/etc/init.d/mswebapp)) passes `/www` as the backend configuration directory and does not modify its contents.
+The included init script ([files/etc/init.d/mswebapp](files/etc/init.d/mswebapp)) passes `/www` as the backend configuration directory and does not modify its contents. It waits for the configured CAN interface (`can0`) to appear before launching the backend.
 
 ## Gotchas
 - When updating assets, the ETag will change automatically (size/mtime-based).

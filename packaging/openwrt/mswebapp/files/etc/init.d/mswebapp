@@ -3,8 +3,9 @@
 # MobileStation Web App - OpenWrt init script (procd)
 # Runs the C++ backend.
 
-START=95
+START=99
 USE_PROCD=1
+CAN_INTERFACE=can0
 
 start_service() {
     if [ ! -x /usr/bin/mswebapp ]; then
@@ -12,22 +13,25 @@ start_service() {
         return 1
     fi
 
-    if ! ip link show can0 >/dev/null 2>&1; then
-        echo "mswebapp: CAN interface can0 not found" >&2
-        return 1
-    fi
-
     procd_open_instance
-    procd_set_param command /usr/bin/mswebapp \
-        --config /www \
-        --can can0 \
-        --host 0.0.0.0 \
-        --port 6020 \
-        --www /usr/share/mswebapp/www
+    procd_set_param command /bin/sh -c '
+        can_interface=$0
+        if [ -n "$can_interface" ] && ! ip link show dev "$can_interface" >/dev/null 2>&1; then
+            echo "mswebapp: waiting for CAN interface $can_interface" >&2
+        fi
+        while [ -n "$can_interface" ] && ! ip link show dev "$can_interface" >/dev/null 2>&1; do
+            sleep 1
+        done
+        exec /usr/bin/mswebapp \
+            --config /www \
+            --can "$can_interface" \
+            --host 0.0.0.0 \
+            --port 6020 \
+            --www /usr/share/mswebapp/www
+    ' "$CAN_INTERFACE"
     procd_set_param respawn
     procd_close_instance
 }
-
 
 stop_service() {
     : # procd handles stop
